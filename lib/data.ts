@@ -131,10 +131,20 @@ export const clients: Client[] = [
     logo: "/clients/ceramic-stone-evolutione.png",
     url: "https://www.facebook.com/profile.php?id=100044975814310",
   },
+ {
+    name: "Hidrotechnika",
+    logo: "/clients/ht.png",
+    url: "https://irigatiiprofesionale.ro/",
+  },
   {
     name: "Casa Romană",
     logo: "/clients/casa-romana.png",
     url: "https://www.facebook.com/casaromanaporolissum/",
+  },
+{
+    name: "Incognito Escape Meses",
+    logo: "/clients/incognito.png",
+    url: "https://www.facebook.com/profile.php?id=61570213177692",
   },
   {
     name: "PM CUSTOMS",
