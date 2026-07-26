@@ -22,9 +22,9 @@ export const siteConfig = {
 };
 
 export const stats = [
-  { value: "250+", label: "Proiecte finalizate" },
+  { value: "10+", label: "Proiecte finalizate" },
   { value: "98%", label: "Clienți mulțumiți" },
-  { value: "12M+", label: "Bugete gestionate" },
+  { value: "12K+", label: "Bugete gestionate" },
   { value: "4.9★", label: "Rating Google" },
 ];
 
@@ -135,5 +135,15 @@ export const clients: Client[] = [
     name: "Casa Romană",
     logo: "/clients/casa-romana.png",
     url: "https://www.facebook.com/casaromanaporolissum/",
+  },
+{
+    name: "PM CUSTOMS",
+    logo: "/clients/pm.png",
+    url: "https://www.pmcustoms.us",
+  },
+{
+    name: "Dracula Soil",
+    logo: "/clients/ds.png",
+    url: "https://www.draculasoil.com",
   },
 ];
