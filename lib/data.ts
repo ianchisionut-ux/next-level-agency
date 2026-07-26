@@ -42,47 +42,27 @@ export const services: Service[] = [
   {
     icon: "target",
     title: "Branding & Identity",
-    description: `Creăm identități vizuale puternice care te diferențiază de concurență. Brandul tău este prima impresie pe care o lași în fața clienților și unul dintre cele mai valoroase active ale unei afaceri. O identitate vizuală bine construită transmite profesionalism, inspiră încredere și creează o conexiune autentică între companie și publicul său.
-
-La NEXT LEVEL Advertising Agency dezvoltăm identități de brand care merg dincolo de un simplu logo. Construim un sistem vizual complet, coerent și memorabil, adaptat valorilor companiei, industriei în care activează și publicului pe care dorește să îl atragă.
-
-Procesul începe printr-o analiză detaliată a afacerii, a concurenței și a poziționării pe piață. Pe baza acestor informații definim direcția creativă și dezvoltăm elementele esențiale ale identității: logo, paletă cromatică, tipografie, elemente grafice, iconografie și reguli de utilizare care asigură o imagine unitară în toate materialele de comunicare.`,
+    description: `Creăm identități vizuale puternice care te diferențiază de concurență. Brandul tău este prima impresie pe care o lași în fața clienților și unul dintre cele mai valoroase active ale unei afaceri. O identitate vizuală bine construită transmite profesionalism, inspiră încredere și creează o conexiune autentică între companie și publicul său.`,
   },
   {
     icon: "chart",
     title: "Performance Marketing",
-    description: `Campanii profitabile pe Facebook, Google, TikTok și alte platforme. Performanța nu se măsoară în aprecieri sau afișări, ci în rezultate concrete. Dezvoltăm campanii de publicitate digitală orientate către obiective clare: generarea de lead-uri, creșterea vânzărilor, atragerea de clienți noi și maximizarea rentabilității investiției (ROI).
-
-Fiecare campanie începe cu o analiză detaliată a afacerii, a pieței și a comportamentului publicului țintă. Definim strategia potrivită, alegem canalele de promovare și construim audiențe relevante pentru ca fiecare buget investit să producă rezultate măsurabile.
-
-Administrăm și optimizăm campanii pe Facebook, Instagram, Google Ads, TikTok, LinkedIn și alte platforme digitale, utilizând cele mai eficiente formate de promovare pentru fiecare obiectiv. Fie că este vorba despre campanii de conversie, trafic, lead generation, remarketing sau notorietate, fiecare strategie este adaptată specificului afacerii.`,
+    description: `Campanii profitabile pe Facebook, Google, TikTok și alte platforme. Performanța nu se măsoară în aprecieri sau afișări, ci în rezultate concrete. Dezvoltăm campanii de publicitate digitală orientate către obiective clare: generarea de lead-uri, creșterea vânzărilor, atragerea de clienți noi și maximizarea rentabilității investiției (ROI).`,
   },
   {
     icon: "code",
     title: "Web Design & Development",
-    description: `Site-uri moderne, rapide și optimizate pentru conversii. Website-ul este centrul prezenței digitale a oricărei afaceri și, de cele mai multe ori, primul contact dintre brand și potențialii clienți. De aceea, dezvoltăm site-uri moderne, rapide și optimizate pentru a transforma vizitatorii în clienți.
-
-Construim website-uri personalizate, adaptate identității fiecărui brand și obiectivelor de business. Fie că este vorba despre un site de prezentare, un magazin online, o platformă de rezervări sau o aplicație web, fiecare proiect este realizat cu accent pe performanță, experiența utilizatorului și scalabilitate.
-
-Punem accent pe un design modern, intuitiv și responsive, care oferă o experiență impecabilă pe desktop, tabletă și telefon. Structura paginilor este gândită pentru o navigare simplă, încărcare rapidă și o prezentare clară a serviciilor sau produselor.`,
+    description: `Site-uri moderne, rapide și optimizate pentru conversii. Website-ul este centrul prezenței digitale a oricărei afaceri și, de cele mai multe ori, primul contact dintre brand și potențialii clienți. De aceea, dezvoltăm site-uri moderne, rapide și optimizate pentru a transforma vizitatorii în clienți.`,
   },
   {
     icon: "bot",
     title: "AI & Marketing Automation",
-    description: `Automatizări inteligente care îți economisesc timp și cresc vânzările. Automatizarea reprezintă viitorul marketingului digital. Dezvoltăm soluții bazate pe inteligență artificială care elimină procesele repetitive, optimizează comunicarea cu clienții și transformă fiecare interacțiune într-o oportunitate de vânzare.
-
-Implementăm sisteme inteligente care lucrează pentru afacerea ta 24 de ore din 24, răspunzând instant solicitărilor, calificând potențialii clienți și automatizând procese care, în mod tradițional, consumă timp și resurse.
-
-Construim chatboți AI pentru website, Facebook Messenger și WhatsApp, capabili să răspundă întrebărilor frecvente, să prezinte produsele și serviciile, să preia comenzi, să realizeze rezervări și să programeze întâlniri fără intervenție umană.`,
+    description: `Automatizări inteligente care îți economisesc timp și cresc vânzările. Automatizarea reprezintă viitorul marketingului digital. Dezvoltăm soluții bazate pe inteligență artificială care elimină procesele repetitive, optimizează comunicarea cu clienții și transformă fiecare interacțiune într-o oportunitate de vânzare.`,
   },
   {
     icon: "search",
     title: "SEO & Content Marketing",
-    description: `Strategii SEO și content care aduc trafic și conversii constante. Vizibilitatea în Google nu se obține întâmplător. Construim strategii SEO și de content marketing care poziționează afacerea ta în fața oamenilor potriviți, exact în momentul în care caută produsele sau serviciile pe care le oferi.
-
-Procesul începe cu o analiză completă a website-ului, a concurenței și a pieței. Identificăm oportunitățile de creștere, analizăm comportamentul utilizatorilor și dezvoltăm o strategie bazată pe cuvinte-cheie relevante, intenția de căutare și obiectivele de business.
-
-Optimizăm fiecare element al website-ului pentru motoarele de căutare: structura paginilor, viteza de încărcare, experiența utilizatorului, meta titlurile, descrierile, imaginile, linkurile interne și conținutul. Scopul este ca site-ul să fie ușor de înțeles atât pentru utilizatori, cât și pentru algoritmii Google.`,
+    description: `Strategii SEO și content care aduc trafic și conversii constante. Vizibilitatea în Google nu se obține întâmplător. Construim strategii SEO și de content marketing care poziționează afacerea ta în fața oamenilor potriviți, exact în momentul în care caută produsele sau serviciile pe care le oferi.`,
   },
 ];
 
