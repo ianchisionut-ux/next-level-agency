@@ -161,4 +161,9 @@ export const clients: Client[] = [
     logo: "/clients/v8.png",
     url: "https://www.instagram.com/prosecco.v8/",
   },
+{
+    name: "Luca Garden",
+    logo: "/clients/lg.png",
+    url: "",
+  },
 ];
