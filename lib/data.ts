@@ -156,4 +156,9 @@ export const clients: Client[] = [
     logo: "/clients/dracula.png",
     url: "https://www.draculasoil.com",
   },
+{
+    name: "Prosecco V8",
+    logo: "/clients/v8.png",
+    url: "https://www.instagram.com/prosecco.v8/",
+  },
 ];
