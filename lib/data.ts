@@ -42,7 +42,7 @@ export const services: Service[] = [
   {
     icon: "target",
     title: "Branding & Identity",
-    description: "Creăm identități vizuale puternice care te diferențiază de concurență.Brandul tău este prima impresie pe care o lași în fața clienților și unul dintre cele mai valoroase active ale unei afaceri. O identitate vizuală bine construită transmite profesionalism, inspiră încredere și creează o conexiune autentică între companie și publicul său.
+    description: `Creăm identități vizuale puternice care te diferențiază de concurență. Brandul tău este prima impresie pe care o lași în fața clienților și unul dintre cele mai valoroase active ale unei afaceri. O identitate vizuală bine construită transmite profesionalism, inspiră încredere și creează o conexiune autentică între companie și publicul său.
 
 La NEXT LEVEL Advertising Agency dezvoltăm identități de brand care merg dincolo de un simplu logo. Construim un sistem vizual complet, coerent și memorabil, adaptat valorilor companiei, industriei în care activează și publicului pe care dorește să îl atragă.
 
@@ -54,12 +54,12 @@ O identitate vizuală puternică nu doar atrage atenția, ci facilitează recuno
 
 Livrăm un pachet complet de branding, pregătit pentru utilizare imediată, incluzând manual de identitate vizuală, variante de logo pentru toate mediile, șabloane grafice și materiale corporate, astfel încât brandul tău să comunice aceeași imagine profesională în orice context.
 
-Obiectivul nostru este să construim identități vizuale care diferențiază afacerile, cresc valoarea percepută a brandului și oferă o fundație solidă pentru dezvoltarea pe termen lung. Un brand puternic nu înseamnă doar un design reușit, ci o strategie vizuală care susține fiecare etapă a creșterii companiei.",
+Obiectivul nostru este să construim identități vizuale care diferențiază afacerile, cresc valoarea percepută a brandului și oferă o fundație solidă pentru dezvoltarea pe termen lung. Un brand puternic nu înseamnă doar un design reușit, ci o strategie vizuală care susține fiecare etapă a creșterii companiei.`,
   },
   {
     icon: "chart",
     title: "Performance Marketing",
-    description: "Campanii profitabile pe Facebook, Google, TikTok și alte platforme.Performanța nu se măsoară în aprecieri sau afișări, ci în rezultate concrete. Dezvoltăm campanii de publicitate digitală orientate către obiective clare: generarea de lead-uri, creșterea vânzărilor, atragerea de clienți noi și maximizarea rentabilității investiției (ROI).
+    description: `Campanii profitabile pe Facebook, Google, TikTok și alte platforme. Performanța nu se măsoară în aprecieri sau afișări, ci în rezultate concrete. Dezvoltăm campanii de publicitate digitală orientate către obiective clare: generarea de lead-uri, creșterea vânzărilor, atragerea de clienți noi și maximizarea rentabilității investiției (ROI).
 
 Fiecare campanie începe cu o analiză detaliată a afacerii, a pieței și a comportamentului publicului țintă. Definim strategia potrivită, alegem canalele de promovare și construim audiențe relevante pentru ca fiecare buget investit să producă rezultate măsurabile.
 
@@ -71,12 +71,12 @@ Monitorizăm în timp real performanța campaniilor și optimizăm constant buge
 
 Implementăm sisteme avansate de tracking și analiză pentru a măsura fiecare etapă din procesul de achiziție a clientului. Urmărim conversiile, comportamentul utilizatorilor și rentabilitatea fiecărei campanii, oferind rapoarte clare și ușor de înțeles.
 
-Scopul nostru este să transformăm publicitatea într-o investiție profitabilă. Nu urmărim doar creșterea traficului, ci construim campanii care generează rezultate reale, optimizează costurile de promovare și contribuie la dezvoltarea sustenabilă a afacerii pe termen lung. Construim platforme digitale care susțin dezvoltarea afacerii pe termen lung și oferă o bază solidă pentru toate activitățile de marketing și promovare.",
+Scopul nostru este să transformăm publicitatea într-o investiție profitabilă. Nu urmărim doar creșterea traficului, ci construim campanii care generează rezultate reale, optimizează costurile de promovare și contribuie la dezvoltarea sustenabilă a afacerii pe termen lung.`,
   },
   {
     icon: "code",
     title: "Web Design & Development",
-    description: "Site-uri moderne, rapide și optimizate pentru conversii.Website-ul este centrul prezenței digitale a oricărei afaceri și, de cele mai multe ori, primul contact dintre brand și potențialii clienți. De aceea, dezvoltăm site-uri moderne, rapide și optimizate pentru a transforma vizitatorii în clienți.
+    description: `Site-uri moderne, rapide și optimizate pentru conversii. Website-ul este centrul prezenței digitale a oricărei afaceri și, de cele mai multe ori, primul contact dintre brand și potențialii clienți. De aceea, dezvoltăm site-uri moderne, rapide și optimizate pentru a transforma vizitatorii în clienți.
 
 Construim website-uri personalizate, adaptate identității fiecărui brand și obiectivelor de business. Fie că este vorba despre un site de prezentare, un magazin online, o platformă de rezervări sau o aplicație web, fiecare proiect este realizat cu accent pe performanță, experiența utilizatorului și scalabilitate.
 
@@ -88,12 +88,12 @@ Integram funcționalități avansate precum formulare inteligente, sisteme de re
 
 Optimizăm fiecare element pentru conversii, de la structura conținutului și poziționarea butoanelor de acțiune până la viteza de încărcare și experiența utilizatorului. Scopul nu este doar un website care arată bine, ci unul care generează contacte, solicitări de ofertă și vânzări.
 
-După lansare, oferim mentenanță, actualizări, monitorizare și optimizare continuă, astfel încât website-ul să rămână rapid, sigur și pregătit pentru noile cerințe ale pieței. Construim platforme digitale care susțin dezvoltarea afacerii pe termen lung și oferă o bază solidă pentru toate activitățile de marketing și promovare.",
+După lansare, oferim mentenanță, actualizări, monitorizare și optimizare continuă, astfel încât website-ul să rămână rapid, sigur și pregătit pentru noile cerințe ale pieței.`,
   },
   {
     icon: "bot",
     title: "AI & Marketing Automation",
-    description: "Automatizări inteligente care îți economisesc timp și cresc vânzările.Automatizarea reprezintă viitorul marketingului digital. Dezvoltăm soluții bazate pe inteligență artificială care elimină procesele repetitive, optimizează comunicarea cu clienții și transformă fiecare interacțiune într-o oportunitate de vânzare.
+    description: `Automatizări inteligente care îți economisesc timp și cresc vânzările. Automatizarea reprezintă viitorul marketingului digital. Dezvoltăm soluții bazate pe inteligență artificială care elimină procesele repetitive, optimizează comunicarea cu clienții și transformă fiecare interacțiune într-o oportunitate de vânzare.
 
 Implementăm sisteme inteligente care lucrează pentru afacerea ta 24 de ore din 24, răspunzând instant solicitărilor, calificând potențialii clienți și automatizând procese care, în mod tradițional, consumă timp și resurse.
 
@@ -109,12 +109,12 @@ Automatizările reduc timpul pierdut cu sarcinile repetitive, minimizează erori
 
 Soluțiile dezvoltate sunt scalabile și personalizate pentru fiecare industrie, indiferent dacă este vorba despre restaurante, clinici medicale, magazine online, companii de servicii, producători sau firme B2B. Fiecare automatizare este proiectată pentru a se integra perfect în fluxul existent de lucru și pentru a susține creșterea afacerii pe termen lung.
 
-Obiectivul nostru este simplu: mai puține procese manuale, mai multă eficiență, răspunsuri mai rapide, costuri operaționale reduse și un sistem inteligent care contribuie permanent la creșterea vânzărilor și la dezvoltarea companiei.",
+Obiectivul nostru este simplu: mai puține procese manuale, mai multă eficiență, răspunsuri mai rapide, costuri operaționale reduse și un sistem inteligent care contribuie permanent la creșterea vânzărilor și la dezvoltarea companiei.`,
   },
   {
     icon: "search",
     title: "SEO & Content Marketing",
-    description: "Strategii SEO și content care aduc trafic și conversii constante.Vizibilitatea în Google nu se obține întâmplător. Construim strategii SEO și de content marketing care poziționează afacerea ta în fața oamenilor potriviți, exact în momentul în care caută produsele sau serviciile pe care le oferi.
+    description: `Strategii SEO și content care aduc trafic și conversii constante. Vizibilitatea în Google nu se obține întâmplător. Construim strategii SEO și de content marketing care poziționează afacerea ta în fața oamenilor potriviți, exact în momentul în care caută produsele sau serviciile pe care le oferi.
 
 Procesul începe cu o analiză completă a website-ului, a concurenței și a pieței. Identificăm oportunitățile de creștere, analizăm comportamentul utilizatorilor și dezvoltăm o strategie bazată pe cuvinte-cheie relevante, intenția de căutare și obiectivele de business.
 
@@ -128,7 +128,7 @@ Monitorizăm permanent pozițiile în motoarele de căutare, evoluția cuvintelo
 
 Punem accent atât pe SEO tehnic, cât și pe SEO local, ajutând companiile să fie găsite de clienții din zona lor prin optimizarea profilului Google Business, a informațiilor locale și a strategiilor dedicate căutărilor regionale.
 
-Obiectivul nostru este să construim o sursă stabilă și predictibilă de trafic organic, reducând dependența de publicitatea plătită și oferind afacerii tale o prezență puternică și sustenabilă în rezultatele motoarelor de căutare. Un conținut bine realizat continuă să genereze vizibilitate, lead-uri și conversii mult timp după publicare.",
+Obiectivul nostru este să construim o sursă stabilă și predictibilă de trafic organic, reducând dependența de publicitatea plătită și oferind afacerii tale o prezență puternică și sustenabilă în rezultatele motoarelor de căutare. Un conținut bine realizat continuă să genereze vizibilitate, lead-uri și conversii mult timp după publicare.`,
   },
 ];
 
@@ -202,12 +202,12 @@ export const clients: Client[] = [
     logo: "/clients/casa-romana.png",
     url: "https://www.facebook.com/casaromanaporolissum/",
   },
-{
+  {
     name: "PM CUSTOMS",
     logo: "/clients/pmcustoms.png",
     url: "https://www.pmcustoms.us",
   },
-{
+  {
     name: "Dracula Soil",
     logo: "/clients/dracula.png",
     url: "https://www.draculasoil.com",
