@@ -138,12 +138,12 @@ export const clients: Client[] = [
   },
 {
     name: "PM CUSTOMS",
-    logo: "/clients/pm.png",
+    logo: "/clients/pmcustoms.png",
     url: "https://www.pmcustoms.us",
   },
 {
     name: "Dracula Soil",
-    logo: "/clients/ds.png",
+    logo: "/clients/dracula.png",
     url: "https://www.draculasoil.com",
   },
 ];
