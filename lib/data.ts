@@ -188,5 +188,5 @@ export const workVideos: WorkVideo[] = [
   { title: "Casa Romana", embedUrl: "https://player.vimeo.com/video/1213316761?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479" },
   { title: "Ceramic Stone", embedUrl: "https://player.vimeo.com/video/1213316759?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479" },
   { title: "Incognito Escape Meses", embedUrl: "https://player.vimeo.com/video/1213316760?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479" },
-  { title: "CS Reel 5", embedUrl: "https://player.vimeo.com/video/1213324646title=0&amp;byline=0&amp;portrait=0&amp;badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" },
+  { title: "CS Reel 5", embedUrl: "https://player.vimeo.com/video/1213324646?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479" },
 ];
