@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ClientsSection from "@/components/ClientsSection";
+import OurWork from "@/components/OurWork";
 
 export const metadata: Metadata = {
   title: "Portofoliu | Next Level Advertising Agency",
@@ -27,6 +28,7 @@ export default function PortofoliuPage() {
         </section>
 
         <ClientsSection />
+	<OurWork />
       </main>
       <Footer />
     </>

@@ -167,3 +167,25 @@ export const clients: Client[] = [
     url: "",
   },
 ];
+
+// -----------------------------------------------------------------------------
+// SECȚIUNEA "OUR WORK" — videoclipuri verticale (reels/shorts) încorporate din Vimeo.
+// Nu se încarcă fișierul video pe server - doar embed, deci site-ul rămâne rapid.
+//
+// Cum adaugi un videoclip nou:
+// 1. Urcă videoclipul pe Vimeo (poate fi Unlisted, nu trebuie să fie public).
+// 2. Pe pagina videoclipului, apasă "Share" → tab-ul "Embed".
+// 3. Copiază DOAR valoarea din interiorul lui src="..." (arată cam așa:
+//    https://player.vimeo.com/video/1234567890?h=abcdef1234).
+// 4. Pune acel link exact în câmpul embedUrl de mai jos.
+// -----------------------------------------------------------------------------
+export type WorkVideo = {
+  title: string;
+  embedUrl: string;
+};
+
+export const workVideos: WorkVideo[] = [
+  // Exemple - șterge-le și pune-le pe ale tale:
+  // { title: "Campanie TikTok - Ceramic & Stone", embedUrl: "https://player.vimeo.com/video/000000000?h=abcdef123" },
+  // { title: "Reel Instagram - Casa Romană", embedUrl: "https://player.vimeo.com/video/000000001?h=abcdef456" },
+];

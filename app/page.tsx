@@ -3,6 +3,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ClientsSection from "@/components/ClientsSection";
 import TrustMarquee from "@/components/TrustMarquee";
+import OurWork from "@/components/OurWork";
 import {
   BrandMark,
   IconTarget,
@@ -210,6 +211,7 @@ export default function HomePage() {
 
         {/* OUR CLIENTS — light (editable in lib/data.ts) */}
         <ClientsSection />
+<OurWork />
 
         {/* PROCESS — light */}
         <section className="bg-paper py-20 text-slate-900">
