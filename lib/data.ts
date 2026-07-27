@@ -185,7 +185,7 @@ export type WorkVideo = {
 };
 
 export const workVideos: WorkVideo[] = [
-  // Exemple - șterge-le și pune-le pe ale tale:
-  // { title: "Campanie TikTok - Ceramic & Stone", embedUrl: "https://player.vimeo.com/video/000000000?h=abcdef123" },
-  // { title: "Reel Instagram - Casa Romană", embedUrl: "https://player.vimeo.com/video/000000001?h=abcdef456" },
+  { title: "Ceramic Stone", embedUrl: "https://player.vimeo.com/video/1213316761?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479" },
+  { title: "Casa Romana", embedUrl: "https://player.vimeo.com/video/1213316759?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479" },
+  { title: "Incognito Escape Meses", embedUrl: "https://player.vimeo.com/video/1213316760?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479" },
 ];
