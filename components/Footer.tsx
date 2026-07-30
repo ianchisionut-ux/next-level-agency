@@ -92,7 +92,39 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/40 sm:flex-row">
+        {/* Sigle obligatorii conform legislației (OUG 34/2014, Reg. UE 524/2013):
+            SAL - Soluționarea Alternativă a Litigiilor (ANPC)
+            SOL - Soluționarea Online a Litigiilor (Comisia Europeană) */}
+        <div className="mt-12 flex flex-wrap items-center justify-center gap-6 border-t border-white/10 pt-8">
+          <a
+            href="https://anpc.ro/ce-este-sal/"
+            target="_blank"
+            rel="nofollow noopener noreferrer"
+            className="rounded-lg bg-white p-2 transition hover:opacity-90"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/legal/anpc-sal.png"
+              alt="Soluționarea Alternativă a Litigiilor"
+              className="h-10 w-auto sm:h-12"
+            />
+          </a>
+          <a
+            href="https://ec.europa.eu/consumers/odr"
+            target="_blank"
+            rel="nofollow noopener noreferrer"
+            className="rounded-lg bg-white p-2 transition hover:opacity-90"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/legal/anpc-sol.png"
+              alt="Soluționarea Online a Litigiilor"
+              className="h-10 w-auto sm:h-12"
+            />
+          </a>
+        </div>
+
+        <div className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/40 sm:flex-row">
           <p>© {new Date().getFullYear()} Next Level Advertising Agency. Toate drepturile rezervate.</p>
           <div className="flex flex-wrap justify-center gap-5">
             <Link href="/termeni-si-conditii" className="hover:text-white/70">Termeni și Condiții</Link>
