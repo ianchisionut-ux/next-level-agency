@@ -3,6 +3,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ClientsSection from "@/components/ClientsSection";
 import OurWork from "@/components/OurWork";
+import WebDevelopment from "@/components/WebDevelopment";
 
 export const metadata: Metadata = {
   title: "Portofoliu | Next Level Advertising Agency",
@@ -28,8 +29,8 @@ export default function PortofoliuPage() {
         </section>
 
         <ClientsSection />
-	<OurWork />
-       <WebDevelopment />
+        <OurWork />
+        <WebDevelopment />
       </main>
       <Footer />
     </>
