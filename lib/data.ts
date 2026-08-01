@@ -42,27 +42,27 @@ export const services: Service[] = [
   {
     icon: "target",
     title: "Branding & Identity",
-    description: `Creăm identități vizuale puternice care te diferențiază de concurență. Brandul tău este prima impresie pe care o lași în fața clienților și unul dintre cele mai valoroase active ale unei afaceri. O identitate vizuală bine construită transmite profesionalism, inspiră încredere și creează o conexiune autentică între companie și publicul său.`,
+    description: `Creăm identități vizuale puternice care te diferențiază de concurență. Brandul tău este prima impresie pe care o lași în fața clienților și unul dintre cele mai valoroase active ale unei afaceri.`,
   },
   {
     icon: "chart",
     title: "Performance Marketing",
-    description: `Campanii profitabile pe Facebook, Google, TikTok și alte platforme. Performanța nu se măsoară în aprecieri sau afișări, ci în rezultate concrete. Dezvoltăm campanii de publicitate digitală orientate către obiective clare: generarea de lead-uri, creșterea vânzărilor, atragerea de clienți noi și maximizarea rentabilității investiției (ROI).`,
+    description: `Campanii profitabile pe Facebook, Google, TikTok și alte platforme. Performanța nu se măsoară în aprecieri sau afișări, ci în rezultate concrete.`,
   },
   {
     icon: "code",
     title: "Web Design & Development",
-    description: `Site-uri moderne, rapide și optimizate pentru conversii. Website-ul este centrul prezenței digitale a oricărei afaceri și, de cele mai multe ori, primul contact dintre brand și potențialii clienți. De aceea, dezvoltăm site-uri moderne, rapide și optimizate pentru a transforma vizitatorii în clienți.`,
+    description: `Site-uri moderne, rapide și optimizate pentru conversii. Website-ul este centrul prezenței digitale a oricărei afaceri și, de cele mai multe ori, primul contact dintre brand și potențialii clienți.`,
   },
   {
     icon: "bot",
     title: "AI & Marketing Automation",
-    description: `Automatizări inteligente care îți economisesc timp și cresc vânzările. Automatizarea reprezintă viitorul marketingului digital. Dezvoltăm soluții bazate pe inteligență artificială care elimină procesele repetitive, optimizează comunicarea cu clienții și transformă fiecare interacțiune într-o oportunitate de vânzare.`,
+    description: `Automatizări inteligente care îți economisesc timp și cresc vânzările. Automatizarea reprezintă viitorul marketingului digital.`,
   },
   {
     icon: "search",
     title: "SEO & Content Marketing",
-    description: `Strategii SEO și content care aduc trafic și conversii constante. Vizibilitatea în Google nu se obține întâmplător. Construim strategii SEO și de content marketing care poziționează afacerea ta în fața oamenilor potriviți, exact în momentul în care caută produsele sau serviciile pe care le oferi.`,
+    description: `Strategii SEO și content care aduc trafic și conversii constante. Vizibilitatea în Google nu se obține întâmplător.`,
   },
 ];
 
