@@ -190,3 +190,24 @@ export const workVideos: WorkVideo[] = [
   { title: "Incognito Escape Meses", embedUrl: "https://player.vimeo.com/video/1213316760?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479" },
   { title: "CS Reel 5", embedUrl: "https://player.vimeo.com/video/1213324646?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479" },
 ];
+// -----------------------------------------------------------------------------
+// SECȚIUNEA "WEB DEVELOPMENT" — site-urile pe care le-ați creat, cu poză de
+// prezentare (screenshot) și link către site-ul live.
+//
+// Cum adaugi un proiect nou:
+// 1. Fă un screenshot al site-ului (ideal 1280x800px sau similar, format 16:9).
+// 2. Pune poza în /public/web-projects/ (ex: numele-site.png).
+// 3. Adaugă o intrare mai jos, cu titlu, link și calea către poză.
+// -----------------------------------------------------------------------------
+export type WebProject = {
+  title: string;
+  url: string;
+  thumbnail: string;
+};
+
+export const webProjects: WebProject[] = [
+  // Exemplu - șterge-l și pune-le pe ale tale:
+   { title: "Daily Menu", url: "https://www.dailym.ro", thumbnail: "/web-projects/www.dailym.ro.png" },
+   { title: "PM Customs", url: "https://www.pmcustoms.us", thumbnail: "/web-projects/www.pmcustoms.us.png" },
+   { title: "Dracula soil", url: "https://www.draculasoil.com", thumbnail: "/web-projects/www.draculasoil.com.png" },
+];

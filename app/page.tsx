@@ -2,8 +2,9 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ClientsSection from "@/components/ClientsSection";
-import TrustMarquee from "@/components/TrustMarquee";
 import OurWork from "@/components/OurWork";
+import WebDevelopment from "@/components/WebDevelopment";
+import TrustMarquee from "@/components/TrustMarquee";
 import {
   BrandMark,
   IconTarget,
@@ -12,17 +13,11 @@ import {
   IconBot,
   IconSearch,
   IconStar,
-  IconDiscovery,
-  IconStrategy,
-  IconExecution,
-  IconOptimization,
-  IconGrowth,
 } from "@/components/Icons";
 import {
   stats,
   trustedBy,
   services,
-  process,
   differentiators,
   testimonials,
   siteConfig,
@@ -34,14 +29,6 @@ const serviceIcons = {
   code: IconCode,
   bot: IconBot,
   search: IconSearch,
-};
-
-const processIcons = {
-  discovery: IconDiscovery,
-  strategy: IconStrategy,
-  execution: IconExecution,
-  optimization: IconOptimization,
-  growth: IconGrowth,
 };
 
 export default function HomePage() {
@@ -211,41 +198,10 @@ export default function HomePage() {
 
         {/* OUR CLIENTS — light (editable in lib/data.ts) */}
         <ClientsSection />
-<OurWork />
 
-        {/* PROCESS — light */}
-        <section className="bg-paper py-20 text-slate-900">
-          <div className="mx-auto max-w-7xl px-6">
-            <div className="mb-14 text-center">
-              <p className="eyebrow text-blue">Procesul nostru</p>
-              <h2 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
-                Un proces clar. Rezultate predictibile.
-              </h2>
-            </div>
+        <OurWork />
 
-            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-5">
-              {process.map((p) => {
-                const Icon = processIcons[p.icon];
-                return (
-                  <div key={p.step} className="text-center">
-                    <div className="relative mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue/10 text-blue">
-                      <Icon className="h-6 w-6" />
-                      <span className="absolute -bottom-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-blue text-[10px] font-extrabold text-white">
-                        {p.step}
-                      </span>
-                    </div>
-                    <h3 className="mt-4 text-sm font-bold uppercase tracking-wide">
-                      {p.title}
-                    </h3>
-                    <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-                      {p.description}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
+        <WebDevelopment />
 
         {/* ================================================================ */}
         {/* LIGHT BAND END                                                    */}
