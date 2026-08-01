@@ -29,6 +29,7 @@ export default function PortofoliuPage() {
 
         <ClientsSection />
 	<OurWork />
+       <WebDevelopment />
       </main>
       <Footer />
     </>
