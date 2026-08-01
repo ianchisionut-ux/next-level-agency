@@ -42,27 +42,27 @@ export const services: Service[] = [
   {
     icon: "target",
     title: "Branding & Identity",
-    description: `Creăm identități vizuale puternice care te diferențiază de concurență. Brandul tău este prima impresie pe care o lași în fața clienților și unul dintre cele mai valoroase active ale unei afaceri.`,
+    description: `Creăm identități vizuale puternice care te diferențiază de concurență.`,
   },
   {
     icon: "chart",
     title: "Performance Marketing",
-    description: `Campanii profitabile pe Facebook, Google, TikTok și alte platforme. Performanța nu se măsoară în aprecieri sau afișări, ci în rezultate concrete.`,
+    description: `Campanii profitabile pe Facebook, Google, TikTok și alte platforme.`,
   },
   {
     icon: "code",
     title: "Web Design & Development",
-    description: `Site-uri moderne, rapide și optimizate pentru conversii. Website-ul este centrul prezenței digitale a oricărei afaceri și, de cele mai multe ori, primul contact dintre brand și potențialii clienți.`,
+    description: `Site-uri moderne, rapide și optimizate pentru conversii.`,
   },
   {
     icon: "bot",
     title: "AI & Marketing Automation",
-    description: `Automatizări inteligente care îți economisesc timp și cresc vânzările. Automatizarea reprezintă viitorul marketingului digital.`,
+    description: `Automatizări inteligente care îți economisesc timp și cresc vânzările.`,
   },
   {
     icon: "search",
     title: "SEO & Content Marketing",
-    description: `Strategii SEO și content care aduc trafic și conversii constante. Vizibilitatea în Google nu se obține întâmplător.`,
+    description: `Strategii SEO și content care aduc trafic și conversii constante.`,
   },
 ];
 
