@@ -210,4 +210,5 @@ export const webProjects: WebProject[] = [
    { title: "Daily Menu", url: "https://www.dailym.ro", thumbnail: "/web-projects/www.dailym.ro.png" },
    { title: "PM Customs", url: "https://www.pmcustoms.us", thumbnail: "/web-projects/www.pmcustoms.us.png" },
    { title: "Dracula soil", url: "https://www.draculasoil.com", thumbnail: "/web-projects/www.draculasoil.com.png" },
+   { title: "Bookeasy", url: "https://www.bookeasy.ro", thumbnail: "/web-projects/www.bookeasy.ro.png" },
 ];
