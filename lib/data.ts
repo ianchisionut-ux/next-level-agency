@@ -138,7 +138,7 @@ export const clients: Client[] = [
   },
   {
     name: "DR MITICA - Electromit serv",
-    logo: "/clients/electromit-serv-logo.png",
+    logo: "/clients/electromit.png",
     url: "https://electromitserv.ro/",
   },
 {
