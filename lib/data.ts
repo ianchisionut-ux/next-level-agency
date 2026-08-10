@@ -137,9 +137,9 @@ export const clients: Client[] = [
     url: "https://irigatiiprofesionale.ro/",
   },
   {
-    name: "Casa Romană",
-    logo: "/clients/casa-romana.png",
-    url: "https://www.facebook.com/casaromanaporolissum/",
+    name: "DR MITICA - Electromit serv",
+    logo: "/clients/electromit-serv-logo.png",
+    url: "https://electromitserv.ro/",
   },
 {
     name: "Incognito Escape Meses",
@@ -164,7 +164,7 @@ export const clients: Client[] = [
 {
     name: "Luca Garden",
     logo: "/clients/lg.png",
-    url: "",
+    url: "#",
   },
 ];
 
