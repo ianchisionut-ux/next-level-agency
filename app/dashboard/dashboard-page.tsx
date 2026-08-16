@@ -2,7 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getActiveWorkspace } from "@/lib/session";
 import { BroadcastTimeline, TimelineVariant } from "@/app/components/timeline/broadcast-timeline";
-import { StatCard } from "@/app/components/ui/stat-card";
+import { StatCard, StatIconLink, StatIconClock, StatIconCheck, StatIconWarning } from "@/app/components/ui/stat-card";
 import { StatusBadge } from "@/app/components/ui/status-badge";
 import { PlatformIcon } from "@/app/components/ui/platform-icon";
 import { PlatformKey } from "@/lib/platform-meta";
@@ -77,10 +77,15 @@ export default async function DashboardPage() {
       )}
 
       <div className="grid grid-cols-4 gap-4">
-        <StatCard label="Conturi conectate" value={String(accountsCount)} />
-        <StatCard label="Programate" value={String(scheduledCount)} accent="signal" />
-        <StatCard label="Publicate (7 zile)" value={String(publishedThisWeek)} accent="success" />
-        <StatCard label="Eșuate" value={String(failedCount)} accent={failedCount > 0 ? "error" : "signal"} />
+        <StatCard label="Conturi conectate" value={String(accountsCount)} icon={<StatIconLink />} />
+        <StatCard label="Programate" value={String(scheduledCount)} accent="signal" icon={<StatIconClock />} />
+        <StatCard label="Publicate (7 zile)" value={String(publishedThisWeek)} accent="success" icon={<StatIconCheck />} />
+        <StatCard
+          label="Eșuate"
+          value={String(failedCount)}
+          accent={failedCount > 0 ? "error" : "signal"}
+          icon={<StatIconWarning />}
+        />
       </div>
 
       <BroadcastTimeline variants={timelineData} />
