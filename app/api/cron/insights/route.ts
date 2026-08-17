@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { collectInsights, collectKeywordSnapshots } from "@/lib/insights-collector";
+import { collectInsights, collectKeywordSnapshots, collectAudienceDemographics } from "@/lib/insights-collector";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -16,11 +16,18 @@ export async function GET(req: NextRequest) {
 
     const workspaces = await prisma.workspace.findMany();
     const keywordResults = [];
+    const demographicsResults = [];
     for (const ws of workspaces) {
       keywordResults.push({ workspaceId: ws.id, ...(await collectKeywordSnapshots(ws.id)) });
+      demographicsResults.push({ workspaceId: ws.id, ...(await collectAudienceDemographics(ws.id)) });
     }
 
-    return NextResponse.json({ success: true, insights: insightsResult, keywords: keywordResults });
+    return NextResponse.json({
+      success: true,
+      insights: insightsResult,
+      keywords: keywordResults,
+      demographics: demographicsResults,
+    });
   } catch (err) {
     console.error("Eroare in cron insights:", err);
     return NextResponse.json(

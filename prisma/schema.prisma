@@ -123,6 +123,7 @@ model ConnectedAccount {
 
   variants PostVariant[]
   insights PlatformInsight[]
+  demographics AudienceDemographic[]
 
   @@unique([workspaceId, platform, externalId])
 }
@@ -192,6 +193,23 @@ model PlatformInsight {
   rawData Json?
 
   @@index([variantId, fetchedAt])
+}
+
+model AudienceDemographic {
+  id        String           @id @default(cuid())
+  accountId String
+  account   ConnectedAccount @relation(fields: [accountId], references: [id])
+
+  // "age" | "gender" | "country" | "city"
+  dimension String
+  // ex: "25-34", "female", "RO"
+  label String
+  // procent din audiența totală (0-100)
+  percentage Float
+
+  capturedAt DateTime @default(now())
+
+  @@index([accountId, dimension, capturedAt])
 }
 
 model KeywordSnapshot {

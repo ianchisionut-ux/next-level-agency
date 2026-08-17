@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ensureFreshToken } from "@/lib/token-refresh";
-import { getFacebookInsights, getInstagramInsights } from "@/lib/publishers/meta";
+import { getFacebookInsights, getInstagramInsights, getInstagramAudienceDemographics } from "@/lib/publishers/meta";
 import { fetchSearchConsoleKeywords } from "@/lib/publishers/google-business";
 
 /**
@@ -130,4 +130,45 @@ export async function collectKeywordSnapshots(workspaceId: string) {
   }
 
   return { saved };
+}
+
+/**
+ * Preia demografia audienței (vârstă, gen, țară, oraș) pentru toate conturile
+ * Instagram Business conectate ale unui workspace, și salvează un nou set de
+ * snapshot-uri AudienceDemographic. Apelata din același cron zilnic ca
+ * collectInsights().
+ */
+export async function collectAudienceDemographics(workspaceId: string) {
+  const accounts = await prisma.connectedAccount.findMany({
+    where: { workspaceId, platform: "INSTAGRAM", isActive: true },
+  });
+
+  let saved = 0;
+  const errors: string[] = [];
+
+  for (const account of accounts) {
+    try {
+      const accessToken = await ensureFreshToken(account);
+      const breakdowns = await getInstagramAudienceDemographics({
+        igUserId: account.externalId,
+        accessToken,
+      });
+
+      if (breakdowns.length === 0) continue;
+
+      await prisma.audienceDemographic.createMany({
+        data: breakdowns.map((b) => ({
+          accountId: account.id,
+          dimension: b.dimension,
+          label: b.label,
+          percentage: b.percentage,
+        })),
+      });
+      saved += breakdowns.length;
+    } catch (err) {
+      errors.push(`${account.id}: ${err instanceof Error ? err.message : "eroare necunoscuta"}`);
+    }
+  }
+
+  return { saved, errors };
 }

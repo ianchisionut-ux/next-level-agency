@@ -125,3 +125,64 @@ export async function getInstagramInsights(params: { mediaId: string; accessToke
   if (!res.ok) throw new Error("Nu s-au putut prelua insights de Instagram");
   return res.json();
 }
+
+export interface DemographicBreakdown {
+  dimension: "age" | "gender" | "country" | "city";
+  label: string;
+  percentage: number;
+}
+
+/**
+ * Demografia audienței pentru un cont Instagram Business, via metrica
+ * follower_demographics (Meta Graph API). Necesita minim ~100 urmaritori,
+ * altfel Meta nu returneaza date (limitare de confidentialitate impusa de ei,
+ * nu de noi) - functia intoarce un array gol in acest caz, nu o eroare.
+ * Docs: https://developers.facebook.com/docs/instagram-api/guides/insights
+ */
+export async function getInstagramAudienceDemographics(params: {
+  igUserId: string;
+  accessToken: string;
+}): Promise<DemographicBreakdown[]> {
+  const { igUserId, accessToken } = params;
+
+  const res = await fetch(
+    `${GRAPH_BASE}/${igUserId}/insights` +
+      `?metric=follower_demographics` +
+      `&period=lifetime` +
+      `&metric_type=total_value` +
+      `&breakdown=age,city,country,gender` +
+      `&access_token=${accessToken}`
+  );
+
+  if (!res.ok) {
+    // Cel mai frecvent motiv: cont sub pragul minim de urmăritori pentru
+    // date demografice, sau permisiune lipsă - nu tratăm ca eroare fatală.
+    return [];
+  }
+
+  const data = await res.json();
+  const results: DemographicBreakdown[] = [];
+
+  for (const metric of data.data ?? []) {
+    for (const totalValue of metric.total_value?.breakdowns ?? []) {
+      const dimensionKeys: string[] = totalValue.dimension_keys ?? [];
+      const dimension = dimensionKeys[0] as DemographicBreakdown["dimension"] | undefined;
+      if (!dimension) continue;
+
+      const results_raw = totalValue.results ?? [];
+      const total = results_raw.reduce((sum: number, r: any) => sum + (r.value ?? 0), 0);
+      if (total === 0) continue;
+
+      for (const r of results_raw) {
+        const label = Array.isArray(r.dimension_values) ? r.dimension_values[0] : String(r.dimension_values);
+        results.push({
+          dimension: dimension === "age" ? "age" : dimension === "gender" ? "gender" : dimension === "country" ? "country" : "city",
+          label,
+          percentage: Math.round((r.value / total) * 1000) / 10,
+        });
+      }
+    }
+  }
+
+  return results;
+}

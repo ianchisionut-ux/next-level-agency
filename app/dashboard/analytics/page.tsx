@@ -114,6 +114,49 @@ export default async function AnalyticsPage() {
     "Click-uri": p.clicks,
   }));
 
+  // Hashtag-uri urmărite — agregăm din hashtags-urile reale folosite pe variantele
+  // publicate, ponderate cu interacțiunile reale acumulate de fiecare variantă.
+  const publishedVariants = await prisma.postVariant.findMany({
+    where: { status: "PUBLISHED", post: { workspaceId: workspace!.id } },
+    select: { id: true, hashtags: true },
+  });
+  const hashtagStats = new Map<string, number>();
+  for (const v of publishedVariants) {
+    const engagement = byVariant.get(v.id)?.engagement ?? 0;
+    for (const tag of v.hashtags) {
+      hashtagStats.set(tag, (hashtagStats.get(tag) ?? 0) + engagement);
+    }
+  }
+  const topHashtags = Array.from(hashtagStats.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6);
+
+  // Virality Index — scor compus 0-100: rată de interacțiune (0-60 pct) +
+  // reach relativ față de cea mai bună postare (0-40 pct). Pur calculat din
+  // datele existente, fără integrare suplimentară.
+  const maxImpressions = Math.max(1, ...Array.from(byVariant.values()).map((v) => v.impressions));
+  const bestEngRate =
+    topPosts.length > 0 ? Math.min(100, parseFloat(topPosts[0].engagementRate) * 6) : 0;
+  const bestReachShare = topPosts.length > 0 ? (byVariant.get(topPosts[0].id)!.impressions / maxImpressions) * 40 : 0;
+  const viralityScore = Math.round(Math.min(100, bestEngRate + bestReachShare));
+
+  // Demografie audienta (varsta) - date reale din Meta Graph API, colectate
+  // zilnic prin cron. Luam cea mai recenta captura per cont, agregata.
+  const latestDemoCapture = await prisma.audienceDemographic.findFirst({
+    where: { account: { workspaceId: workspace!.id }, dimension: "age" },
+    orderBy: { capturedAt: "desc" },
+  });
+  const ageDemographics = latestDemoCapture
+    ? await prisma.audienceDemographic.findMany({
+        where: {
+          account: { workspaceId: workspace!.id },
+          dimension: "age",
+          capturedAt: latestDemoCapture.capturedAt,
+        },
+        orderBy: { percentage: "desc" },
+      })
+    : [];
+
   const hasData = insights.length > 0;
 
   return (
@@ -188,6 +231,77 @@ export default async function AnalyticsPage() {
               </tbody>
             </table>
           </div>
+
+          {(topHashtags.length > 0 || topPosts.length > 0) && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
+                <h2 className="font-display font-semibold text-sm mb-1">Hashtag-uri urmărite</h2>
+                <p className="text-xs text-mist-500 mb-4">Ordonate după interacțiunile generate</p>
+                {topHashtags.length === 0 ? (
+                  <p className="text-sm text-mist-500">Niciun hashtag folosit încă în postările publicate.</p>
+                ) : (
+                  <div className="space-y-2.5">
+                    {topHashtags.map(([tag, engagement]) => (
+                      <div key={tag} className="flex items-center justify-between text-sm">
+                        <span className="text-signal-bright font-medium">#{tag}</span>
+                        <span className="font-mono text-mist-500">{engagement.toLocaleString("ro-RO")}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5 flex flex-col items-center justify-center text-center">
+                <p className="text-xs text-mist-500 uppercase tracking-wide mb-2">Virality Index Score</p>
+                <div className="relative h-24 w-24">
+                  <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="#2A2F3B" strokeWidth="10" />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="42"
+                      fill="none"
+                      stroke="#4F7CFF"
+                      strokeWidth="10"
+                      strokeLinecap="round"
+                      strokeDasharray={`${(viralityScore / 100) * 264} 264`}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="font-mono text-2xl font-semibold text-mist-100">{viralityScore}</span>
+                  </div>
+                </div>
+                <p className="text-xs text-mist-500 mt-3">
+                  Pe baza celei mai bune postări: rată de interacțiune + acoperire relativă
+                </p>
+              </div>
+            </div>
+          )}
+
+          {ageDemographics.length > 0 && (
+            <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
+              <h2 className="font-display font-semibold text-sm mb-1">Demografia audienței</h2>
+              <p className="text-xs text-mist-500 mb-4">
+                Distribuție pe vârstă, din Instagram — actualizată zilnic
+              </p>
+              <div className="space-y-3">
+                {ageDemographics.map((d) => (
+                  <div key={d.label} className="flex items-center gap-3">
+                    <span className="w-16 shrink-0 text-sm text-mist-300">{d.label}</span>
+                    <div className="h-2 flex-1 rounded-full bg-ink-700 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-signal"
+                        style={{ width: `${d.percentage}%` }}
+                      />
+                    </div>
+                    <span className="w-12 shrink-0 text-right font-mono text-sm text-mist-100">
+                      {d.percentage}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
 
