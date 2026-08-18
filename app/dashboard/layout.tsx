@@ -50,7 +50,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         activeWorkspaceId={activeWorkspace.id}
         userName={user.name}
       />
-      <div className="relative pl-60">
+      <div className="ml-60">
         <div className="max-w-6xl mx-auto px-8 py-8 text-mist-100">{children}</div>
       </div>
     </div>
