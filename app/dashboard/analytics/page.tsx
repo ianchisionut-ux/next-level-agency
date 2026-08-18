@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getActiveWorkspace } from "@/lib/session";
+import { redirect } from "next/navigation";
 import { EngagementChart, ChannelShareDonut } from "@/app/components/analytics/charts";
 import { ExportReportButton } from "@/app/components/analytics/export-report-button";
 import { StatCard, StatIconEye, StatIconCheck, StatIconCursor, StatIconPercent } from "@/app/components/ui/stat-card";
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AnalyticsPage() {
   const workspace = await getActiveWorkspace();
+  if (!workspace) redirect("/login");
 
   const insights = await prisma.platformInsight.findMany({
     where: { account: { workspaceId: workspace!.id } },
@@ -142,20 +144,27 @@ export default async function AnalyticsPage() {
 
   // Demografie audienta (varsta) - date reale din Meta Graph API, colectate
   // zilnic prin cron. Luam cea mai recenta captura per cont, agregata.
-  const latestDemoCapture = await prisma.audienceDemographic.findFirst({
-    where: { account: { workspaceId: workspace!.id }, dimension: "age" },
-    orderBy: { capturedAt: "desc" },
-  });
-  const ageDemographics = latestDemoCapture
-    ? await prisma.audienceDemographic.findMany({
+  // Izolat in try/catch: daca tabelul lipseste sau apare orice alta eroare,
+  // afisam pur si simplu fara aceasta sectiune, in loc sa cadă toata pagina.
+  let ageDemographics: Awaited<ReturnType<typeof prisma.audienceDemographic.findMany>> = [];
+  try {
+    const latestDemoCapture = await prisma.audienceDemographic.findFirst({
+      where: { account: { workspaceId: workspace!.id }, dimension: "age" },
+      orderBy: { capturedAt: "desc" },
+    });
+    if (latestDemoCapture) {
+      ageDemographics = await prisma.audienceDemographic.findMany({
         where: {
           account: { workspaceId: workspace!.id },
           dimension: "age",
           capturedAt: latestDemoCapture.capturedAt,
         },
         orderBy: { percentage: "desc" },
-      })
-    : [];
+      });
+    }
+  } catch (err) {
+    console.error("Nu am putut incarca demografia audientei:", err);
+  }
 
   const hasData = insights.length > 0;
 
