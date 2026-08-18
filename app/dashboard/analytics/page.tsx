@@ -8,6 +8,7 @@ import { ProfessionalAnalysis } from "@/app/components/analytics/professional-an
 import { generateProfessionalAnalysis } from "@/lib/insights-engine";
 import { computeBestTimeToPost } from "@/lib/best-time";
 import { StatCard, StatIconEye, StatIconCheck, StatIconCursor, StatIconPercent } from "@/app/components/ui/stat-card";
+import { StatCardChart } from "@/app/components/analytics/stat-card-chart";
 import { PlatformIcon } from "@/app/components/ui/platform-icon";
 import { PLATFORM_META, PlatformKey } from "@/lib/platform-meta";
 
@@ -71,16 +72,24 @@ export default async function AnalyticsPage() {
   const engagementRatePrev =
     prevImpressions > 0 ? (prevEngagement / prevImpressions) * 100 : 0;
 
-  const byDate = new Map<string, { impressions: number; engagement: number }>();
+  const byDate = new Map<string, { impressions: number; engagement: number; clicks: number }>();
   for (const i of insights) {
     const key = i.fetchedAt.toLocaleDateString("ro-RO", { day: "numeric", month: "short" });
-    const prev = byDate.get(key) ?? { impressions: 0, engagement: 0 };
+    const prev = byDate.get(key) ?? { impressions: 0, engagement: 0, clicks: 0 };
     byDate.set(key, {
       impressions: prev.impressions + i.impressions,
       engagement: prev.engagement + i.likes + i.comments + i.shares + i.saves,
+      clicks: prev.clicks + i.clicks,
     });
   }
   const engagementSeries = Array.from(byDate.entries()).map(([date, v]) => ({ date, ...v }));
+  const sparklineData = engagementSeries.map((d) => ({
+    date: d.date,
+    impressions: d.impressions,
+    engagement: d.engagement,
+    clicks: d.clicks,
+    engagementRate: d.impressions > 0 ? (d.engagement / d.impressions) * 100 : 0,
+  }));
 
   const byPlatform = new Map<PlatformKey, { posts: Set<string>; engagement: number }>();
   for (const i of insights) {
@@ -318,33 +327,44 @@ export default async function AnalyticsPage() {
       </header>
 
       <div className="grid grid-cols-4 gap-4">
-        <StatCard
+        <StatCardChart
           label="Afișări totale"
           value={totalImpressions.toLocaleString("ro-RO")}
           icon={<StatIconEye />}
           trend={trend(totalImpressions, prevImpressions)}
+          data={sparklineData}
+          dataKey="impressions"
         />
-        <StatCard
+        <StatCardChart
           label="Interacțiuni"
           value={totalEngagement.toLocaleString("ro-RO")}
           accent="success"
           icon={<StatIconCheck />}
           trend={trend(totalEngagement, prevEngagement)}
+          data={sparklineData}
+          dataKey="engagement"
         />
-        <StatCard
+        <StatCardChart
           label="Click-uri"
           value={totalClicks.toLocaleString("ro-RO")}
           icon={<StatIconCursor />}
           trend={trend(totalClicks, prevClicks)}
+          data={sparklineData}
+          dataKey="clicks"
         />
-        <StatCard
+        <StatCardChart
           label="Rată de interacțiune"
           value={`${engagementRate}%`}
           accent="signal"
           icon={<StatIconPercent />}
           trend={trend(parseFloat(engagementRate), engagementRatePrev)}
+          data={sparklineData}
+          dataKey="engagementRate"
         />
       </div>
+      <p className="text-xs text-mist-500 -mt-2">
+        Graficele mici arată evoluția zilnică din perioada afișată mai jos.
+      </p>
 
       {hasData && <ProfessionalAnalysis insights={professionalInsights} />}
 
