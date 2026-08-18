@@ -94,17 +94,20 @@ export function Composer({
     setUploading(true);
     setError(null);
     try {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch("/api/media/upload", { method: "POST", body: form });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Eroare la upload");
+      // Upload direct din browser catre Vercel Blob - fisierul NU mai trece
+      // prin serverul nostru, deci nu exista limita de marime (~4.5MB) care
+      // dadea eroarea "Request Entity Too Large" la fisiere video mai mari.
+      const { upload } = await import("@vercel/blob/client");
+      const blob = await upload(file.name, file, {
+        access: "public",
+        handleUploadUrl: "/api/media/upload",
+      });
 
       if (target === "shared") {
-        setSharedMedia((prev) => [...prev, data.url]);
+        setSharedMedia((prev) => [...prev, blob.url]);
       } else {
         const v = getVariant(target);
-        updateVariant(target, { mediaUrls: [...v.mediaUrls, data.url] });
+        updateVariant(target, { mediaUrls: [...v.mediaUrls, blob.url] });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Eroare la upload");
