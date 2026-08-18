@@ -442,15 +442,17 @@ export function Composer({
           <button
             onClick={() => handleSubmit(false)}
             disabled={submitting}
-            className="flex-1 rounded-xl border border-ink-600 hover:border-ink-500 text-mist-100 text-sm font-medium py-3 transition-colors disabled:opacity-50"
+            className="flex-1 rounded-xl border border-ink-600 hover:border-ink-500 active:scale-[0.98] text-mist-100 text-sm font-medium py-3 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
+            {submitting && <ButtonSpinner />}
             {scheduledAt ? "Programează" : "Salvează ca ciornă"}
           </button>
           <button
             onClick={() => handleSubmit(true)}
             disabled={submitting}
-            className="flex-1 rounded-xl bg-signal hover:bg-signal-bright text-white text-sm font-medium py-3 transition-colors disabled:opacity-50"
+            className="flex-1 rounded-xl bg-signal hover:bg-signal-bright active:scale-[0.98] shadow-floating text-white text-sm font-medium py-3 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
+            {submitting && <ButtonSpinner />}
             Publică acum
           </button>
         </div>
@@ -541,5 +543,14 @@ function MediaUploader({
         />
       </label>
     </div>
+  );
+}
+
+function ButtonSpinner() {
+  return (
+    <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+      <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.4 0 0 5.4 0 12h4Z" />
+    </svg>
   );
 }

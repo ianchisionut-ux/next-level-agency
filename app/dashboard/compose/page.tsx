@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getActiveWorkspace } from "@/lib/session";
 import { Composer } from "@/app/components/composer/composer";
+import { PageHeader } from "@/app/components/ui/page-header";
 import { PlatformKey } from "@/lib/platform-meta";
 import { computeBestTimeToPost } from "@/lib/best-time";
 
@@ -82,12 +83,10 @@ export default async function ComposePage({
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="font-display text-2xl font-semibold">Postare nouă</h1>
-        <p className="text-sm text-mist-500 mt-1">
-          Scrie o dată, publică peste tot — sau ajustează per platformă.
-        </p>
-      </header>
+      <PageHeader
+        title="Postare nouă"
+        description="Scrie o dată, publică peste tot — sau ajustează per platformă."
+      />
 
       <Composer
         workspaceId={workspace!.id}

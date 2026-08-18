@@ -7,6 +7,7 @@ import { GoalProgress } from "@/app/components/analytics/goal-progress";
 import { ProfessionalAnalysis } from "@/app/components/analytics/professional-analysis";
 import { generateProfessionalAnalysis } from "@/lib/insights-engine";
 import { computeBestTimeToPost } from "@/lib/best-time";
+import { PageHeader } from "@/app/components/ui/page-header";
 import { StatCard, StatIconEye, StatIconCheck, StatIconCursor, StatIconPercent } from "@/app/components/ui/stat-card";
 import { StatCardChart } from "@/app/components/analytics/stat-card-chart";
 import { PlatformIcon } from "@/app/components/ui/platform-icon";
@@ -369,10 +370,12 @@ export default async function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+      <PageHeader
+        title="Analiză"
+        description="Social Performance Score — rezumat executiv al ultimelor 30 de zile."
+        leading={
           <div
-            className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 ${
+            className={`glass-card flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 ${
               socialScore >= 70
                 ? "border-state-success text-state-success"
                 : socialScore >= 40
@@ -382,32 +385,28 @@ export default async function AnalyticsPage() {
           >
             <span className="font-mono text-xl font-bold">{socialScore}</span>
           </div>
-          <div>
-            <h1 className="font-display text-2xl font-semibold">Analiză</h1>
-            <p className="text-sm text-mist-500 mt-1">
-              Social Performance Score — rezumat executiv al ultimelor 30 de zile.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <GoalProgress
-            workspaceId={workspace!.id}
-            goal={workspace!.monthlyEngagementGoal ?? null}
-            currentEngagement={totalEngagement}
-          />
-          <ExportReportButton rows={exportRows} filename="top-postari-signal.csv" />
-          <a
-            href={`/api/reports/monthly?workspaceId=${workspace!.id}`}
-            className="rounded-xl border border-ink-600 hover:border-ink-500 transition-colors text-mist-100 text-sm font-medium px-4 py-2.5 flex items-center gap-2"
-          >
-            <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" xmlns="http://www.w3.org/2000/svg">
-              <path d="M8 3h5l5 5v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-              <path d="M13 3v5h5" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-            </svg>
-            Raport PDF (30 zile)
-          </a>
-        </div>
-      </header>
+        }
+        actions={
+          <>
+            <GoalProgress
+              workspaceId={workspace!.id}
+              goal={workspace!.monthlyEngagementGoal ?? null}
+              currentEngagement={totalEngagement}
+            />
+            <ExportReportButton rows={exportRows} filename="top-postari-signal.csv" />
+            <a
+              href={`/api/reports/monthly?workspaceId=${workspace!.id}`}
+              className="rounded-xl border border-ink-600 hover:border-ink-500 active:scale-[0.98] transition-all duration-150 text-mist-100 text-sm font-medium px-4 py-2.5 flex items-center gap-2"
+            >
+              <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" xmlns="http://www.w3.org/2000/svg">
+                <path d="M8 3h5l5 5v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                <path d="M13 3v5h5" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+              </svg>
+              Raport PDF (30 zile)
+            </a>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-4 gap-4">
         <StatCardChart

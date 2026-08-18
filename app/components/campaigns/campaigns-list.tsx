@@ -69,7 +69,7 @@ export function CampaignsList({ workspaceId, campaigns }: { workspaceId: string;
       <div className="flex justify-end">
         <button
           onClick={() => setCreating((v) => !v)}
-          className="rounded-xl bg-signal hover:bg-signal-bright transition-colors text-white text-sm font-medium px-4 py-2.5"
+          className="rounded-xl bg-signal hover:bg-signal-bright active:scale-[0.98] shadow-floating transition-all duration-150 text-white text-sm font-medium px-4 py-2.5"
         >
           {creating ? "Anulează" : "+ Campanie nouă"}
         </button>
