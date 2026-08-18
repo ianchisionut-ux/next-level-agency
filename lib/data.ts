@@ -211,5 +211,4 @@ export const webProjects: WebProject[] = [
    { title: "PM Customs", url: "https://www.pmcustoms.us", thumbnail: "/web-projects/www.pmcustoms.us.png" },
    { title: "Dracula soil", url: "https://www.draculasoil.com", thumbnail: "/web-projects/www.draculasoil.com.png" },
    { title: "Bookeasy", url: "https://www.bookeasy.ro", thumbnail: "/web-projects/www.bookeasy.ro.png" },
-   { title: "SC ELMONT S.A", url: "https://elmontz.vercel.app", thumbnail: "/web-projects/elmont.jfif" },
 ];

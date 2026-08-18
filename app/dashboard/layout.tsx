@@ -21,7 +21,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         userName={user.name}
       />
       <div className="pl-60">
-        <div className="max-w-6xl mx-auto px-8 py-8">{children}</div>
+        <div className="max-w-6xl mx-auto px-8 py-8 text-mist-100">{children}</div>
       </div>
     </div>
   );

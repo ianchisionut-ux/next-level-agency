@@ -31,11 +31,11 @@ export function Sidebar({
   }
 
   return (
-    <aside className="fixed inset-y-0 left-0 w-60 border-r border-ink-700 bg-ink-950 flex flex-col">
+    <aside className="fixed inset-y-0 left-0 w-60 border-r border-nav-border bg-nav-bg flex flex-col text-nav-text">
       <div className="px-5 py-6">
         <div className="flex items-center gap-2 mb-5">
           <span className="h-2.5 w-2.5 rounded-full bg-signal shadow-glow" />
-          <span className="font-display font-semibold text-lg tracking-tight">Signal</span>
+          <span className="font-display font-semibold text-lg tracking-tight text-nav-text">Signal</span>
         </div>
         <WorkspaceSwitcher workspaces={workspaces} activeId={activeWorkspaceId} />
       </div>
@@ -52,7 +52,7 @@ export function Sidebar({
               className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${
                 active
                   ? "bg-signal-soft text-signal-bright font-medium"
-                  : "text-mist-300 hover:bg-ink-800 hover:text-mist-100"
+                  : "text-nav-text-muted hover:bg-nav-bg-hover hover:text-nav-text"
               }`}
             >
               <Icon active={active} />
@@ -62,7 +62,7 @@ export function Sidebar({
         })}
       </nav>
 
-      <div className="px-5 py-5 border-t border-ink-700 space-y-3">
+      <div className="px-5 py-5 border-t border-nav-border space-y-3">
         <Link
           href="/dashboard/compose"
           className="flex items-center justify-center gap-2 w-full rounded-xl bg-signal hover:bg-signal-bright transition-colors text-white text-sm font-medium py-2.5"
@@ -70,8 +70,8 @@ export function Sidebar({
           <PlusIcon /> Postare nouă
         </Link>
         <div className="flex items-center justify-between px-1">
-          <span className="text-xs text-mist-500 truncate">{userName}</span>
-          <button onClick={handleLogout} className="text-xs text-mist-500 hover:text-mist-100 transition-colors">
+          <span className="text-xs text-nav-text-muted truncate">{userName}</span>
+          <button onClick={handleLogout} className="text-xs text-nav-text-muted hover:text-nav-text transition-colors">
             Ieși din cont
           </button>
         </div>

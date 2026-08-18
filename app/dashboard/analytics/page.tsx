@@ -142,24 +142,43 @@ export default async function AnalyticsPage() {
   const bestReachShare = topPosts.length > 0 ? (byVariant.get(topPosts[0].id)!.impressions / maxImpressions) * 40 : 0;
   const viralityScore = Math.round(Math.min(100, bestEngRate + bestReachShare));
 
-  // Demografie audienta (varsta) - date reale din Meta Graph API, colectate
-  // zilnic prin cron. Luam cea mai recenta captura per cont, agregata.
-  // Izolat in try/catch: daca tabelul lipseste sau apare orice alta eroare,
-  // afisam pur si simplu fara aceasta sectiune, in loc sa cadă toata pagina.
+  // Demografie audienta (varsta + oras) - date reale din Meta Graph API, colectate
+  // zilnic prin cron. Izolat in try/catch: daca tabelul lipseste sau apare orice alta
+  // eroare, afisam pur si simplu fara aceasta sectiune, in loc sa cadă toata pagina.
   let ageDemographics: Awaited<ReturnType<typeof prisma.audienceDemographic.findMany>> = [];
+  let cityDemographics: Awaited<ReturnType<typeof prisma.audienceDemographic.findMany>> = [];
   try {
-    const latestDemoCapture = await prisma.audienceDemographic.findFirst({
-      where: { account: { workspaceId: workspace!.id }, dimension: "age" },
-      orderBy: { capturedAt: "desc" },
-    });
-    if (latestDemoCapture) {
+    const [latestAge, latestCity] = await Promise.all([
+      prisma.audienceDemographic.findFirst({
+        where: { account: { workspaceId: workspace!.id }, dimension: "age" },
+        orderBy: { capturedAt: "desc" },
+      }),
+      prisma.audienceDemographic.findFirst({
+        where: { account: { workspaceId: workspace!.id }, dimension: "city" },
+        orderBy: { capturedAt: "desc" },
+      }),
+    ]);
+
+    if (latestAge) {
       ageDemographics = await prisma.audienceDemographic.findMany({
         where: {
           account: { workspaceId: workspace!.id },
           dimension: "age",
-          capturedAt: latestDemoCapture.capturedAt,
+          capturedAt: latestAge.capturedAt,
         },
         orderBy: { percentage: "desc" },
+      });
+    }
+
+    if (latestCity) {
+      cityDemographics = await prisma.audienceDemographic.findMany({
+        where: {
+          account: { workspaceId: workspace!.id },
+          dimension: "city",
+          capturedAt: latestCity.capturedAt,
+        },
+        orderBy: { percentage: "desc" },
+        take: 5,
       });
     }
   } catch (err) {
@@ -264,13 +283,13 @@ export default async function AnalyticsPage() {
                 <p className="text-xs text-mist-500 uppercase tracking-wide mb-2">Virality Index Score</p>
                 <div className="relative h-24 w-24">
                   <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
-                    <circle cx="50" cy="50" r="42" fill="none" stroke="#2A2F3B" strokeWidth="10" />
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="#E5E7EB" strokeWidth="10" />
                     <circle
                       cx="50"
                       cy="50"
                       r="42"
                       fill="none"
-                      stroke="#4F7CFF"
+                      stroke="#3B66F6"
                       strokeWidth="10"
                       strokeLinecap="round"
                       strokeDasharray={`${(viralityScore / 100) * 264} 264`}
@@ -287,28 +306,52 @@ export default async function AnalyticsPage() {
             </div>
           )}
 
-          {ageDemographics.length > 0 && (
-            <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
-              <h2 className="font-display font-semibold text-sm mb-1">Demografia audienței</h2>
-              <p className="text-xs text-mist-500 mb-4">
-                Distribuție pe vârstă, din Instagram — actualizată zilnic
-              </p>
-              <div className="space-y-3">
-                {ageDemographics.map((d) => (
-                  <div key={d.label} className="flex items-center gap-3">
-                    <span className="w-16 shrink-0 text-sm text-mist-300">{d.label}</span>
-                    <div className="h-2 flex-1 rounded-full bg-ink-700 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-signal"
-                        style={{ width: `${d.percentage}%` }}
-                      />
-                    </div>
-                    <span className="w-12 shrink-0 text-right font-mono text-sm text-mist-100">
-                      {d.percentage}%
-                    </span>
+          {(ageDemographics.length > 0 || cityDemographics.length > 0) && (
+            <div className="grid grid-cols-2 gap-4">
+              {ageDemographics.length > 0 && (
+                <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
+                  <h2 className="font-display font-semibold text-sm mb-1">Demografia audienței</h2>
+                  <p className="text-xs text-mist-500 mb-4">
+                    Distribuție pe vârstă, din Instagram — actualizată zilnic
+                  </p>
+                  <div className="space-y-3">
+                    {ageDemographics.map((d) => (
+                      <div key={d.label} className="flex items-center gap-3">
+                        <span className="w-16 shrink-0 text-sm text-mist-300">{d.label}</span>
+                        <div className="h-2 flex-1 rounded-full bg-ink-700 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-signal"
+                            style={{ width: `${d.percentage}%` }}
+                          />
+                        </div>
+                        <span className="w-12 shrink-0 text-right font-mono text-sm text-mist-100">
+                          {d.percentage}%
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
+
+              {cityDemographics.length > 0 && (
+                <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
+                  <h2 className="font-display font-semibold text-sm mb-1">Target Match & Metro Penetration</h2>
+                  <p className="text-xs text-mist-500 mb-4">Top orașe, din Instagram — actualizat zilnic</p>
+                  <div className="space-y-3">
+                    {cityDemographics.map((d, idx) => (
+                      <div key={d.label} className="flex items-center gap-3">
+                        <span className="w-5 shrink-0 font-mono text-xs text-mist-500">
+                          {String(idx + 1).padStart(2, "0")}
+                        </span>
+                        <span className="flex-1 text-sm text-mist-300 truncate">{d.label}</span>
+                        <span className="w-12 shrink-0 text-right font-mono text-sm text-mist-100">
+                          {d.percentage}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </>
