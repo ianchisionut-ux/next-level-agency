@@ -19,34 +19,28 @@ export default async function AnalyticsPage() {
   const workspace = await getActiveWorkspace();
   if (!workspace) redirect("/login");
 
-  const insights = await prisma.platformInsight.findMany({
-    where: { account: { workspaceId: workspace!.id } },
-    include: { account: true },
-    orderBy: { fetchedAt: "asc" },
-    take: 500,
-  });
-
   // Perioada anterioara (30-60 zile in urma), pentru indicatorii de tendinta
   // (% fata de perioada precedenta) - la fel ca sagetile din referinte.
   const periodStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const previousPeriodStart = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
-  const previousInsights = await prisma.platformInsight.findMany({
-    where: {
-      account: { workspaceId: workspace!.id },
-      fetchedAt: { gte: previousPeriodStart, lt: periodStart },
-    },
-  });
-  const prevImpressions = previousInsights.reduce((sum, i) => sum + i.impressions, 0);
-  const prevEngagement = previousInsights.reduce((sum, i) => sum + i.likes + i.comments + i.shares + i.saves, 0);
-  const prevClicks = previousInsights.reduce((sum, i) => sum + i.clicks, 0);
 
-  function trend(current: number, previous: number): { value: string; positive: boolean } | undefined {
-    if (previous === 0) return undefined;
-    const change = ((current - previous) / previous) * 100;
-    return { value: `${Math.abs(Math.round(change))}%`, positive: change >= 0 };
-  }
-
-  const [postsThisPeriod, postsPrevPeriod] = await Promise.all([
+  // Cele 5 interogari de mai jos sunt independente una de alta - inainte
+  // rulau (majoritatea) pe rand, adaugand latenta de retea de fiecare data.
+  // Rulate in paralel, timpul total scade la cel al celei mai lente, nu la
+  // suma tuturor.
+  const [insights, previousInsights, postsThisPeriod, postsPrevPeriod, keywords] = await Promise.all([
+    prisma.platformInsight.findMany({
+      where: { account: { workspaceId: workspace!.id } },
+      include: { account: true },
+      orderBy: { fetchedAt: "asc" },
+      take: 500,
+    }),
+    prisma.platformInsight.findMany({
+      where: {
+        account: { workspaceId: workspace!.id },
+        fetchedAt: { gte: previousPeriodStart, lt: periodStart },
+      },
+    }),
     prisma.postVariant.count({
       where: { status: "PUBLISHED", publishedAt: { gte: periodStart }, post: { workspaceId: workspace!.id } },
     }),
@@ -57,13 +51,22 @@ export default async function AnalyticsPage() {
         post: { workspaceId: workspace!.id },
       },
     }),
+    prisma.keywordSnapshot.findMany({
+      where: { workspaceId: workspace!.id },
+      orderBy: { capturedAt: "desc" },
+      take: 20,
+    }),
   ]);
 
-  const keywords = await prisma.keywordSnapshot.findMany({
-    where: { workspaceId: workspace!.id },
-    orderBy: { capturedAt: "desc" },
-    take: 20,
-  });
+  const prevImpressions = previousInsights.reduce((sum, i) => sum + i.impressions, 0);
+  const prevEngagement = previousInsights.reduce((sum, i) => sum + i.likes + i.comments + i.shares + i.saves, 0);
+  const prevClicks = previousInsights.reduce((sum, i) => sum + i.clicks, 0);
+
+  function trend(current: number, previous: number): { value: string; positive: boolean } | undefined {
+    if (previous === 0) return undefined;
+    const change = ((current - previous) / previous) * 100;
+    return { value: `${Math.abs(Math.round(change))}%`, positive: change >= 0 };
+  }
 
   const totalImpressions = insights.reduce((sum, i) => sum + i.impressions, 0);
   const totalEngagement = insights.reduce((sum, i) => sum + i.likes + i.comments + i.shares + i.saves, 0);
@@ -162,14 +165,17 @@ export default async function AnalyticsPage() {
     return "Foto";
   }
 
-  const allPublishedVariantsForFormat = await prisma.postVariant.findMany({
+  // O singura interogare pentru toate variantele publicate, cu toate campurile
+  // necesare (mediaUrls, contentTags, hashtags) - inainte erau 2 interogari
+  // separate, identice ca WHERE, doar cu campuri diferite selectate.
+  const allPublishedVariants = await prisma.postVariant.findMany({
     where: { status: "PUBLISHED", post: { workspaceId: workspace!.id } },
-    select: { id: true, mediaUrls: true, contentTags: true },
+    select: { id: true, mediaUrls: true, contentTags: true, hashtags: true },
   });
 
   const byFormat = new Map<string, { engagement: number; count: number }>();
   const byContentTag = new Map<string, { engagement: number; count: number }>();
-  for (const v of allPublishedVariantsForFormat) {
+  for (const v of allPublishedVariants) {
     const stats = byVariant.get(v.id);
     const engagement = stats?.engagement ?? 0;
     const format = inferFormat(v.mediaUrls);
@@ -236,12 +242,9 @@ export default async function AnalyticsPage() {
 
   // Hashtag-uri urmărite — agregăm din hashtags-urile reale folosite pe variantele
   // publicate, ponderate cu interacțiunile reale acumulate de fiecare variantă.
-  const publishedVariants = await prisma.postVariant.findMany({
-    where: { status: "PUBLISHED", post: { workspaceId: workspace!.id } },
-    select: { id: true, hashtags: true },
-  });
+  // Refolosim allPublishedVariants (mai sus), fara alta interogare noua.
   const hashtagStats = new Map<string, number>();
-  for (const v of publishedVariants) {
+  for (const v of allPublishedVariants) {
     const engagement = byVariant.get(v.id)?.engagement ?? 0;
     for (const tag of v.hashtags) {
       hashtagStats.set(tag, (hashtagStats.get(tag) ?? 0) + engagement);
@@ -305,17 +308,12 @@ export default async function AnalyticsPage() {
 
   // Sentiment & Buzz - agregam toate snapshot-urile de sentiment din ultimele
   // 30 de zile pentru variantele acestui workspace. Izolat in try/catch, la
-  // fel ca demografia.
+  // fel ca demografia. O singura interogare (filtru direct prin relatie),
+  // in loc de doua (inainte: cauta id-uri, apoi cauta sentiment cu acele id-uri).
   let sentimentTotals = { positive: 0, neutral: 0, negative: 0 };
   try {
-    const workspaceVariantIds = await prisma.postVariant.findMany({
-      where: { post: { workspaceId: workspace!.id } },
-      select: { id: true },
-    });
-    const idSet = new Set(workspaceVariantIds.map((v) => v.id));
-
     const sentimentRows = await prisma.postSentiment.findMany({
-      where: { variantId: { in: Array.from(idSet) } },
+      where: { variant: { post: { workspaceId: workspace!.id } } },
     });
 
     for (const row of sentimentRows) {
@@ -335,7 +333,7 @@ export default async function AnalyticsPage() {
 
   const hasData = insights.length > 0;
 
-  const bestTimeSlots = await computeBestTimeToPost(workspace!.id);
+  const bestTimeSlots = await computeBestTimeToPost(workspace!.id, byVariant);
 
   const now = new Date();
   const daysLeftInMonth =

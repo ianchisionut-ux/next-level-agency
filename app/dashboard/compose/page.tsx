@@ -3,7 +3,7 @@ import { getActiveWorkspace } from "@/lib/session";
 import { Composer } from "@/app/components/composer/composer";
 import { PageHeader } from "@/app/components/ui/page-header";
 import { PlatformKey } from "@/lib/platform-meta";
-import { computeBestTimeToPost } from "@/lib/best-time";
+import { computeBestTimeToPost, fetchEngagementByVariant } from "@/lib/best-time";
 
 export const dynamic = "force-dynamic";
 
@@ -69,7 +69,8 @@ export default async function ComposePage({
     // fara date inca
   }
 
-  const bestTimeSlots = await computeBestTimeToPost(workspace!.id);
+  const engagementByVariant = await fetchEngagementByVariant(workspace!.id);
+  const bestTimeSlots = await computeBestTimeToPost(workspace!.id, engagementByVariant);
   const bestTime = bestTimeSlots[0] ?? null;
 
   let campaignName: string | null = null;
