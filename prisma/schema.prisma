@@ -167,6 +167,7 @@ model PostVariant {
   retryCount     Int           @default(0)
 
   insights PlatformInsight[]
+  sentiments PostSentiment[]
 
   @@index([status, scheduledAt])
 }
@@ -228,4 +229,20 @@ model KeywordSnapshot {
   capturedAt DateTime @default(now())
 
   @@index([workspaceId, keyword, capturedAt])
+}
+
+model PostSentiment {
+  id        String      @id @default(cuid())
+  variantId String
+  variant   PostVariant @relation(fields: [variantId], references: [id])
+
+  // Numar de comentarii clasificate in fiecare categorie, la momentul capturii.
+  // Nu stocam textul comentariilor (doar agregatul), din motive de confidentialitate.
+  positiveCount Int @default(0)
+  neutralCount  Int @default(0)
+  negativeCount Int @default(0)
+
+  capturedAt DateTime @default(now())
+
+  @@index([variantId, capturedAt])
 }

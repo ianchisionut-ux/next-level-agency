@@ -185,6 +185,36 @@ export default async function AnalyticsPage() {
     console.error("Nu am putut incarca demografia audientei:", err);
   }
 
+  // Sentiment & Buzz - agregam toate snapshot-urile de sentiment din ultimele
+  // 30 de zile pentru variantele acestui workspace. Izolat in try/catch, la
+  // fel ca demografia.
+  let sentimentTotals = { positive: 0, neutral: 0, negative: 0 };
+  try {
+    const workspaceVariantIds = await prisma.postVariant.findMany({
+      where: { post: { workspaceId: workspace!.id } },
+      select: { id: true },
+    });
+    const idSet = new Set(workspaceVariantIds.map((v) => v.id));
+
+    const sentimentRows = await prisma.postSentiment.findMany({
+      where: { variantId: { in: Array.from(idSet) } },
+    });
+
+    for (const row of sentimentRows) {
+      sentimentTotals.positive += row.positiveCount;
+      sentimentTotals.neutral += row.neutralCount;
+      sentimentTotals.negative += row.negativeCount;
+    }
+  } catch (err) {
+    console.error("Nu am putut incarca sentimentul:", err);
+  }
+  const sentimentTotal = sentimentTotals.positive + sentimentTotals.neutral + sentimentTotals.negative;
+  const sentimentPct = {
+    positive: sentimentTotal > 0 ? Math.round((sentimentTotals.positive / sentimentTotal) * 100) : 0,
+    neutral: sentimentTotal > 0 ? Math.round((sentimentTotals.neutral / sentimentTotal) * 100) : 0,
+    negative: sentimentTotal > 0 ? Math.round((sentimentTotals.negative / sentimentTotal) * 100) : 0,
+  };
+
   const hasData = insights.length > 0;
 
   return (
@@ -261,7 +291,7 @@ export default async function AnalyticsPage() {
           </div>
 
           {(topHashtags.length > 0 || topPosts.length > 0) && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
                 <h2 className="font-display font-semibold text-sm mb-1">Hashtag-uri urmărite</h2>
                 <p className="text-xs text-mist-500 mb-4">Ordonate după interacțiunile generate</p>
@@ -275,6 +305,48 @@ export default async function AnalyticsPage() {
                         <span className="font-mono text-mist-500">{engagement.toLocaleString("ro-RO")}</span>
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
+                <h2 className="font-display font-semibold text-sm mb-1">Sentiment & Buzz</h2>
+                <p className="text-xs text-mist-500 mb-4">
+                  Din comentariile reale de sub postări
+                </p>
+                {sentimentTotal === 0 ? (
+                  <p className="text-sm text-mist-500">
+                    Încă nu sunt destule comentarii clasificate. Apare automat după colectarea zilnică.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-mist-300">Positive</span>
+                        <span className="font-mono text-state-success">{sentimentPct.positive}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-ink-700 overflow-hidden">
+                        <div className="h-full bg-state-success" style={{ width: `${sentimentPct.positive}%` }} />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-mist-300">Neutral</span>
+                        <span className="font-mono text-mist-500">{sentimentPct.neutral}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-ink-700 overflow-hidden">
+                        <div className="h-full bg-mist-500" style={{ width: `${sentimentPct.neutral}%` }} />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-mist-300">Negative</span>
+                        <span className="font-mono text-state-error">{sentimentPct.negative}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-ink-700 overflow-hidden">
+                        <div className="h-full bg-state-error" style={{ width: `${sentimentPct.negative}%` }} />
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

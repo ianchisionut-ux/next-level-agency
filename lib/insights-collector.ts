@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { ensureFreshToken } from "@/lib/token-refresh";
-import { getFacebookInsights, getInstagramInsights, getInstagramAudienceDemographics } from "@/lib/publishers/meta";
+import { getFacebookInsights, getInstagramInsights, getInstagramAudienceDemographics, getPostComments } from "@/lib/publishers/meta";
+import { classifyComments } from "@/lib/sentiment";
 import { fetchSearchConsoleKeywords } from "@/lib/publishers/google-business";
 
 /**
@@ -42,6 +43,53 @@ export async function collectInsights() {
           saves: metrics.saves,
           clicks: metrics.clicks,
           rawData: metrics.raw,
+        },
+      });
+      saved++;
+    } catch (err) {
+      errors.push(`${variant.id}: ${err instanceof Error ? err.message : "eroare necunoscuta"}`);
+    }
+  }
+
+  return { saved, errors };
+}
+
+/**
+ * Preia comentariile reale de sub postările publicate (Facebook/Instagram)
+ * din ultimele 30 de zile, le clasifică pozitiv/neutru/negativ prin
+ * lib/sentiment.ts, și salvează un snapshot agregat PostSentiment.
+ * Apelata din cronul zilnic, alaturi de collectInsights().
+ */
+export async function collectSentiment() {
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+  const variants = await prisma.postVariant.findMany({
+    where: {
+      status: "PUBLISHED",
+      publishedAt: { gte: since },
+      externalPostId: { not: null },
+      platform: { in: ["FACEBOOK", "INSTAGRAM"] },
+    },
+    include: { account: true },
+  });
+
+  let saved = 0;
+  const errors: string[] = [];
+
+  for (const variant of variants) {
+    try {
+      const accessToken = await ensureFreshToken(variant.account);
+      const comments = await getPostComments({ postId: variant.externalPostId!, accessToken });
+      if (comments.length === 0) continue;
+
+      const { positive, neutral, negative } = classifyComments(comments);
+
+      await prisma.postSentiment.create({
+        data: {
+          variantId: variant.id,
+          positiveCount: positive,
+          neutralCount: neutral,
+          negativeCount: negative,
         },
       });
       saved++;

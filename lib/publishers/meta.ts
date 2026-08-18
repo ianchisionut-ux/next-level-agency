@@ -126,6 +126,28 @@ export async function getInstagramInsights(params: { mediaId: string; accessToke
   return res.json();
 }
 
+/**
+ * Preia textul comentariilor de la o postare de Facebook sau media de
+ * Instagram (max 100 cele mai recente), folosite ulterior pentru clasificarea
+ * de sentiment. Returneaza doar array de string-uri (textul), fara alte
+ * date personale ale comentatorilor (nume, poza etc.) - pastram doar minimul
+ * necesar pentru scorul agregat.
+ */
+export async function getPostComments(params: {
+  postId: string;
+  accessToken: string;
+}): Promise<string[]> {
+  const { postId, accessToken } = params;
+  const res = await fetch(
+    `${GRAPH_BASE}/${postId}/comments?fields=message&limit=100&access_token=${accessToken}`
+  );
+  if (!res.ok) return []; // permisiune lipsa sau postare fara comentarii - nu blocam colectarea
+  const data = await res.json();
+  return (data.data ?? [])
+    .map((c: { message?: string }) => c.message)
+    .filter((m: string | undefined): m is string => Boolean(m && m.trim()));
+}
+
 export interface DemographicBreakdown {
   dimension: "age" | "gender" | "country" | "city";
   label: string;
