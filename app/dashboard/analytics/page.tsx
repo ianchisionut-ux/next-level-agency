@@ -3,6 +3,7 @@ import { getActiveWorkspace } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { EngagementChart, ChannelShareDonut } from "@/app/components/analytics/charts";
 import { ExportReportButton } from "@/app/components/analytics/export-report-button";
+import { GoalProgress } from "@/app/components/analytics/goal-progress";
 import { StatCard, StatIconEye, StatIconCheck, StatIconCursor, StatIconPercent } from "@/app/components/ui/stat-card";
 import { PlatformIcon } from "@/app/components/ui/platform-icon";
 import { PLATFORM_META, PlatformKey } from "@/lib/platform-meta";
@@ -20,6 +21,26 @@ export default async function AnalyticsPage() {
     take: 500,
   });
 
+  // Perioada anterioara (30-60 zile in urma), pentru indicatorii de tendinta
+  // (% fata de perioada precedenta) - la fel ca sagetile din referinte.
+  const periodStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const previousPeriodStart = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+  const previousInsights = await prisma.platformInsight.findMany({
+    where: {
+      account: { workspaceId: workspace!.id },
+      fetchedAt: { gte: previousPeriodStart, lt: periodStart },
+    },
+  });
+  const prevImpressions = previousInsights.reduce((sum, i) => sum + i.impressions, 0);
+  const prevEngagement = previousInsights.reduce((sum, i) => sum + i.likes + i.comments + i.shares + i.saves, 0);
+  const prevClicks = previousInsights.reduce((sum, i) => sum + i.clicks, 0);
+
+  function trend(current: number, previous: number): { value: string; positive: boolean } | undefined {
+    if (previous === 0) return undefined;
+    const change = ((current - previous) / previous) * 100;
+    return { value: `${Math.abs(Math.round(change))}%`, positive: change >= 0 };
+  }
+
   const keywords = await prisma.keywordSnapshot.findMany({
     where: { workspaceId: workspace!.id },
     orderBy: { capturedAt: "desc" },
@@ -31,6 +52,8 @@ export default async function AnalyticsPage() {
   const totalClicks = insights.reduce((sum, i) => sum + i.clicks, 0);
   const engagementRate =
     totalImpressions > 0 ? ((totalEngagement / totalImpressions) * 100).toFixed(1) : "0";
+  const engagementRatePrev =
+    prevImpressions > 0 ? (prevEngagement / prevImpressions) * 100 : 0;
 
   const byDate = new Map<string, { impressions: number; engagement: number }>();
   for (const i of insights) {
@@ -90,12 +113,22 @@ export default async function AnalyticsPage() {
         })
       : [];
 
+  // Etichetă automată de performanță, pe baza ratei reale de interacțiune -
+  // acelasi principiu ca badge-urile VIRAL/TOP ROI/STEADY din referințe.
+  function performanceBadge(engRate: number): { label: string; color: string } | null {
+    if (engRate >= 8) return { label: "VIRAL", color: "bg-state-error/10 text-state-error" };
+    if (engRate >= 5) return { label: "TOP ENG", color: "bg-signal-soft text-signal-bright" };
+    if (engRate >= 2) return { label: "STEADY", color: "bg-state-success/10 text-state-success" };
+    return null;
+  }
+
   const topPosts = topVariantIds
     .map((id) => {
       const variant = topVariants.find((v) => v.id === id);
       const stats = byVariant.get(id)!;
       if (!variant) return null;
-      const engRate = stats.impressions > 0 ? ((stats.engagement / stats.impressions) * 100).toFixed(1) : "0";
+      const engRateNum = stats.impressions > 0 ? (stats.engagement / stats.impressions) * 100 : 0;
+      const engRate = engRateNum.toFixed(1);
       return {
         id,
         title: variant.post.title || variant.content.slice(0, 50) || "(fără titlu)",
@@ -103,6 +136,7 @@ export default async function AnalyticsPage() {
         impressions: stats.impressions,
         engagementRate: engRate,
         clicks: stats.clicks,
+        badge: performanceBadge(engRateNum),
       };
     })
     .filter((p): p is NonNullable<typeof p> => p !== null);
@@ -219,19 +253,48 @@ export default async function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-center justify-between">
+      <header className="flex items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl font-semibold">Analiză</h1>
           <p className="text-sm text-mist-500 mt-1">Performanță agregată pe toate platformele conectate.</p>
         </div>
-        <ExportReportButton rows={exportRows} filename="top-postari-signal.csv" />
+        <div className="flex items-center gap-3">
+          <GoalProgress
+            workspaceId={workspace!.id}
+            goal={workspace!.monthlyEngagementGoal ?? null}
+            currentEngagement={totalEngagement}
+          />
+          <ExportReportButton rows={exportRows} filename="top-postari-signal.csv" />
+        </div>
       </header>
 
       <div className="grid grid-cols-4 gap-4">
-        <StatCard label="Afișări totale" value={totalImpressions.toLocaleString("ro-RO")} icon={<StatIconEye />} />
-        <StatCard label="Interacțiuni" value={totalEngagement.toLocaleString("ro-RO")} accent="success" icon={<StatIconCheck />} />
-        <StatCard label="Click-uri" value={totalClicks.toLocaleString("ro-RO")} icon={<StatIconCursor />} />
-        <StatCard label="Rată de interacțiune" value={`${engagementRate}%`} accent="signal" icon={<StatIconPercent />} />
+        <StatCard
+          label="Afișări totale"
+          value={totalImpressions.toLocaleString("ro-RO")}
+          icon={<StatIconEye />}
+          trend={trend(totalImpressions, prevImpressions)}
+        />
+        <StatCard
+          label="Interacțiuni"
+          value={totalEngagement.toLocaleString("ro-RO")}
+          accent="success"
+          icon={<StatIconCheck />}
+          trend={trend(totalEngagement, prevEngagement)}
+        />
+        <StatCard
+          label="Click-uri"
+          value={totalClicks.toLocaleString("ro-RO")}
+          icon={<StatIconCursor />}
+          trend={trend(totalClicks, prevClicks)}
+        />
+        <StatCard
+          label="Rată de interacțiune"
+          value={`${engagementRate}%`}
+          accent="signal"
+          icon={<StatIconPercent />}
+          trend={trend(parseFloat(engagementRate), engagementRatePrev)}
+        />
       </div>
 
       {!hasData ? (
@@ -268,6 +331,7 @@ export default async function AnalyticsPage() {
                   <th className="px-5 py-3 font-medium">Afișări</th>
                   <th className="px-5 py-3 font-medium">Rată interacțiune</th>
                   <th className="px-5 py-3 font-medium">Click-uri</th>
+                  <th className="px-5 py-3 font-medium"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-ink-700">
@@ -284,6 +348,13 @@ export default async function AnalyticsPage() {
                     <td className="px-5 py-3 font-mono text-mist-300">{p.impressions.toLocaleString("ro-RO")}</td>
                     <td className="px-5 py-3 font-mono text-state-success">{p.engagementRate}%</td>
                     <td className="px-5 py-3 font-mono text-mist-300">{p.clicks.toLocaleString("ro-RO")}</td>
+                    <td className="px-5 py-3">
+                      {p.badge && (
+                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide ${p.badge.color}`}>
+                          {p.badge.label}
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

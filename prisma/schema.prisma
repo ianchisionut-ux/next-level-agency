@@ -98,6 +98,10 @@ model Workspace {
   name      String
   createdAt DateTime @default(now())
 
+  // Obiectiv lunar de interacțiuni, setat manual de user (opțional).
+  // Folosit pentru bara de progres "X% din obiectiv" pe /dashboard/analytics.
+  monthlyEngagementGoal Int?
+
   members           WorkspaceMember[]
   invitations       WorkspaceInvitation[]
   connectedAccounts ConnectedAccount[]
