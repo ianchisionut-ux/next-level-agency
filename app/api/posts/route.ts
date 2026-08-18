@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { processScheduledVariants } from "@/lib/publish-orchestrator";
+
+// Publicarea imediata ("Publică acum") face apeluri reale catre Meta/TikTok/Google
+// in cadrul acestei cereri - le dam timp suficient sa raspunda.
+export const maxDuration = 60;
 
 export async function GET(req: NextRequest) {
   try {
@@ -96,7 +101,26 @@ export async function POST(req: NextRequest) {
       include: { variants: true },
     });
 
-    return NextResponse.json({ post }, { status: 201 });
+    // Daca postarea e programata pentru acum sau in trecut ("Publică acum"),
+    // o publicam imediat, in cadrul acestei cereri - nu asteptam cronul.
+    // Cronul (/api/cron/publish) ramane doar plasa de siguranta pentru
+    // postarile programate cu adevarat pentru mai tarziu.
+    const isDueNow = post.scheduledAt && post.scheduledAt <= new Date();
+    if (isDueNow) {
+      try {
+        await processScheduledVariants();
+      } catch (err) {
+        console.error("Eroare la publicarea imediata:", err);
+        // Nu blocam raspunsul - postarea ramane SCHEDULED, cronul o va relua.
+      }
+    }
+
+    const finalPost = await prisma.post.findUnique({
+      where: { id: post.id },
+      include: { variants: { include: { account: true } } },
+    });
+
+    return NextResponse.json({ post: finalPost }, { status: 201 });
   } catch (err) {
     console.error("Eroare la crearea postarii:", err);
     return NextResponse.json({ error: "Nu am putut crea postarea" }, { status: 500 });
