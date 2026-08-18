@@ -529,17 +529,39 @@ export default async function AnalyticsPage() {
                   <h2 className="font-display font-semibold text-sm mb-1">Target Match & Metro Penetration</h2>
                   <p className="text-xs text-mist-500 mb-4">Top orașe, din Instagram — actualizat zilnic</p>
                   <div className="space-y-3">
-                    {cityDemographics.map((d, idx) => (
-                      <div key={d.label} className="flex items-center gap-3">
-                        <span className="w-5 shrink-0 font-mono text-xs text-mist-500">
-                          {String(idx + 1).padStart(2, "0")}
-                        </span>
-                        <span className="flex-1 text-sm text-mist-300 truncate">{d.label}</span>
-                        <span className="w-12 shrink-0 text-right font-mono text-sm text-mist-100">
-                          {d.percentage}%
-                        </span>
-                      </div>
-                    ))}
+                    {(() => {
+                      // Index = cota unui oraș relativ la media aritmetică a
+                      // tuturor orașelor din top - 100 = exact media, peste
+                      // 100 = suprareprezentat, sub 100 = subreprezentat.
+                      // Același principiu ca "Index 142" din referință.
+                      const avgShare =
+                        cityDemographics.reduce((sum, d) => sum + d.percentage, 0) / cityDemographics.length;
+                      return cityDemographics.map((d, idx) => {
+                        const index = avgShare > 0 ? Math.round((d.percentage / avgShare) * 100) : 100;
+                        return (
+                          <div key={d.label} className="flex items-center gap-3">
+                            <span className="w-5 shrink-0 font-mono text-xs text-mist-500">
+                              {String(idx + 1).padStart(2, "0")}
+                            </span>
+                            <span className="flex-1 text-sm text-mist-300 truncate">{d.label}</span>
+                            <span className="w-12 shrink-0 text-right font-mono text-sm text-mist-100">
+                              {d.percentage}%
+                            </span>
+                            <span
+                              className={`w-16 shrink-0 rounded-full px-2 py-0.5 text-center text-[10px] font-mono font-semibold ${
+                                index >= 120
+                                  ? "bg-state-success/10 text-state-success"
+                                  : index <= 80
+                                    ? "bg-mist-500/10 text-mist-500"
+                                    : "bg-signal-soft text-signal-bright"
+                              }`}
+                            >
+                              Index {index}
+                            </span>
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
               )}
