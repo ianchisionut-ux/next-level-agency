@@ -139,11 +139,13 @@ body {
 .input:focus { border-color: var(--color-signal); }
 
 /* Efect de sticla (glassmorphism) - fundal semi-transparent + blur, folosit
-   pe cardurile principale ale dashboard-ului, gen Material Dashboard. */
+   pe cardurile principale ale dashboard-ului, gen Material Dashboard.
+   Blur redus (8px, nu 20px) - 20px pe MULTE carduri deodata era vizibil
+   lent la randare (fiecare card trebuie sa re-eșantioneze fundalul). */
 .glass-card {
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.5);
   box-shadow: var(--shadow-card);
   transition: box-shadow 0.2s ease, transform 0.2s ease;
@@ -161,12 +163,14 @@ body {
 /* Upgrade global de sticla (glassmorphism) - orice card din aplicatie care
    foloseste combinatia bg-ink-800 + border-ink-700 (adica aproape toate
    cardurile din Signal) primeste automat efectul, fara sa fie nevoie sa
-   umblam prin fiecare fisier in parte. */
+   umblam prin fiecare fisier in parte. Blur redus la 8px (nu 20px) din
+   acelasi motiv de performanta - pe o pagina cu 10+ carduri (ex Analytics),
+   fiecare cu propriul backdrop-blur, costul de randare se aduna vizibil. */
 .bg-ink-800.border-ink-700,
 .bg-ink-800.border.border-ink-700 {
-  background: rgba(255, 255, 255, 0.72) !important;
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  background: rgba(255, 255, 255, 0.78) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-color: rgba(255, 255, 255, 0.55) !important;
   transition: box-shadow 0.2s ease, transform 0.15s ease;
 }
