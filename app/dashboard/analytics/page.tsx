@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { EngagementChart, ChannelShareDonut } from "@/app/components/analytics/charts";
 import { ExportReportButton } from "@/app/components/analytics/export-report-button";
 import { GoalProgress } from "@/app/components/analytics/goal-progress";
+import { ProfessionalAnalysis } from "@/app/components/analytics/professional-analysis";
+import { generateProfessionalAnalysis } from "@/lib/insights-engine";
 import { StatCard, StatIconEye, StatIconCheck, StatIconCursor, StatIconPercent } from "@/app/components/ui/stat-card";
 import { PlatformIcon } from "@/app/components/ui/platform-icon";
 import { PLATFORM_META, PlatformKey } from "@/lib/platform-meta";
@@ -40,6 +42,19 @@ export default async function AnalyticsPage() {
     const change = ((current - previous) / previous) * 100;
     return { value: `${Math.abs(Math.round(change))}%`, positive: change >= 0 };
   }
+
+  const [postsThisPeriod, postsPrevPeriod] = await Promise.all([
+    prisma.postVariant.count({
+      where: { status: "PUBLISHED", publishedAt: { gte: periodStart }, post: { workspaceId: workspace!.id } },
+    }),
+    prisma.postVariant.count({
+      where: {
+        status: "PUBLISHED",
+        publishedAt: { gte: previousPeriodStart, lt: periodStart },
+        post: { workspaceId: workspace!.id },
+      },
+    }),
+  ]);
 
   const keywords = await prisma.keywordSnapshot.findMany({
     where: { workspaceId: workspace!.id },
@@ -251,6 +266,37 @@ export default async function AnalyticsPage() {
 
   const hasData = insights.length > 0;
 
+  const now = new Date();
+  const daysLeftInMonth =
+    new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
+
+  const dominantAgeGroup = ageDemographics[0]
+    ? { label: ageDemographics[0].label, percentage: ageDemographics[0].percentage }
+    : undefined;
+
+  const professionalInsights = hasData
+    ? generateProfessionalAnalysis({
+        engagementRate: parseFloat(engagementRate),
+        engagementRatePrev,
+        totalImpressions,
+        prevImpressions,
+        platformTotals,
+        platformLabels: Object.fromEntries(
+          Object.entries(PLATFORM_META).map(([key, meta]) => [key, meta.label])
+        ),
+        postsThisPeriod,
+        postsPrevPeriod,
+        topHashtag: topHashtags[0] ? { tag: topHashtags[0][0], engagement: topHashtags[0][1] } : undefined,
+        sentimentPct,
+        sentimentTotal,
+        dominantAgeGroup,
+        viralityScore,
+        goal: workspace!.monthlyEngagementGoal ?? null,
+        currentEngagement: totalEngagement,
+        daysLeftInMonth,
+      })
+    : [];
+
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between gap-4">
@@ -296,6 +342,8 @@ export default async function AnalyticsPage() {
           trend={trend(parseFloat(engagementRate), engagementRatePrev)}
         />
       </div>
+
+      {hasData && <ProfessionalAnalysis insights={professionalInsights} />}
 
       {!hasData ? (
         <div className="rounded-2xl border border-ink-700 bg-ink-800 p-10 text-center">
