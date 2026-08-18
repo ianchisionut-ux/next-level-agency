@@ -116,7 +116,11 @@ body {
   --font-display: "Space Grotesk", sans-serif;
   --font-mono: "IBM Plex Mono", monospace;
 
-  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.08);
+  /* Umbre gen "Material Dashboard" - straturi multiple, mai profunde decât
+     o umbra plata standard, pentru senzatia de card "ridicat" de pe fundal. */
+  --shadow-card: 0 1px 2px rgba(20, 32, 61, 0.04), 0 4px 12px -2px rgba(20, 32, 61, 0.06), 0 12px 24px -8px rgba(20, 32, 61, 0.08);
+  --shadow-card-hover: 0 2px 4px rgba(20, 32, 61, 0.06), 0 8px 20px -4px rgba(20, 32, 61, 0.10), 0 20px 36px -10px rgba(20, 32, 61, 0.14);
+  --shadow-floating: 0 8px 16px -4px rgba(59, 102, 246, 0.18), 0 20px 40px -12px rgba(59, 102, 246, 0.22);
   --shadow-glow: 0 0 0 1px #4F7CFF33, 0 0 24px -4px #4F7CFF55;
 }
 
@@ -133,6 +137,26 @@ body {
 }
 .input::placeholder { color: var(--color-mist-700); }
 .input:focus { border-color: var(--color-signal); }
+
+/* Efect de sticla (glassmorphism) - fundal semi-transparent + blur, folosit
+   pe cardurile principale ale dashboard-ului, gen Material Dashboard. */
+.glass-card {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.glass-card:hover {
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* Insigna de iconita cu gradient, gen Material Dashboard - fiecare accent
+   are propriul degrade, nu doar o culoare plata. */
+.icon-badge-gradient {
+  box-shadow: var(--shadow-floating);
+}
 
 /* Input-uri folosite direct in interiorul sidebar-ului dark (ex: workspace switcher) */
 .input-on-dark {

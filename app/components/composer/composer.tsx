@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { PLATFORM_META, PLATFORM_ORDER, PlatformKey } from "@/lib/platform-meta";
 import { PlatformIcon } from "@/app/components/ui/platform-icon";
 import { PlatformPreview } from "@/app/components/composer/platform-preview";
+import { EmojiPicker } from "@/app/components/composer/emoji-picker";
 
 export interface ComposerAccount {
   id: string;
@@ -195,7 +196,7 @@ export function Composer({
         )}
 
         {/* Selector platforme */}
-        <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
+        <div className="glass-card rounded-2xl p-5">
           <p className="text-xs text-mist-500 uppercase tracking-wide mb-3">Publică pe</p>
           <div className="flex flex-wrap gap-2">
             {availablePlatforms.map((p) => {
@@ -222,7 +223,7 @@ export function Composer({
         </div>
 
         {/* Toggle continut identic */}
-        <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5 flex items-center justify-between">
+        <div className="glass-card rounded-2xl p-5 flex items-center justify-between">
           <div>
             <p className="text-sm font-medium">Același conținut pe toate platformele</p>
             <p className="text-xs text-mist-500 mt-0.5">
@@ -248,7 +249,7 @@ export function Composer({
 
         {/* Editor */}
         {useSameContent ? (
-          <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5 space-y-3">
+          <div className="glass-card rounded-2xl p-5 space-y-3">
             <textarea
               value={sharedContent}
               onChange={(e) => setSharedContent(e.target.value)}
@@ -257,15 +258,18 @@ export function Composer({
               className="w-full bg-ink-900 border border-ink-600 rounded-xl p-3 text-sm text-mist-100 placeholder:text-mist-700 focus:border-signal outline-none resize-none"
             />
             <CharCounts content={sharedContent} platforms={activePlatforms} />
-            <MediaUploader
-              mediaUrls={sharedMedia}
-              onUpload={(f) => handleUpload(f, "shared")}
-              onRemove={(url) => setSharedMedia((prev) => prev.filter((u) => u !== url))}
-              uploading={uploading}
-            />
+            <div className="flex items-center gap-2">
+              <EmojiPicker onSelect={(emoji) => insertIntoActiveContent(emoji)} />
+              <MediaUploader
+                mediaUrls={sharedMedia}
+                onUpload={(f) => handleUpload(f, "shared")}
+                onRemove={(url) => setSharedMedia((prev) => prev.filter((u) => u !== url))}
+                uploading={uploading}
+              />
+            </div>
           </div>
         ) : (
-          <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card overflow-hidden">
+          <div className="glass-card rounded-2xl overflow-hidden">
             <div className="flex border-b border-ink-700">
               {activePlatforms.map((p) => (
                 <button
@@ -292,16 +296,19 @@ export function Composer({
                   className="w-full bg-ink-900 border border-ink-600 rounded-xl p-3 text-sm text-mist-100 placeholder:text-mist-700 focus:border-signal outline-none resize-none"
                 />
                 <CharCounts content={getVariant(activeTab).content} platforms={[activeTab]} />
-                <MediaUploader
-                  mediaUrls={getVariant(activeTab).mediaUrls}
-                  onUpload={(f) => handleUpload(f, activeTab)}
-                  onRemove={(url) =>
-                    updateVariant(activeTab, {
-                      mediaUrls: getVariant(activeTab).mediaUrls.filter((u) => u !== url),
-                    })
-                  }
-                  uploading={uploading}
-                />
+                <div className="flex items-center gap-2">
+                  <EmojiPicker onSelect={(emoji) => insertIntoActiveContent(emoji)} />
+                  <MediaUploader
+                    mediaUrls={getVariant(activeTab).mediaUrls}
+                    onUpload={(f) => handleUpload(f, activeTab)}
+                    onRemove={(url) =>
+                      updateVariant(activeTab, {
+                        mediaUrls: getVariant(activeTab).mediaUrls.filter((u) => u !== url),
+                      })
+                    }
+                    uploading={uploading}
+                  />
+                </div>
                 <label className="block text-xs text-mist-500 pt-1">
                   Oră personalizată pentru {PLATFORM_META[activeTab].label} (opțional)
                   <input
@@ -317,7 +324,7 @@ export function Composer({
         )}
 
         {/* Etichete de conținut (piloni) - pentru breakdown de performanță pe categorie */}
-        <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
+        <div className="glass-card rounded-2xl p-5">
           <p className="text-sm font-medium mb-0.5">Categorie de conținut</p>
           <p className="text-xs text-mist-500 mb-3">
             Opțional — te ajută să vezi mai târziu ce tip de conținut performează cel mai bine
@@ -349,7 +356,7 @@ export function Composer({
 
         {/* Sugestii: hashtag-uri (din performanța ta reală) + cuvinte cheie (din Search Console) */}
         {(suggestedHashtags.length > 0 || suggestedKeywords.length > 0) && (
-          <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5 space-y-4">
+          <div className="glass-card rounded-2xl p-5 space-y-4">
             {suggestedHashtags.length > 0 && (
               <div>
                 <p className="text-sm font-medium mb-0.5">Hashtag-uri sugerate</p>
@@ -395,7 +402,7 @@ export function Composer({
         )}
 
         {/* Programare */}
-        <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
+        <div className="glass-card rounded-2xl p-5">
           <p className="text-sm font-medium mb-3">Când se publică</p>
           {bestTimeHint && (
             <button
