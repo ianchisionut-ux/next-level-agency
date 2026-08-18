@@ -189,6 +189,9 @@ model PostVariant {
   content   String   @db.Text
   mediaUrls String[]
   hashtags  String[]
+  // Etichete de continut ("piloni") - ex: Educational, Promotional, Behind-the-scenes.
+  // Setate manual la compose, folosite pentru breakdown de performanta pe categorie.
+  contentTags String[]
 
   scheduledAt DateTime?
 

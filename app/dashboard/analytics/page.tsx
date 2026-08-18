@@ -72,6 +72,19 @@ export default async function AnalyticsPage() {
   const engagementRatePrev =
     prevImpressions > 0 ? (prevEngagement / prevImpressions) * 100 : 0;
 
+  // Social Performance Score - un singur numar (0-100), gen "executive
+  // summary", combinand: nivelul ratei de interacțiune (0-50pct),
+  // tendința față de perioada anterioară (0-30pct), și consistența de
+  // postare (0-20pct, cate zile din perioada au avut cel puțin o postare).
+  const engRateScore = Math.min(50, parseFloat(engagementRate) * 6.25);
+  const growthScore =
+    engagementRatePrev > 0
+      ? Math.min(30, Math.max(0, ((parseFloat(engagementRate) - engagementRatePrev) / engagementRatePrev) * 100 + 15))
+      : 15;
+  const activeDays = new Set(insights.map((i) => i.fetchedAt.toDateString())).size;
+  const consistencyScore = Math.min(20, activeDays * 0.7);
+  const socialScore = Math.round(engRateScore + growthScore + consistencyScore);
+
   const byDate = new Map<string, { impressions: number; engagement: number; clicks: number }>();
   for (const i of insights) {
     const key = i.fetchedAt.toLocaleDateString("ro-RO", { day: "numeric", month: "short" });
@@ -137,6 +150,51 @@ export default async function AnalyticsPage() {
           include: { post: true },
         })
       : [];
+
+  // Performanță pe FORMAT de conținut (Video/Reel, Carusel, Foto, Doar text) -
+  // dedusă automat din mediaUrls, fără câmp nou in schema. Inspirat din
+  // "Reels vs. Stories, carousels vs. photos" (Hootsuite).
+  function inferFormat(mediaUrls: string[]): string {
+    if (mediaUrls.length === 0) return "Doar text";
+    if (mediaUrls.length > 1) return "Carusel";
+    if (/\.(mp4|mov|m4v)(\?|$)/i.test(mediaUrls[0])) return "Video / Reel";
+    return "Foto";
+  }
+
+  const allPublishedVariantsForFormat = await prisma.postVariant.findMany({
+    where: { status: "PUBLISHED", post: { workspaceId: workspace!.id } },
+    select: { id: true, mediaUrls: true, contentTags: true },
+  });
+
+  const byFormat = new Map<string, { engagement: number; count: number }>();
+  const byContentTag = new Map<string, { engagement: number; count: number }>();
+  for (const v of allPublishedVariantsForFormat) {
+    const stats = byVariant.get(v.id);
+    const engagement = stats?.engagement ?? 0;
+    const format = inferFormat(v.mediaUrls);
+    const prevFormat = byFormat.get(format) ?? { engagement: 0, count: 0 };
+    byFormat.set(format, { engagement: prevFormat.engagement + engagement, count: prevFormat.count + 1 });
+
+    for (const tag of v.contentTags) {
+      const prevTag = byContentTag.get(tag) ?? { engagement: 0, count: 0 };
+      byContentTag.set(tag, { engagement: prevTag.engagement + engagement, count: prevTag.count + 1 });
+    }
+  }
+  const formatBreakdown = Array.from(byFormat.entries())
+    .map(([format, v]) => ({
+      format,
+      avgEngagement: v.count > 0 ? Math.round(v.engagement / v.count) : 0,
+      count: v.count,
+    }))
+    .sort((a, b) => b.avgEngagement - a.avgEngagement);
+
+  const contentTagBreakdown = Array.from(byContentTag.entries())
+    .map(([tag, v]) => ({
+      tag,
+      avgEngagement: v.count > 0 ? Math.round(v.engagement / v.count) : 0,
+      count: v.count,
+    }))
+    .sort((a, b) => b.avgEngagement - a.avgEngagement);
 
   // Etichetă automată de performanță, pe baza ratei reale de interacțiune -
   // acelasi principiu ca badge-urile VIRAL/TOP ROI/STEADY din referințe.
@@ -312,9 +370,24 @@ export default async function AnalyticsPage() {
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display text-2xl font-semibold">Analiză</h1>
-          <p className="text-sm text-mist-500 mt-1">Performanță agregată pe toate platformele conectate.</p>
+        <div className="flex items-center gap-4">
+          <div
+            className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 ${
+              socialScore >= 70
+                ? "border-state-success text-state-success"
+                : socialScore >= 40
+                  ? "border-signal text-signal-bright"
+                  : "border-state-warning text-state-warning"
+            }`}
+          >
+            <span className="font-mono text-xl font-bold">{socialScore}</span>
+          </div>
+          <div>
+            <h1 className="font-display text-2xl font-semibold">Analiză</h1>
+            <p className="text-sm text-mist-500 mt-1">
+              Social Performance Score — rezumat executiv al ultimelor 30 de zile.
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <GoalProgress
@@ -527,6 +600,48 @@ export default async function AnalyticsPage() {
                   Pe baza celei mai bune postări: rată de interacțiune + acoperire relativă
                 </p>
               </div>
+            </div>
+          )}
+
+          {(formatBreakdown.length > 0 || contentTagBreakdown.length > 0) && (
+            <div className="grid grid-cols-2 gap-4">
+              {formatBreakdown.length > 0 && (
+                <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
+                  <h2 className="font-display font-semibold text-sm mb-1">Performanță pe format</h2>
+                  <p className="text-xs text-mist-500 mb-4">
+                    Interacțiuni medii per postare, pe tip de conținut
+                  </p>
+                  <div className="space-y-2.5">
+                    {formatBreakdown.map((f) => (
+                      <div key={f.format} className="flex items-center justify-between text-sm">
+                        <span className="text-mist-300">
+                          {f.format} <span className="text-mist-700">({f.count})</span>
+                        </span>
+                        <span className="font-mono text-signal-bright">{f.avgEngagement.toLocaleString("ro-RO")}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {contentTagBreakdown.length > 0 && (
+                <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
+                  <h2 className="font-display font-semibold text-sm mb-1">Performanță pe categorie</h2>
+                  <p className="text-xs text-mist-500 mb-4">
+                    Interacțiuni medii per postare, pe eticheta de conținut aleasă la compose
+                  </p>
+                  <div className="space-y-2.5">
+                    {contentTagBreakdown.map((t) => (
+                      <div key={t.tag} className="flex items-center justify-between text-sm">
+                        <span className="text-mist-300">
+                          {t.tag} <span className="text-mist-700">({t.count})</span>
+                        </span>
+                        <span className="font-mono text-signal-bright">{t.avgEngagement.toLocaleString("ro-RO")}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

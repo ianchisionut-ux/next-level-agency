@@ -44,6 +44,8 @@ export function Composer({
   const [selected, setSelected] = useState<Set<PlatformKey>>(new Set(availablePlatforms));
   const [useSameContent, setUseSameContent] = useState(true);
   const [sharedContent, setSharedContent] = useState("");
+  const CONTENT_TAG_OPTIONS = ["Educațional", "Promoțional", "Behind the scenes", "Testimonial", "Anunț", "Distractiv"];
+  const [contentTags, setContentTags] = useState<string[]>([]);
   const [sharedMedia, setSharedMedia] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<PlatformKey | null>(availablePlatforms[0] ?? null);
   const [perPlatform, setPerPlatform] = useState<Record<string, VariantState>>({});
@@ -131,6 +133,7 @@ export function Composer({
         content,
         mediaUrls,
         hashtags,
+        contentTags,
         // new Date(...) interpretează string-ul "datetime-local" ca oră locală
         // a browser-ului (corect - user-ul a ales ora din perspectiva lui),
         // iar .toISOString() îl convertește la UTC, fără ambiguitate pe server.
@@ -312,6 +315,37 @@ export function Composer({
             )}
           </div>
         )}
+
+        {/* Etichete de conținut (piloni) - pentru breakdown de performanță pe categorie */}
+        <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
+          <p className="text-sm font-medium mb-0.5">Categorie de conținut</p>
+          <p className="text-xs text-mist-500 mb-3">
+            Opțional — te ajută să vezi mai târziu ce tip de conținut performează cel mai bine
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {CONTENT_TAG_OPTIONS.map((tag) => {
+              const active = contentTags.includes(tag);
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() =>
+                    setContentTags((prev) =>
+                      active ? prev.filter((t) => t !== tag) : [...prev, tag]
+                    )
+                  }
+                  className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                    active
+                      ? "border-signal bg-signal-soft text-signal-bright"
+                      : "border-ink-600 text-mist-300 hover:border-ink-500"
+                  }`}
+                >
+                  {tag}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         {/* Sugestii: hashtag-uri (din performanța ta reală) + cuvinte cheie (din Search Console) */}
         {(suggestedHashtags.length > 0 || suggestedKeywords.length > 0) && (

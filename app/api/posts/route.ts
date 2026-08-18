@@ -49,6 +49,7 @@ interface CreatePostBody {
     content: string;
     mediaUrls: string[];
     hashtags?: string[];
+    contentTags?: string[];
     scheduledAt?: string;
   }>;
 }
@@ -104,6 +105,7 @@ export async function POST(req: NextRequest) {
             content: v.content,
             mediaUrls: v.mediaUrls,
             hashtags: v.hashtags ?? [],
+            contentTags: v.contentTags ?? [],
             scheduledAt: v.scheduledAt ? new Date(v.scheduledAt) : null,
           })),
         },
