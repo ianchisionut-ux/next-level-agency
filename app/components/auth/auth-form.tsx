@@ -128,16 +128,9 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
               </Link>
             </>
           ) : (
-            <>
-              Nu ai cont încă?{" "}
-              <Link href="/signup" className="text-signal-bright hover:underline">
-                Creează unul
-              </Link>
-              {" · "}
-              <Link href="/forgot-password" className="text-signal-bright hover:underline">
-                Ai uitat parola?
-              </Link>
-            </>
+            <Link href="/forgot-password" className="text-signal-bright hover:underline">
+              Ai uitat parola?
+            </Link>
           )}
         </p>
       </div>

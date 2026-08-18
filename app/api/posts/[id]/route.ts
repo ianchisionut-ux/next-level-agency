@@ -20,33 +20,43 @@ async function assertAccess(userId: string, postId: string) {
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Neautentificat" }, { status: 401 });
+  try {
+    const { id } = await params;
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Neautentificat" }, { status: 401 });
 
-  const { post, error } = await assertAccess(user.userId, id);
-  if (error) return error;
+    const { post, error } = await assertAccess(user.userId, id);
+    if (error) return error;
 
-  return NextResponse.json({ post });
+    return NextResponse.json({ post });
+  } catch (err) {
+    console.error("Eroare la incarcarea postarii:", err);
+    return NextResponse.json({ error: "Nu am putut încărca postarea" }, { status: 500 });
+  }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Neautentificat" }, { status: 401 });
+  try {
+    const { id } = await params;
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Neautentificat" }, { status: 401 });
 
-  const { post, error } = await assertAccess(user.userId, id);
-  if (error) return error;
+    const { post, error } = await assertAccess(user.userId, id);
+    if (error) return error;
 
-  if (post!.status === "PUBLISHED" || post!.status === "PUBLISHING") {
-    return NextResponse.json(
-      { error: "Nu poți șterge o postare deja publicată sau în curs de publicare" },
-      { status: 409 }
-    );
+    if (post!.status === "PUBLISHED" || post!.status === "PUBLISHING") {
+      return NextResponse.json(
+        { error: "Nu poți șterge o postare deja publicată sau în curs de publicare" },
+        { status: 409 }
+      );
+    }
+
+    await prisma.post.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("Eroare la stergerea postarii:", err);
+    return NextResponse.json({ error: "Nu am putut șterge postarea" }, { status: 500 });
   }
-
-  await prisma.post.delete({ where: { id } });
-  return NextResponse.json({ success: true });
 }
 
 interface UpdatePostBody {
@@ -55,50 +65,55 @@ interface UpdatePostBody {
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Neautentificat" }, { status: 401 });
+  try {
+    const { id } = await params;
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Neautentificat" }, { status: 401 });
 
-  const { post, error } = await assertAccess(user.userId, id);
-  if (error) return error;
+    const { post, error } = await assertAccess(user.userId, id);
+    if (error) return error;
 
-  if (post!.status === "PUBLISHED" || post!.status === "PUBLISHING") {
-    return NextResponse.json(
-      { error: "Nu poți edita o postare deja publicată sau în curs de publicare" },
-      { status: 409 }
-    );
+    if (post!.status === "PUBLISHED" || post!.status === "PUBLISHING") {
+      return NextResponse.json(
+        { error: "Nu poți edita o postare deja publicată sau în curs de publicare" },
+        { status: 409 }
+      );
+    }
+
+    const body: UpdatePostBody = await req.json();
+
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      if (body.scheduledAt !== undefined) {
+        await tx.post.update({
+          where: { id },
+          data: {
+            scheduledAt: body.scheduledAt ? new Date(body.scheduledAt) : null,
+            status: body.scheduledAt ? "SCHEDULED" : "DRAFT",
+          },
+        });
+      }
+
+      for (const v of body.variants ?? []) {
+        await tx.postVariant.update({
+          where: { id: v.id },
+          data: {
+            content: v.content,
+            mediaUrls: v.mediaUrls,
+            scheduledAt: v.scheduledAt ? new Date(v.scheduledAt) : null,
+            status: "PENDING", // resetam orice eroare anterioara odata ce s-a editat
+            errorLog: null,
+          },
+        });
+      }
+    });
+
+    const updated = await prisma.post.findUnique({
+      where: { id },
+      include: { variants: { include: { account: true } } },
+    });
+    return NextResponse.json({ post: updated });
+  } catch (err) {
+    console.error("Eroare la editarea postarii:", err);
+    return NextResponse.json({ error: "Nu am putut edita postarea" }, { status: 500 });
   }
-
-  const body: UpdatePostBody = await req.json();
-
-  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    if (body.scheduledAt !== undefined) {
-      await tx.post.update({
-        where: { id },
-        data: {
-          scheduledAt: body.scheduledAt ? new Date(body.scheduledAt) : null,
-          status: body.scheduledAt ? "SCHEDULED" : "DRAFT",
-        },
-      });
-    }
-
-    for (const v of body.variants ?? []) {
-      await tx.postVariant.update({
-        where: { id: v.id },
-        data: {
-          content: v.content,
-          mediaUrls: v.mediaUrls,
-          scheduledAt: v.scheduledAt ? new Date(v.scheduledAt) : null,
-          status: "PENDING", // resetam orice eroare anterioara odata ce s-a editat
-          errorLog: null,
-        },
-      });
-    }
-  });
-
-  const updated = await prisma.post.findUnique({
-    where: { id },
-    include: { variants: { include: { account: true } } },
-  });
-  return NextResponse.json({ post: updated });
 }

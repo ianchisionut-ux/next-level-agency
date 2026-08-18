@@ -7,6 +7,7 @@ import { WorkspaceSwitcher, WorkspaceOption } from "@/app/components/ui/workspac
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Timeline", icon: TimelineIcon },
   { href: "/dashboard/compose", label: "Postare nouă", icon: ComposeIcon },
+  { href: "/dashboard/campaigns", label: "Campanii", icon: CampaignIcon },
   { href: "/dashboard/analytics", label: "Analiză", icon: ChartIcon },
   { href: "/dashboard/accounts", label: "Conturi conectate", icon: LinkIcon },
   { href: "/dashboard/settings/members", label: "Membri", icon: UsersIcon },
@@ -31,11 +32,11 @@ export function Sidebar({
   }
 
   return (
-    <aside className="fixed inset-y-0 left-0 w-60 border-r border-ink-700 bg-ink-950 flex flex-col">
+    <aside className="fixed inset-y-0 left-0 w-60 border-r border-nav-border bg-nav-bg flex flex-col text-nav-text">
       <div className="px-5 py-6">
         <div className="flex items-center gap-2 mb-5">
           <span className="h-2.5 w-2.5 rounded-full bg-signal shadow-glow" />
-          <span className="font-display font-semibold text-lg tracking-tight">Signal</span>
+          <span className="font-display font-semibold text-lg tracking-tight text-nav-text">Signal</span>
         </div>
         <WorkspaceSwitcher workspaces={workspaces} activeId={activeWorkspaceId} />
       </div>
@@ -52,7 +53,7 @@ export function Sidebar({
               className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${
                 active
                   ? "bg-signal-soft text-signal-bright font-medium"
-                  : "text-mist-300 hover:bg-ink-800 hover:text-mist-100"
+                  : "text-nav-text-muted hover:bg-nav-bg-hover hover:text-nav-text"
               }`}
             >
               <Icon active={active} />
@@ -62,7 +63,7 @@ export function Sidebar({
         })}
       </nav>
 
-      <div className="px-5 py-5 border-t border-ink-700 space-y-3">
+      <div className="px-5 py-5 border-t border-nav-border space-y-3">
         <Link
           href="/dashboard/compose"
           className="flex items-center justify-center gap-2 w-full rounded-xl bg-signal hover:bg-signal-bright transition-colors text-white text-sm font-medium py-2.5"
@@ -70,8 +71,8 @@ export function Sidebar({
           <PlusIcon /> Postare nouă
         </Link>
         <div className="flex items-center justify-between px-1">
-          <span className="text-xs text-mist-500 truncate">{userName}</span>
-          <button onClick={handleLogout} className="text-xs text-mist-500 hover:text-mist-100 transition-colors">
+          <span className="text-xs text-nav-text-muted truncate">{userName}</span>
+          <button onClick={handleLogout} className="text-xs text-nav-text-muted hover:text-nav-text transition-colors">
             Ieși din cont
           </button>
         </div>
@@ -112,6 +113,13 @@ function UsersIcon({ active }: { active: boolean }) {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active ? "#7C9CFF" : "#8A8F9C"} strokeWidth="1.8">
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function CampaignIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active ? "#7C9CFF" : "#8A8F9C"} strokeWidth="1.8">
+      <path d="M3 11v2a2 2 0 0 0 2 2h1l5 4V5L6 9H5a2 2 0 0 0-2 2ZM17 8a5 5 0 0 1 0 8M20 5a9 9 0 0 1 0 14" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

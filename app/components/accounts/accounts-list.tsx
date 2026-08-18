@@ -15,17 +15,41 @@ export interface AccountRow {
 
 const CONNECT_CONFIG: Record<
   PlatformKey,
-  { available: boolean; href: string; note?: string }
+  { available: boolean; href: string | null; note?: string }
 > = {
-  FACEBOOK: { available: true, href: "/api/accounts/connect/meta" },
-  INSTAGRAM: { available: true, href: "/api/accounts/connect/meta", note: "Se conectează odată cu Facebook" },
+  FACEBOOK: { available: false, href: null, note: "Conectat automat prin Sincronizare Business Portfolio, mai sus" },
+  INSTAGRAM: { available: false, href: null, note: "Conectat automat prin Sincronizare Business Portfolio, mai sus" },
   TIKTOK: { available: true, href: "/api/accounts/connect/tiktok", note: "Necesită aplicație TikTok aprobată pentru Content Posting API" },
   GOOGLE_BUSINESS: { available: true, href: "/api/accounts/connect/google" },
 };
 
-export function AccountsList({ accounts }: { accounts: AccountRow[] }) {
+export function AccountsList({ accounts, workspaceId }: { accounts: AccountRow[]; workspaceId: string }) {
   const router = useRouter();
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  async function handleSync() {
+    setSyncing(true);
+    setSyncError(null);
+    setSyncResult(null);
+    try {
+      const res = await fetch("/api/accounts/sync-meta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Eroare la sincronizare");
+      setSyncResult(`${data.connected} cont(uri) sincronizat(e) din Business Portfolio.`);
+      router.refresh();
+    } catch (err) {
+      setSyncError(err instanceof Error ? err.message : "Eroare la sincronizare");
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   async function disconnect(id: string) {
     setDisconnecting(id);
@@ -41,6 +65,27 @@ export function AccountsList({ accounts }: { accounts: AccountRow[] }) {
 
   return (
     <div className="space-y-8">
+      <div className="rounded-2xl border border-signal/30 bg-signal-soft p-5">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-mist-100">Sincronizează din Business Portfolio</p>
+            <p className="text-xs text-mist-500 mt-0.5">
+              Aduce automat toate paginile de Facebook și conturile Instagram la care System User-ul
+              agenției are acces (inclusiv cele ale clienților, partajate prin Business Portfolio).
+            </p>
+          </div>
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="shrink-0 rounded-xl bg-signal hover:bg-signal-bright transition-colors text-white text-sm font-medium px-4 py-2.5 disabled:opacity-50"
+          >
+            {syncing ? "Se sincronizează…" : "Sincronizează acum"}
+          </button>
+        </div>
+        {syncResult && <p className="text-xs text-state-success mt-3">{syncResult}</p>}
+        {syncError && <p className="text-xs text-state-error mt-3">{syncError}</p>}
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         {platforms.map((platform) => {
           const meta = PLATFORM_META[platform];
@@ -54,7 +99,7 @@ export function AccountsList({ accounts }: { accounts: AccountRow[] }) {
                   <PlatformIcon platform={platform} size={20} />
                   <span className="font-medium text-sm">{meta.label}</span>
                 </div>
-                {config.available ? (
+                {config.href ? (
                   <a
                     href={config.href}
                     className="text-xs font-medium text-signal-bright hover:underline"
@@ -62,7 +107,7 @@ export function AccountsList({ accounts }: { accounts: AccountRow[] }) {
                     + Conectează
                   </a>
                 ) : (
-                  <span className="text-xs text-mist-700">Curând</span>
+                  <span className="text-xs text-mist-700">Automat</span>
                 )}
               </div>
 

@@ -73,21 +73,31 @@ body {
    in conflict cu tokenurile site-ului (navy/blue/paper etc).
    ============================================================ */
 @theme {
-  --color-ink-950: #0B0C0F;
-  --color-ink-900: #0E1013;
-  --color-ink-800: #161920;
-  --color-ink-700: #1E222B;
-  --color-ink-600: #2A2F3B;
-  --color-ink-500: #3A4051;
+  /* Tokenuri "Signal" - MOD LIGHT (conținutul principal: pagini, carduri, tabele) */
+  --color-ink-950: #FFFFFF;
+  --color-ink-900: #F7F8FA;
+  --color-ink-800: #FFFFFF;
+  --color-ink-700: #E5E7EB;
+  --color-ink-600: #D1D5DB;
+  --color-ink-500: #9CA3AF;
 
-  --color-mist-100: #E7E9EE;
-  --color-mist-300: #B7BBC7;
-  --color-mist-500: #8A8F9C;
-  --color-mist-700: #5A5F6B;
+  --color-mist-100: #12141A;
+  --color-mist-300: #3F4451;
+  --color-mist-500: #6B7280;
+  --color-mist-700: #9CA3AF;
 
-  --color-signal: #4F7CFF;
-  --color-signal-soft: #4F7CFF1A;
-  --color-signal-bright: #7C9CFF;
+  --color-signal: #3B66F6;
+  --color-signal-soft: #3B66F61A;
+  --color-signal-bright: #2451E0;
+
+  /* Tokenuri fixe, doar pentru sidebar - rămân dark indiferent de modul de mai sus */
+  --color-nav-bg: #0B0C0F;
+  --color-nav-bg-elevated: #0E1013;
+  --color-nav-bg-hover: #161920;
+  --color-nav-border: #1E222B;
+  --color-nav-border-strong: #2A2F3B;
+  --color-nav-text: #E7E9EE;
+  --color-nav-text-muted: #8A8F9C;
 
   --color-platform-facebook: #1877F2;
   --color-platform-instagram: #E1306C;
@@ -98,21 +108,21 @@ body {
   --color-platform-googleYellow: #FBBC05;
   --color-platform-googleRed: #EA4335;
 
-  --color-state-success: #3DD68C;
-  --color-state-warning: #F5B95A;
-  --color-state-error: #F5636A;
-  --color-state-pending: #8A8F9C;
+  --color-state-success: #16A34A;
+  --color-state-warning: #D97706;
+  --color-state-error: #DC2626;
+  --color-state-pending: #6B7280;
 
   --font-display: "Space Grotesk", sans-serif;
   --font-mono: "IBM Plex Mono", monospace;
 
-  --shadow-card: 0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(0,0,0,0.5);
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.08);
   --shadow-glow: 0 0 0 1px #4F7CFF33, 0 0 24px -4px #4F7CFF55;
 }
 
 .input {
   width: 100%;
-  background-color: var(--color-ink-900);
+  background-color: var(--color-ink-800);
   border: 1px solid var(--color-ink-600);
   border-radius: 0.5rem;
   padding: 0.5rem 0.75rem;
@@ -123,3 +133,18 @@ body {
 }
 .input::placeholder { color: var(--color-mist-700); }
 .input:focus { border-color: var(--color-signal); }
+
+/* Input-uri folosite direct in interiorul sidebar-ului dark (ex: workspace switcher) */
+.input-on-dark {
+  width: 100%;
+  background-color: var(--color-nav-bg-elevated);
+  border: 1px solid var(--color-nav-border-strong);
+  border-radius: 0.375rem;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.75rem;
+  color: var(--color-nav-text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.input-on-dark::placeholder { color: var(--color-nav-text-muted); }
+.input-on-dark:focus { border-color: var(--color-signal); }

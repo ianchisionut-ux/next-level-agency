@@ -2,9 +2,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getActiveWorkspace } from "@/lib/session";
 import { BroadcastTimeline, TimelineVariant } from "@/app/components/timeline/broadcast-timeline";
-import { StatCard } from "@/app/components/ui/stat-card";
-import { StatusBadge } from "@/app/components/ui/status-badge";
-import { PlatformIcon } from "@/app/components/ui/platform-icon";
+import { StatCard, StatIconLink, StatIconClock, StatIconCheck, StatIconWarning } from "@/app/components/ui/stat-card";
+import { RecentPostsList } from "@/app/components/dashboard/recent-posts-list";
 import { PlatformKey } from "@/lib/platform-meta";
 
 export const dynamic = "force-dynamic";
@@ -57,11 +56,35 @@ export default async function DashboardPage() {
         </Link>
       </header>
 
+      {accountsCount === 0 && (
+        <div className="rounded-2xl border border-signal/30 bg-signal-soft px-5 py-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-mist-100">
+              Conectează primul tău cont ca să poți publica
+            </p>
+            <p className="text-sm text-mist-500 mt-0.5">
+              Facebook, Instagram, TikTok sau Google Business — durează un minut.
+            </p>
+          </div>
+          <Link
+            href="/dashboard/accounts"
+            className="shrink-0 rounded-xl bg-signal hover:bg-signal-bright transition-colors text-white text-sm font-medium px-4 py-2.5"
+          >
+            Conectează un cont
+          </Link>
+        </div>
+      )}
+
       <div className="grid grid-cols-4 gap-4">
-        <StatCard label="Conturi conectate" value={String(accountsCount)} />
-        <StatCard label="Programate" value={String(scheduledCount)} accent="signal" />
-        <StatCard label="Publicate (7 zile)" value={String(publishedThisWeek)} accent="success" />
-        <StatCard label="Eșuate" value={String(failedCount)} accent={failedCount > 0 ? "error" : "signal"} />
+        <StatCard label="Conturi conectate" value={String(accountsCount)} icon={<StatIconLink />} />
+        <StatCard label="Programate" value={String(scheduledCount)} accent="signal" icon={<StatIconClock />} />
+        <StatCard label="Publicate (7 zile)" value={String(publishedThisWeek)} accent="success" icon={<StatIconCheck />} />
+        <StatCard
+          label="Eșuate"
+          value={String(failedCount)}
+          accent={failedCount > 0 ? "error" : "signal"}
+          icon={<StatIconWarning />}
+        />
       </div>
 
       <BroadcastTimeline variants={timelineData} />
@@ -71,48 +94,16 @@ export default async function DashboardPage() {
           <h2 className="font-display font-semibold text-base">Postări recente</h2>
         </div>
         <div className="divide-y divide-ink-700">
-          {recentPosts.length === 0 && (
-            <div className="px-5 py-10 text-center">
-              <p className="text-mist-500 text-sm">
-                Nicio postare încă. Prima ta postare durează două minute.
-              </p>
-              <Link
-                href="/dashboard/compose"
-                className="inline-block mt-3 text-signal-bright text-sm font-medium hover:underline"
-              >
-                Creează prima postare →
-              </Link>
-            </div>
-          )}
-          {recentPosts.map((post) => (
-            <Link
-              key={post.id}
-              href={`/dashboard/posts/${post.id}`}
-              className="px-5 py-4 flex items-center justify-between hover:bg-ink-900/50 transition-colors"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium truncate">
-                  {post.title || post.variants[0]?.content.slice(0, 60) || "(fără conținut)"}
-                </p>
-                <div className="flex items-center gap-2 mt-1.5">
-                  {post.variants.map((v) => (
-                    <PlatformIcon key={v.id} platform={v.platform as PlatformKey} size={14} />
-                  ))}
-                  <span className="text-xs text-mist-500 font-mono ml-1">
-                    {post.scheduledAt
-                      ? new Date(post.scheduledAt).toLocaleDateString("ro-RO", {
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
-                      : "fără programare"}
-                  </span>
-                </div>
-              </div>
-              <StatusBadge status={post.status} />
-            </Link>
-          ))}
+          <RecentPostsList
+            posts={recentPosts.map((p) => ({
+              id: p.id,
+              title: p.title,
+              status: p.status,
+              scheduledAt: p.scheduledAt ? p.scheduledAt.toISOString() : null,
+              variants: p.variants.map((v) => ({ id: v.id, platform: v.platform, content: v.content })),
+            }))}
+            accountsCount={accountsCount}
+          />
         </div>
       </div>
     </div>

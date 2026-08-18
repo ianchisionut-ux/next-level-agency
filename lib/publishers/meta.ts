@@ -16,33 +16,71 @@ export interface PublishResult {
   error?: string;
 }
 
+function isVideoUrl(url: string): boolean {
+  return /\.(mp4|mov|m4v)(\?|$)/i.test(url);
+}
+
 export async function publishToFacebook(params: {
   pageId: string;
   accessToken: string;
   content: string;
   mediaUrls: string[];
+  /** Unix timestamp (secunde) - daca e furnizat, folosim programarea NATIVA
+   * Meta (published: false + scheduled_publish_time), in loc sa publicam
+   * imediat. Util mai ales pentru video, caruia Meta ii ia timp sa il
+   * proceseze - il urcam din timp, iar Meta il publica exact la ora fixata. */
+  scheduledPublishTime?: number;
 }): Promise<PublishResult> {
-  const { pageId, accessToken, content, mediaUrls } = params;
+  const { pageId, accessToken, content, mediaUrls, scheduledPublishTime } = params;
 
   try {
     // Fara media -> postare simpla pe /feed
     if (mediaUrls.length === 0) {
+      const body: Record<string, unknown> = { message: content, access_token: accessToken };
+      if (scheduledPublishTime) {
+        body.published = false;
+        body.scheduled_publish_time = scheduledPublishTime;
+      }
       const res = await fetch(`${GRAPH_BASE}/${pageId}/feed`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: content, access_token: accessToken }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || "Eroare necunoscuta");
       return { success: true, externalPostId: data.id };
     }
 
-    // Cu media -> /photos (prima imagine ca postare simpla; pt carousel/video e alt flow)
+    const firstUrl = mediaUrls[0];
+
+    // Video -> endpoint dedicat /videos, cu file_url (Meta descarca singur
+    // de la URL-ul public din Vercel Blob - nu trecem binarul prin server).
+    if (isVideoUrl(firstUrl)) {
+      const body: Record<string, unknown> = {
+        file_url: firstUrl,
+        description: content,
+        access_token: accessToken,
+      };
+      if (scheduledPublishTime) {
+        body.published = false;
+        body.scheduled_publish_time = scheduledPublishTime;
+      }
+      const res = await fetch(`${GRAPH_BASE}/${pageId}/videos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || "Eroare la publicarea video");
+      return { success: true, externalPostId: data.id };
+    }
+
+    // Poza -> /photos (prima imagine ca postare simpla)
     const res = await fetch(`${GRAPH_BASE}/${pageId}/photos`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        url: mediaUrls[0],
+        url: firstUrl,
         caption: content,
         access_token: accessToken,
       }),
@@ -67,20 +105,43 @@ export async function publishToInstagram(params: {
     return { success: false, error: "Instagram necesita cel putin o imagine sau un video" };
   }
 
+  const firstUrl = mediaUrls[0];
+  const isVideo = isVideoUrl(firstUrl);
+
   try {
-    // Pas 1: creeaza media container
+    // Pas 1: creeaza media container. Pentru video (Reels), Instagram
+    // proceseaza asincron - containerul nu e gata instant ca la poze.
+    const containerBody: Record<string, unknown> = {
+      caption: content,
+      access_token: accessToken,
+    };
+    if (isVideo) {
+      containerBody.media_type = "REELS";
+      containerBody.video_url = firstUrl;
+    } else {
+      containerBody.image_url = firstUrl;
+    }
+
     const containerRes = await fetch(`${GRAPH_BASE}/${igUserId}/media`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        image_url: mediaUrls[0],
-        caption: content,
-        access_token: accessToken,
-      }),
+      body: JSON.stringify(containerBody),
     });
     const containerData = await containerRes.json();
     if (!containerRes.ok) {
       throw new Error(containerData.error?.message || "Eroare la crearea containerului");
+    }
+
+    // Pentru video, asteptam ca Instagram sa termine procesarea (status_code
+    // FINISHED) inainte sa publicam - de obicei dureaza intre 10-60s.
+    if (isVideo) {
+      const ready = await waitForContainerReady(containerData.id, accessToken);
+      if (!ready) {
+        return {
+          success: false,
+          error: "Instagram nu a terminat procesarea video-ului la timp. Va fi reîncercat automat.",
+        };
+      }
     }
 
     // Pas 2: publica containerul
@@ -101,6 +162,27 @@ export async function publishToInstagram(params: {
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Eroare necunoscuta" };
   }
+}
+
+/** Interogheaza periodic statusul containerului de media Instagram, pana
+ * cand Meta termina procesarea video-ului (sau pana la limita de asteptare). */
+async function waitForContainerReady(
+  containerId: string,
+  accessToken: string,
+  maxWaitMs = 45_000,
+  intervalMs = 3_000
+): Promise<boolean> {
+  const deadline = Date.now() + maxWaitMs;
+  while (Date.now() < deadline) {
+    const res = await fetch(
+      `${GRAPH_BASE}/${containerId}?fields=status_code&access_token=${accessToken}`
+    );
+    const data = await res.json();
+    if (data.status_code === "FINISHED") return true;
+    if (data.status_code === "ERROR") return false;
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+  return false;
 }
 
 export async function getFacebookInsights(params: {
@@ -124,6 +206,28 @@ export async function getInstagramInsights(params: { mediaId: string; accessToke
   );
   if (!res.ok) throw new Error("Nu s-au putut prelua insights de Instagram");
   return res.json();
+}
+
+/**
+ * Preia textul comentariilor de la o postare de Facebook sau media de
+ * Instagram (max 100 cele mai recente), folosite ulterior pentru clasificarea
+ * de sentiment. Returneaza doar array de string-uri (textul), fara alte
+ * date personale ale comentatorilor (nume, poza etc.) - pastram doar minimul
+ * necesar pentru scorul agregat.
+ */
+export async function getPostComments(params: {
+  postId: string;
+  accessToken: string;
+}): Promise<string[]> {
+  const { postId, accessToken } = params;
+  const res = await fetch(
+    `${GRAPH_BASE}/${postId}/comments?fields=message&limit=100&access_token=${accessToken}`
+  );
+  if (!res.ok) return []; // permisiune lipsa sau postare fara comentarii - nu blocam colectarea
+  const data = await res.json();
+  return (data.data ?? [])
+    .map((c: { message?: string }) => c.message)
+    .filter((m: string | undefined): m is string => Boolean(m && m.trim()));
 }
 
 export interface DemographicBreakdown {

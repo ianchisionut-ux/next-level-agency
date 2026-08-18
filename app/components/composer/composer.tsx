@@ -18,7 +18,23 @@ interface VariantState {
   scheduledAt: string; // datetime-local override, empty = use global
 }
 
-export function Composer({ accounts, workspaceId }: { accounts: ComposerAccount[]; workspaceId: string }) {
+export function Composer({
+  accounts,
+  workspaceId,
+  suggestedHashtags = [],
+  suggestedKeywords = [],
+  bestTimeHint = null,
+  campaignId = null,
+  campaignName = null,
+}: {
+  accounts: ComposerAccount[];
+  workspaceId: string;
+  suggestedHashtags?: string[];
+  suggestedKeywords?: string[];
+  bestTimeHint?: string | null;
+  campaignId?: string | null;
+  campaignName?: string | null;
+}) {
   const router = useRouter();
   const availablePlatforms = useMemo(
     () => PLATFORM_ORDER.filter((p) => accounts.some((a) => a.platform === p)),
@@ -59,6 +75,18 @@ export function Composer({ accounts, workspaceId }: { accounts: ComposerAccount[
     setPerPlatform((prev) => ({ ...prev, [p]: { ...getVariant(p), ...patch } }));
   }
 
+  // Adaugă textul (hashtag sau cuvânt cheie) la finalul conținutului activ -
+  // fie textarea comună (dacă "același conținut" e pornit), fie cea a
+  // platformei curent selectate.
+  function insertIntoActiveContent(text: string) {
+    if (useSameContent) {
+      setSharedContent((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text));
+    } else if (activeTab) {
+      const current = getVariant(activeTab).content;
+      updateVariant(activeTab, { content: current.trim() ? `${current.trim()} ${text}` : text });
+    }
+  }
+
   async function handleUpload(file: File, target: "shared" | PlatformKey) {
     setUploading(true);
     setError(null);
@@ -94,12 +122,19 @@ export function Composer({ accounts, workspaceId }: { accounts: ComposerAccount[
       const content = useSameContent ? sharedContent : getVariant(p).content;
       const mediaUrls = useSameContent ? sharedMedia : getVariant(p).mediaUrls;
       const override = getVariant(p).scheduledAt;
+      // Extragem automat hashtag-urile scrise in text (#exemplu), ca sa fie
+      // urmarite corect pe pagina de Analytics - nu trebuie introduse separat.
+      const hashtags = Array.from(content.matchAll(/#(\w+)/g)).map((m) => m[1]);
       return {
         accountId: account.id,
         platform: p,
         content,
         mediaUrls,
-        scheduledAt: override || undefined,
+        hashtags,
+        // new Date(...) interpretează string-ul "datetime-local" ca oră locală
+        // a browser-ului (corect - user-ul a ales ora din perspectiva lui),
+        // iar .toISOString() îl convertește la UTC, fără ambiguitate pe server.
+        scheduledAt: override ? new Date(override).toISOString() : undefined,
       };
     });
 
@@ -117,7 +152,12 @@ export function Composer({ accounts, workspaceId }: { accounts: ComposerAccount[
         body: JSON.stringify({
           workspaceId,
           useSameContent,
-          scheduledAt: publishNow ? new Date().toISOString() : scheduledAt || undefined,
+          campaignId: campaignId ?? undefined,
+          scheduledAt: publishNow
+            ? new Date().toISOString()
+            : scheduledAt
+              ? new Date(scheduledAt).toISOString()
+              : undefined,
           variants,
         }),
       });
@@ -145,6 +185,12 @@ export function Composer({ accounts, workspaceId }: { accounts: ComposerAccount[
   return (
     <div className="grid grid-cols-[1fr_360px] gap-6 items-start">
       <div className="space-y-5">
+        {campaignName && (
+          <div className="rounded-xl border border-signal/30 bg-signal-soft px-4 py-2.5 text-sm text-signal-bright">
+            Această postare va fi asociată campaniei <strong>{campaignName}</strong>
+          </div>
+        )}
+
         {/* Selector platforme */}
         <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
           <p className="text-xs text-mist-500 uppercase tracking-wide mb-3">Publică pe</p>
@@ -181,14 +227,17 @@ export function Composer({ accounts, workspaceId }: { accounts: ComposerAccount[
             </p>
           </div>
           <button
+            type="button"
+            role="switch"
+            aria-checked={useSameContent}
             onClick={() => setUseSameContent((v) => !v)}
-            className={`relative h-6 w-11 rounded-full transition-colors shrink-0 ${
+            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
               useSameContent ? "bg-signal" : "bg-ink-600"
             }`}
           >
             <span
-              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
-                useSameContent ? "translate-x-5" : "translate-x-0.5"
+              className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
+                useSameContent ? "translate-x-5" : "translate-x-0"
               }`}
             />
           </button>
@@ -264,9 +313,73 @@ export function Composer({ accounts, workspaceId }: { accounts: ComposerAccount[
           </div>
         )}
 
+        {/* Sugestii: hashtag-uri (din performanța ta reală) + cuvinte cheie (din Search Console) */}
+        {(suggestedHashtags.length > 0 || suggestedKeywords.length > 0) && (
+          <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5 space-y-4">
+            {suggestedHashtags.length > 0 && (
+              <div>
+                <p className="text-sm font-medium mb-0.5">Hashtag-uri sugerate</p>
+                <p className="text-xs text-mist-500 mb-3">
+                  Cele care au adus cele mai multe interacțiuni la postările tale anterioare
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedHashtags.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => insertIntoActiveContent(`#${tag}`)}
+                      className="rounded-full border border-ink-600 px-3 py-1.5 text-xs text-signal-bright hover:border-signal hover:bg-signal-soft transition-colors"
+                    >
+                      #{tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {suggestedKeywords.length > 0 && (
+              <div>
+                <p className="text-sm font-medium mb-0.5">Cuvinte cheie de folosit</p>
+                <p className="text-xs text-mist-500 mb-3">
+                  Din Google Search Console — cele care aduc deja trafic din căutări
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedKeywords.map((kw) => (
+                    <button
+                      key={kw}
+                      type="button"
+                      onClick={() => insertIntoActiveContent(kw)}
+                      className="rounded-full border border-ink-600 px-3 py-1.5 text-xs text-mist-300 hover:border-signal hover:text-signal-bright transition-colors"
+                    >
+                      {kw}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Programare */}
         <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
           <p className="text-sm font-medium mb-3">Când se publică</p>
+          {bestTimeHint && (
+            <button
+              type="button"
+              onClick={() => {
+                const now = new Date();
+                const target = new Date(now);
+                // gasim urmatoarea aparitie a zilei/orei recomandate
+                target.setHours(Number(bestTimeHint.split(", ")[1].split(":")[0]), 0, 0, 0);
+                if (target <= now) target.setDate(target.getDate() + 1);
+                const iso = target.toISOString().slice(0, 16);
+                setScheduledAt(iso);
+              }}
+              className="mb-3 flex items-center gap-2 rounded-lg border border-signal/30 bg-signal-soft px-3 py-2 text-xs text-signal-bright hover:border-signal transition-colors"
+            >
+              💡 Cel mai bun moment, pe baza datelor tale: <strong>{bestTimeHint}</strong> — click pentru a folosi
+            </button>
+          )}
           <input
             type="datetime-local"
             value={scheduledAt}
