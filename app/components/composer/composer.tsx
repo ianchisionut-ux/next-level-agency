@@ -18,7 +18,17 @@ interface VariantState {
   scheduledAt: string; // datetime-local override, empty = use global
 }
 
-export function Composer({ accounts, workspaceId }: { accounts: ComposerAccount[]; workspaceId: string }) {
+export function Composer({
+  accounts,
+  workspaceId,
+  suggestedHashtags = [],
+  suggestedKeywords = [],
+}: {
+  accounts: ComposerAccount[];
+  workspaceId: string;
+  suggestedHashtags?: string[];
+  suggestedKeywords?: string[];
+}) {
   const router = useRouter();
   const availablePlatforms = useMemo(
     () => PLATFORM_ORDER.filter((p) => accounts.some((a) => a.platform === p)),
@@ -59,6 +69,18 @@ export function Composer({ accounts, workspaceId }: { accounts: ComposerAccount[
     setPerPlatform((prev) => ({ ...prev, [p]: { ...getVariant(p), ...patch } }));
   }
 
+  // Adaugă textul (hashtag sau cuvânt cheie) la finalul conținutului activ -
+  // fie textarea comună (dacă "același conținut" e pornit), fie cea a
+  // platformei curent selectate.
+  function insertIntoActiveContent(text: string) {
+    if (useSameContent) {
+      setSharedContent((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text));
+    } else if (activeTab) {
+      const current = getVariant(activeTab).content;
+      updateVariant(activeTab, { content: current.trim() ? `${current.trim()} ${text}` : text });
+    }
+  }
+
   async function handleUpload(file: File, target: "shared" | PlatformKey) {
     setUploading(true);
     setError(null);
@@ -94,11 +116,15 @@ export function Composer({ accounts, workspaceId }: { accounts: ComposerAccount[
       const content = useSameContent ? sharedContent : getVariant(p).content;
       const mediaUrls = useSameContent ? sharedMedia : getVariant(p).mediaUrls;
       const override = getVariant(p).scheduledAt;
+      // Extragem automat hashtag-urile scrise in text (#exemplu), ca sa fie
+      // urmarite corect pe pagina de Analytics - nu trebuie introduse separat.
+      const hashtags = Array.from(content.matchAll(/#(\w+)/g)).map((m) => m[1]);
       return {
         accountId: account.id,
         platform: p,
         content,
         mediaUrls,
+        hashtags,
         // new Date(...) interpretează string-ul "datetime-local" ca oră locală
         // a browser-ului (corect - user-ul a ales ora din perspectiva lui),
         // iar .toISOString() îl convertește la UTC, fără ambiguitate pe server.
@@ -269,6 +295,53 @@ export function Composer({ accounts, workspaceId }: { accounts: ComposerAccount[
                     className="mt-1 w-full bg-ink-900 border border-ink-600 rounded-lg px-3 py-2 text-sm text-mist-100 focus:border-signal outline-none"
                   />
                 </label>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Sugestii: hashtag-uri (din performanța ta reală) + cuvinte cheie (din Search Console) */}
+        {(suggestedHashtags.length > 0 || suggestedKeywords.length > 0) && (
+          <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5 space-y-4">
+            {suggestedHashtags.length > 0 && (
+              <div>
+                <p className="text-sm font-medium mb-0.5">Hashtag-uri sugerate</p>
+                <p className="text-xs text-mist-500 mb-3">
+                  Cele care au adus cele mai multe interacțiuni la postările tale anterioare
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedHashtags.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => insertIntoActiveContent(`#${tag}`)}
+                      className="rounded-full border border-ink-600 px-3 py-1.5 text-xs text-signal-bright hover:border-signal hover:bg-signal-soft transition-colors"
+                    >
+                      #{tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {suggestedKeywords.length > 0 && (
+              <div>
+                <p className="text-sm font-medium mb-0.5">Cuvinte cheie de folosit</p>
+                <p className="text-xs text-mist-500 mb-3">
+                  Din Google Search Console — cele care aduc deja trafic din căutări
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedKeywords.map((kw) => (
+                    <button
+                      key={kw}
+                      type="button"
+                      onClick={() => insertIntoActiveContent(kw)}
+                      className="rounded-full border border-ink-600 px-3 py-1.5 text-xs text-mist-300 hover:border-signal hover:text-signal-bright transition-colors"
+                    >
+                      {kw}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
