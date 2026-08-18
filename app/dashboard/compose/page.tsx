@@ -2,10 +2,16 @@ import { prisma } from "@/lib/prisma";
 import { getActiveWorkspace } from "@/lib/session";
 import { Composer } from "@/app/components/composer/composer";
 import { PlatformKey } from "@/lib/platform-meta";
+import { computeBestTimeToPost } from "@/lib/best-time";
 
 export const dynamic = "force-dynamic";
 
-export default async function ComposePage() {
+export default async function ComposePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ campaignId?: string }>;
+}) {
+  const { campaignId } = await searchParams;
   const workspace = await getActiveWorkspace();
   const accounts = await prisma.connectedAccount.findMany({
     where: { workspaceId: workspace!.id, isActive: true },
@@ -62,6 +68,18 @@ export default async function ComposePage() {
     // fara date inca
   }
 
+  const bestTimeSlots = await computeBestTimeToPost(workspace!.id);
+  const bestTime = bestTimeSlots[0] ?? null;
+
+  let campaignName: string | null = null;
+  if (campaignId) {
+    const campaign = await prisma.campaign.findFirst({
+      where: { id: campaignId, workspaceId: workspace!.id },
+      select: { name: true },
+    });
+    campaignName = campaign?.name ?? null;
+  }
+
   return (
     <div className="space-y-6">
       <header>
@@ -80,6 +98,9 @@ export default async function ComposePage() {
         }))}
         suggestedHashtags={suggestedHashtags}
         suggestedKeywords={suggestedKeywords}
+        bestTimeHint={bestTime ? `${bestTime.dayLabel}, ${String(bestTime.hour).padStart(2, "0")}:00` : null}
+        campaignId={campaignId ?? null}
+        campaignName={campaignName}
       />
     </div>
   );

@@ -6,6 +6,7 @@ import { ExportReportButton } from "@/app/components/analytics/export-report-but
 import { GoalProgress } from "@/app/components/analytics/goal-progress";
 import { ProfessionalAnalysis } from "@/app/components/analytics/professional-analysis";
 import { generateProfessionalAnalysis } from "@/lib/insights-engine";
+import { computeBestTimeToPost } from "@/lib/best-time";
 import { StatCard, StatIconEye, StatIconCheck, StatIconCursor, StatIconPercent } from "@/app/components/ui/stat-card";
 import { PlatformIcon } from "@/app/components/ui/platform-icon";
 import { PLATFORM_META, PlatformKey } from "@/lib/platform-meta";
@@ -266,6 +267,8 @@ export default async function AnalyticsPage() {
 
   const hasData = insights.length > 0;
 
+  const bestTimeSlots = await computeBestTimeToPost(workspace!.id);
+
   const now = new Date();
   const daysLeftInMonth =
     new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
@@ -493,6 +496,35 @@ export default async function AnalyticsPage() {
                 <p className="text-xs text-mist-500 mt-3">
                   Pe baza celei mai bune postări: rată de interacțiune + acoperire relativă
                 </p>
+              </div>
+            </div>
+          )}
+
+          {bestTimeSlots.length > 0 && (
+            <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
+              <h2 className="font-display font-semibold text-sm mb-1">Cel mai bun moment de postat</h2>
+              <p className="text-xs text-mist-500 mb-4">
+                Calculat din rata reală de interacțiune a postărilor tale anterioare, pe zi și oră
+              </p>
+              <div className="grid grid-cols-5 gap-3">
+                {bestTimeSlots.map((slot, idx) => (
+                  <div
+                    key={`${slot.dayOfWeek}-${slot.hour}`}
+                    className={`rounded-xl border p-3 text-center ${
+                      idx === 0 ? "border-signal bg-signal-soft" : "border-ink-700"
+                    }`}
+                  >
+                    {idx === 0 && (
+                      <p className="text-[10px] font-semibold text-signal-bright uppercase tracking-wide mb-1">
+                        Cel mai bun
+                      </p>
+                    )}
+                    <p className="text-sm font-semibold text-mist-100">{slot.dayLabel}</p>
+                    <p className="font-mono text-lg text-mist-100 mt-1">{String(slot.hour).padStart(2, "0")}:00</p>
+                    <p className="text-xs text-mist-500 mt-1">{slot.avgEngagementRate}% interacțiune</p>
+                    <p className="text-[10px] text-mist-700 mt-0.5">{slot.sampleSize} postări</p>
+                  </div>
+                ))}
               </div>
             </div>
           )}

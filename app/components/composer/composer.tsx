@@ -23,11 +23,17 @@ export function Composer({
   workspaceId,
   suggestedHashtags = [],
   suggestedKeywords = [],
+  bestTimeHint = null,
+  campaignId = null,
+  campaignName = null,
 }: {
   accounts: ComposerAccount[];
   workspaceId: string;
   suggestedHashtags?: string[];
   suggestedKeywords?: string[];
+  bestTimeHint?: string | null;
+  campaignId?: string | null;
+  campaignName?: string | null;
 }) {
   const router = useRouter();
   const availablePlatforms = useMemo(
@@ -146,6 +152,7 @@ export function Composer({
         body: JSON.stringify({
           workspaceId,
           useSameContent,
+          campaignId: campaignId ?? undefined,
           scheduledAt: publishNow
             ? new Date().toISOString()
             : scheduledAt
@@ -178,6 +185,12 @@ export function Composer({
   return (
     <div className="grid grid-cols-[1fr_360px] gap-6 items-start">
       <div className="space-y-5">
+        {campaignName && (
+          <div className="rounded-xl border border-signal/30 bg-signal-soft px-4 py-2.5 text-sm text-signal-bright">
+            Această postare va fi asociată campaniei <strong>{campaignName}</strong>
+          </div>
+        )}
+
         {/* Selector platforme */}
         <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
           <p className="text-xs text-mist-500 uppercase tracking-wide mb-3">Publică pe</p>
@@ -350,6 +363,23 @@ export function Composer({
         {/* Programare */}
         <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
           <p className="text-sm font-medium mb-3">Când se publică</p>
+          {bestTimeHint && (
+            <button
+              type="button"
+              onClick={() => {
+                const now = new Date();
+                const target = new Date(now);
+                // gasim urmatoarea aparitie a zilei/orei recomandate
+                target.setHours(Number(bestTimeHint.split(", ")[1].split(":")[0]), 0, 0, 0);
+                if (target <= now) target.setDate(target.getDate() + 1);
+                const iso = target.toISOString().slice(0, 16);
+                setScheduledAt(iso);
+              }}
+              className="mb-3 flex items-center gap-2 rounded-lg border border-signal/30 bg-signal-soft px-3 py-2 text-xs text-signal-bright hover:border-signal transition-colors"
+            >
+              💡 Cel mai bun moment, pe baza datelor tale: <strong>{bestTimeHint}</strong> — click pentru a folosi
+            </button>
+          )}
           <input
             type="datetime-local"
             value={scheduledAt}

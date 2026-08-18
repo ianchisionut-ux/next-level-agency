@@ -7,6 +7,7 @@ import { WorkspaceSwitcher, WorkspaceOption } from "@/app/components/ui/workspac
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Timeline", icon: TimelineIcon },
   { href: "/dashboard/compose", label: "Postare nouă", icon: ComposeIcon },
+  { href: "/dashboard/campaigns", label: "Campanii", icon: CampaignIcon },
   { href: "/dashboard/analytics", label: "Analiză", icon: ChartIcon },
   { href: "/dashboard/accounts", label: "Conturi conectate", icon: LinkIcon },
   { href: "/dashboard/settings/members", label: "Membri", icon: UsersIcon },
@@ -112,6 +113,13 @@ function UsersIcon({ active }: { active: boolean }) {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active ? "#7C9CFF" : "#8A8F9C"} strokeWidth="1.8">
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function CampaignIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active ? "#7C9CFF" : "#8A8F9C"} strokeWidth="1.8">
+      <path d="M3 11v2a2 2 0 0 0 2 2h1l5 4V5L6 9H5a2 2 0 0 0-2 2ZM17 8a5 5 0 0 1 0 8M20 5a9 9 0 0 1 0 14" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

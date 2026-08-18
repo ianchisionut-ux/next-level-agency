@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
 
 interface CreatePostBody {
   workspaceId: string;
+  campaignId?: string;
   title?: string;
   useSameContent: boolean;
   scheduledAt?: string;
@@ -80,9 +81,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unul dintre conturi nu aparține acestui workspace" }, { status: 403 });
     }
 
+    // daca e specificata o campanie, verificam ca apartine aceluiasi workspace
+    if (body.campaignId) {
+      const campaign = await prisma.campaign.findUnique({ where: { id: body.campaignId } });
+      if (!campaign || campaign.workspaceId !== body.workspaceId) {
+        return NextResponse.json({ error: "Campania specificată nu este validă" }, { status: 400 });
+      }
+    }
+
     const post = await prisma.post.create({
       data: {
         workspaceId: body.workspaceId,
+        campaignId: body.campaignId ?? null,
         title: body.title,
         useSameContent: body.useSameContent,
         status: body.scheduledAt ? "SCHEDULED" : "DRAFT",

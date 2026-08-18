@@ -106,6 +106,7 @@ model Workspace {
   invitations       WorkspaceInvitation[]
   connectedAccounts ConnectedAccount[]
   posts             Post[]
+  campaigns         Campaign[]
   keywordSnapshots  KeywordSnapshot[]
 }
 
@@ -137,6 +138,9 @@ model Post {
   workspaceId String
   workspace   Workspace  @relation(fields: [workspaceId], references: [id])
 
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id])
+
   title  String?
   status PostStatus @default(DRAFT)
 
@@ -147,6 +151,26 @@ model Post {
   updatedAt   DateTime  @updatedAt
 
   variants PostVariant[]
+}
+
+model Campaign {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+
+  name        String
+  description String?   @db.Text
+
+  // Obiectiv opțional (nr. de interacțiuni țintă) - progresul se calculează
+  // automat din interacțiunile reale ale postărilor din campanie.
+  goal Int?
+
+  startDate DateTime?
+  endDate   DateTime?
+
+  createdAt DateTime @default(now())
+
+  posts Post[]
 }
 
 model PostVariant {
