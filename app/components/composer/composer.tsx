@@ -99,7 +99,10 @@ export function Composer({ accounts, workspaceId }: { accounts: ComposerAccount[
         platform: p,
         content,
         mediaUrls,
-        scheduledAt: override || undefined,
+        // new Date(...) interpretează string-ul "datetime-local" ca oră locală
+        // a browser-ului (corect - user-ul a ales ora din perspectiva lui),
+        // iar .toISOString() îl convertește la UTC, fără ambiguitate pe server.
+        scheduledAt: override ? new Date(override).toISOString() : undefined,
       };
     });
 
@@ -117,7 +120,11 @@ export function Composer({ accounts, workspaceId }: { accounts: ComposerAccount[
         body: JSON.stringify({
           workspaceId,
           useSameContent,
-          scheduledAt: publishNow ? new Date().toISOString() : scheduledAt || undefined,
+          scheduledAt: publishNow
+            ? new Date().toISOString()
+            : scheduledAt
+              ? new Date(scheduledAt).toISOString()
+              : undefined,
           variants,
         }),
       });

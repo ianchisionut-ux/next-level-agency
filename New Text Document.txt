@@ -1,0 +1,3 @@
+DATABASE_URL="postgresql://neondb_owner:npg_GFmXe2lEM0TP@ep-tiny-butterfly-zalb3hkb-pooler.c-2.eu-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+
+DIRECT_URL="https://nextlevel-agency.ro"
