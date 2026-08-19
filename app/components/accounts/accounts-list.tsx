@@ -92,7 +92,7 @@ export function AccountsList({ accounts, workspaceId }: { accounts: AccountRow[]
         {syncError && <p className="text-xs text-state-error mt-3">{syncError}</p>}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {platforms.map((platform) => {
           const meta = PLATFORM_META[platform];
           const config = CONNECT_CONFIG[platform];

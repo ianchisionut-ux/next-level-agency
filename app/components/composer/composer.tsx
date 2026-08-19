@@ -190,7 +190,7 @@ export function Composer({
   }
 
   return (
-    <div className="grid grid-cols-[1fr_360px] gap-6 items-start">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
       <div className="space-y-5">
         {campaignName && (
           <div className="rounded-xl border border-signal/30 bg-signal-soft px-4 py-2.5 text-sm text-signal-bright">
@@ -462,7 +462,7 @@ export function Composer({
       </div>
 
       {/* Preview live */}
-      <div className="sticky top-8 space-y-3">
+      <div className="lg:sticky lg:top-8 space-y-3">
         <p className="text-xs text-mist-500 uppercase tracking-wide">Previzualizare</p>
         {activePlatforms.length === 0 && (
           <p className="text-sm text-mist-500">Alege cel puțin o platformă pentru a vedea previzualizarea.</p>

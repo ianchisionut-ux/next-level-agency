@@ -406,7 +406,7 @@ export default async function AnalyticsPage() {
         }
       />
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCardChart
           label="Afișări totale"
           value={totalImpressions.toLocaleString("ro-RO")}
@@ -457,7 +457,7 @@ export default async function AnalyticsPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
               <h2 className="font-display font-semibold text-sm mb-4">Evoluție în timp</h2>
               <EngagementChart data={engagementSeries} />
@@ -513,7 +513,7 @@ export default async function AnalyticsPage() {
           </div>
 
           {(topHashtags.length > 0 || topPosts.length > 0) && (
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
                 <h2 className="font-display font-semibold text-sm mb-1">Hashtag-uri urmărite</h2>
                 <p className="text-xs text-mist-500 mb-4">Ordonate după interacțiunile generate</p>
@@ -601,7 +601,7 @@ export default async function AnalyticsPage() {
           )}
 
           {(formatBreakdown.length > 0 || contentTagBreakdown.length > 0) && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {formatBreakdown.length > 0 && (
                 <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
                   <h2 className="font-display font-semibold text-sm mb-1">Performanță pe format</h2>
@@ -648,7 +648,7 @@ export default async function AnalyticsPage() {
               <p className="text-xs text-mist-500 mb-4">
                 Calculat din rata reală de interacțiune a postărilor tale anterioare, pe zi și oră
               </p>
-              <div className="grid grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 {bestTimeSlots.map((slot, idx) => (
                   <div
                     key={`${slot.dayOfWeek}-${slot.hour}`}
@@ -672,7 +672,7 @@ export default async function AnalyticsPage() {
           )}
 
           {(ageDemographics.length > 0 || cityDemographics.length > 0) && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {ageDemographics.length > 0 && (
                 <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
                   <h2 className="font-display font-semibold text-sm mb-1">Demografia audienței</h2>

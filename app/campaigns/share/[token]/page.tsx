@@ -66,7 +66,7 @@ export default async function CampaignSharePage({ params }: { params: Promise<{ 
           )}
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
             <p className="text-xs text-mist-500 uppercase tracking-wide">Postări publicate</p>
             <p className="font-mono text-2xl font-semibold mt-1">{posts.length}</p>

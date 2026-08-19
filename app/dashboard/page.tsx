@@ -76,7 +76,7 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Conturi conectate" value={String(accountsCount)} icon={<StatIconLink />} />
         <StatCard label="Programate" value={String(scheduledCount)} accent="signal" icon={<StatIconClock />} />
         <StatCard label="Publicate (7 zile)" value={String(publishedThisWeek)} accent="success" icon={<StatIconCheck />} />

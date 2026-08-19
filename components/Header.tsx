@@ -38,50 +38,52 @@ export default function Header() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-4 lg:flex">
+        <div className="hidden items-center gap-4 md:flex">
           <Link
             href="/login"
             className="text-sm font-semibold text-white/70 transition hover:text-white"
           >
             Login
           </Link>
-          <a
-            href={siteConfig.socials.facebook}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Facebook"
-            className="text-white/50 transition hover:text-white"
-          >
-            <IconFacebook />
-          </a>
-          <a
-            href={siteConfig.socials.instagram}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Instagram"
-            className="text-white/50 transition hover:text-white"
-          >
-            <IconInstagram />
-          </a>
-          {siteConfig.socials.tiktok ? (
+          <div className="hidden items-center gap-4 lg:flex">
             <a
-              href={siteConfig.socials.tiktok}
+              href={siteConfig.socials.facebook}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="TikTok"
+              aria-label="Facebook"
               className="text-white/50 transition hover:text-white"
             >
-              <IconTiktok />
+              <IconFacebook />
             </a>
-          ) : (
-            <span
-              aria-label="TikTok - în curând"
-              title="În curând"
-              className="cursor-default text-white/20"
+            <a
+              href={siteConfig.socials.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Instagram"
+              className="text-white/50 transition hover:text-white"
             >
-              <IconTiktok />
-            </span>
-          )}
+              <IconInstagram />
+            </a>
+            {siteConfig.socials.tiktok ? (
+              <a
+                href={siteConfig.socials.tiktok}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="TikTok"
+                className="text-white/50 transition hover:text-white"
+              >
+                <IconTiktok />
+              </a>
+            ) : (
+              <span
+                aria-label="TikTok - în curând"
+                title="În curând"
+                className="cursor-default text-white/20"
+              >
+                <IconTiktok />
+              </span>
+            )}
+          </div>
         </div>
 
         <a
@@ -116,6 +118,12 @@ export default function Header() {
             {item.label.toUpperCase()}
           </Link>
         ))}
+        <Link
+          href="/login"
+          className="whitespace-nowrap text-xs font-semibold text-blue-bright hover:text-white"
+        >
+          LOGIN
+        </Link>
       </nav>
     </header>
   );

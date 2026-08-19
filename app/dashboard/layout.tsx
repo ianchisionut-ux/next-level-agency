@@ -51,8 +51,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
         activeWorkspaceId={activeWorkspace.id}
         userName={user.name}
       />
-      <div className="ml-60">
-        <div className="max-w-6xl mx-auto px-8 py-8 text-mist-100">{children}</div>
+      <div className="pt-14 lg:pt-0 lg:ml-60">
+        <div className="max-w-6xl mx-auto px-4 py-6 sm:px-8 sm:py-8 text-mist-100">{children}</div>
       </div>
     </div>
   );
