@@ -1,11 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { WorkspaceSwitcher, WorkspaceOption } from "@/app/components/ui/workspace-switcher";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Timeline", icon: TimelineIcon },
+  { href: "/dashboard/calendar", label: "Calendar", icon: CalendarIcon },
   { href: "/dashboard/compose", label: "Postare nouă", icon: ComposeIcon },
   { href: "/dashboard/campaigns", label: "Campanii", icon: CampaignIcon },
   { href: "/dashboard/analytics", label: "Analiză", icon: ChartIcon },
@@ -24,6 +26,12 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Inchide automat drawer-ul de mobil la orice navigare intre pagini.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -32,14 +40,56 @@ export function Sidebar({
   }
 
   return (
-    <aside className="fixed inset-y-0 left-0 w-60 border-r border-nav-border bg-nav-bg flex flex-col text-nav-text">
-      <div className="px-5 py-6">
-        <div className="flex items-center gap-2 mb-5">
+    <>
+      {/* Bara de sus, doar pe mobil/tableta - buton de meniu + wordmark */}
+      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-nav-border bg-nav-bg px-4 lg:hidden">
+        <button
+          onClick={() => setMobileOpen(true)}
+          aria-label="Deschide meniul"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-nav-text hover:bg-nav-bg-hover transition-colors"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round" />
+          </svg>
+        </button>
+        <div className="flex items-center gap-2">
           <span className="h-2.5 w-2.5 rounded-full bg-signal shadow-glow" />
-          <span className="font-display font-semibold text-lg tracking-tight text-nav-text">Signal</span>
+          <span className="font-display font-semibold text-base tracking-tight text-nav-text">Signal</span>
         </div>
-        <WorkspaceSwitcher workspaces={workspaces} activeId={activeWorkspaceId} />
+        <div className="w-9" />
       </div>
+
+      {/* Fundal semi-transparent, doar cand drawer-ul de mobil e deschis */}
+      {mobileOpen && (
+        <div
+          onClick={() => setMobileOpen(false)}
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-60 border-r border-nav-border bg-nav-bg flex flex-col text-nav-text transition-transform duration-200 ease-out lg:translate-x-0 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="px-5 py-6">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-signal shadow-glow" />
+              <span className="font-display font-semibold text-lg tracking-tight text-nav-text">Signal</span>
+            </div>
+            <button
+              onClick={() => setMobileOpen(false)}
+              aria-label="Închide meniul"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-nav-text-muted hover:bg-nav-bg-hover transition-colors lg:hidden"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M6 6l12 12M6 18 18 6" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+          <WorkspaceSwitcher workspaces={workspaces} activeId={activeWorkspaceId} />
+        </div>
 
       <nav className="flex-1 px-3 space-y-1">
         {NAV_ITEMS.map((item) => {
@@ -77,7 +127,8 @@ export function Sidebar({
           </button>
         </div>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }
 
@@ -113,6 +164,14 @@ function UsersIcon({ active }: { active: boolean }) {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active ? "#7C9CFF" : "#8A8F9C"} strokeWidth="1.8">
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function CalendarIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active ? "#7C9CFF" : "#8A8F9C"} strokeWidth="1.8">
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M8 3v4M16 3v4M3 10h18" strokeLinecap="round" />
     </svg>
   );
 }
