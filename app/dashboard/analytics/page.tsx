@@ -7,6 +7,7 @@ import { GoalProgress } from "@/app/components/analytics/goal-progress";
 import { ProfessionalAnalysis } from "@/app/components/analytics/professional-analysis";
 import { generateProfessionalAnalysis } from "@/lib/insights-engine";
 import { computeBestTimeToPost } from "@/lib/best-time";
+import { PageHeader } from "@/app/components/ui/page-header";
 import { StatCard, StatIconEye, StatIconCheck, StatIconCursor, StatIconPercent } from "@/app/components/ui/stat-card";
 import { StatCardChart } from "@/app/components/analytics/stat-card-chart";
 import { PlatformIcon } from "@/app/components/ui/platform-icon";
@@ -18,34 +19,28 @@ export default async function AnalyticsPage() {
   const workspace = await getActiveWorkspace();
   if (!workspace) redirect("/login");
 
-  const insights = await prisma.platformInsight.findMany({
-    where: { account: { workspaceId: workspace!.id } },
-    include: { account: true },
-    orderBy: { fetchedAt: "asc" },
-    take: 500,
-  });
-
   // Perioada anterioara (30-60 zile in urma), pentru indicatorii de tendinta
   // (% fata de perioada precedenta) - la fel ca sagetile din referinte.
   const periodStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const previousPeriodStart = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
-  const previousInsights = await prisma.platformInsight.findMany({
-    where: {
-      account: { workspaceId: workspace!.id },
-      fetchedAt: { gte: previousPeriodStart, lt: periodStart },
-    },
-  });
-  const prevImpressions = previousInsights.reduce((sum, i) => sum + i.impressions, 0);
-  const prevEngagement = previousInsights.reduce((sum, i) => sum + i.likes + i.comments + i.shares + i.saves, 0);
-  const prevClicks = previousInsights.reduce((sum, i) => sum + i.clicks, 0);
 
-  function trend(current: number, previous: number): { value: string; positive: boolean } | undefined {
-    if (previous === 0) return undefined;
-    const change = ((current - previous) / previous) * 100;
-    return { value: `${Math.abs(Math.round(change))}%`, positive: change >= 0 };
-  }
-
-  const [postsThisPeriod, postsPrevPeriod] = await Promise.all([
+  // Cele 5 interogari de mai jos sunt independente una de alta - inainte
+  // rulau (majoritatea) pe rand, adaugand latenta de retea de fiecare data.
+  // Rulate in paralel, timpul total scade la cel al celei mai lente, nu la
+  // suma tuturor.
+  const [insights, previousInsights, postsThisPeriod, postsPrevPeriod, keywords] = await Promise.all([
+    prisma.platformInsight.findMany({
+      where: { account: { workspaceId: workspace!.id } },
+      include: { account: true },
+      orderBy: { fetchedAt: "asc" },
+      take: 500,
+    }),
+    prisma.platformInsight.findMany({
+      where: {
+        account: { workspaceId: workspace!.id },
+        fetchedAt: { gte: previousPeriodStart, lt: periodStart },
+      },
+    }),
     prisma.postVariant.count({
       where: { status: "PUBLISHED", publishedAt: { gte: periodStart }, post: { workspaceId: workspace!.id } },
     }),
@@ -56,13 +51,22 @@ export default async function AnalyticsPage() {
         post: { workspaceId: workspace!.id },
       },
     }),
+    prisma.keywordSnapshot.findMany({
+      where: { workspaceId: workspace!.id },
+      orderBy: { capturedAt: "desc" },
+      take: 20,
+    }),
   ]);
 
-  const keywords = await prisma.keywordSnapshot.findMany({
-    where: { workspaceId: workspace!.id },
-    orderBy: { capturedAt: "desc" },
-    take: 20,
-  });
+  const prevImpressions = previousInsights.reduce((sum, i) => sum + i.impressions, 0);
+  const prevEngagement = previousInsights.reduce((sum, i) => sum + i.likes + i.comments + i.shares + i.saves, 0);
+  const prevClicks = previousInsights.reduce((sum, i) => sum + i.clicks, 0);
+
+  function trend(current: number, previous: number): { value: string; positive: boolean } | undefined {
+    if (previous === 0) return undefined;
+    const change = ((current - previous) / previous) * 100;
+    return { value: `${Math.abs(Math.round(change))}%`, positive: change >= 0 };
+  }
 
   const totalImpressions = insights.reduce((sum, i) => sum + i.impressions, 0);
   const totalEngagement = insights.reduce((sum, i) => sum + i.likes + i.comments + i.shares + i.saves, 0);
@@ -71,6 +75,19 @@ export default async function AnalyticsPage() {
     totalImpressions > 0 ? ((totalEngagement / totalImpressions) * 100).toFixed(1) : "0";
   const engagementRatePrev =
     prevImpressions > 0 ? (prevEngagement / prevImpressions) * 100 : 0;
+
+  // Social Performance Score - un singur numar (0-100), gen "executive
+  // summary", combinand: nivelul ratei de interacțiune (0-50pct),
+  // tendința față de perioada anterioară (0-30pct), și consistența de
+  // postare (0-20pct, cate zile din perioada au avut cel puțin o postare).
+  const engRateScore = Math.min(50, parseFloat(engagementRate) * 6.25);
+  const growthScore =
+    engagementRatePrev > 0
+      ? Math.min(30, Math.max(0, ((parseFloat(engagementRate) - engagementRatePrev) / engagementRatePrev) * 100 + 15))
+      : 15;
+  const activeDays = new Set(insights.map((i) => i.fetchedAt.toDateString())).size;
+  const consistencyScore = Math.min(20, activeDays * 0.7);
+  const socialScore = Math.round(engRateScore + growthScore + consistencyScore);
 
   const byDate = new Map<string, { impressions: number; engagement: number; clicks: number }>();
   for (const i of insights) {
@@ -138,6 +155,54 @@ export default async function AnalyticsPage() {
         })
       : [];
 
+  // Performanță pe FORMAT de conținut (Video/Reel, Carusel, Foto, Doar text) -
+  // dedusă automat din mediaUrls, fără câmp nou in schema. Inspirat din
+  // "Reels vs. Stories, carousels vs. photos" (Hootsuite).
+  function inferFormat(mediaUrls: string[]): string {
+    if (mediaUrls.length === 0) return "Doar text";
+    if (mediaUrls.length > 1) return "Carusel";
+    if (/\.(mp4|mov|m4v)(\?|$)/i.test(mediaUrls[0])) return "Video / Reel";
+    return "Foto";
+  }
+
+  // O singura interogare pentru toate variantele publicate, cu toate campurile
+  // necesare (mediaUrls, contentTags, hashtags) - inainte erau 2 interogari
+  // separate, identice ca WHERE, doar cu campuri diferite selectate.
+  const allPublishedVariants = await prisma.postVariant.findMany({
+    where: { status: "PUBLISHED", post: { workspaceId: workspace!.id } },
+    select: { id: true, mediaUrls: true, contentTags: true, hashtags: true },
+  });
+
+  const byFormat = new Map<string, { engagement: number; count: number }>();
+  const byContentTag = new Map<string, { engagement: number; count: number }>();
+  for (const v of allPublishedVariants) {
+    const stats = byVariant.get(v.id);
+    const engagement = stats?.engagement ?? 0;
+    const format = inferFormat(v.mediaUrls);
+    const prevFormat = byFormat.get(format) ?? { engagement: 0, count: 0 };
+    byFormat.set(format, { engagement: prevFormat.engagement + engagement, count: prevFormat.count + 1 });
+
+    for (const tag of v.contentTags) {
+      const prevTag = byContentTag.get(tag) ?? { engagement: 0, count: 0 };
+      byContentTag.set(tag, { engagement: prevTag.engagement + engagement, count: prevTag.count + 1 });
+    }
+  }
+  const formatBreakdown = Array.from(byFormat.entries())
+    .map(([format, v]) => ({
+      format,
+      avgEngagement: v.count > 0 ? Math.round(v.engagement / v.count) : 0,
+      count: v.count,
+    }))
+    .sort((a, b) => b.avgEngagement - a.avgEngagement);
+
+  const contentTagBreakdown = Array.from(byContentTag.entries())
+    .map(([tag, v]) => ({
+      tag,
+      avgEngagement: v.count > 0 ? Math.round(v.engagement / v.count) : 0,
+      count: v.count,
+    }))
+    .sort((a, b) => b.avgEngagement - a.avgEngagement);
+
   // Etichetă automată de performanță, pe baza ratei reale de interacțiune -
   // acelasi principiu ca badge-urile VIRAL/TOP ROI/STEADY din referințe.
   function performanceBadge(engRate: number): { label: string; color: string } | null {
@@ -177,12 +242,9 @@ export default async function AnalyticsPage() {
 
   // Hashtag-uri urmărite — agregăm din hashtags-urile reale folosite pe variantele
   // publicate, ponderate cu interacțiunile reale acumulate de fiecare variantă.
-  const publishedVariants = await prisma.postVariant.findMany({
-    where: { status: "PUBLISHED", post: { workspaceId: workspace!.id } },
-    select: { id: true, hashtags: true },
-  });
+  // Refolosim allPublishedVariants (mai sus), fara alta interogare noua.
   const hashtagStats = new Map<string, number>();
-  for (const v of publishedVariants) {
+  for (const v of allPublishedVariants) {
     const engagement = byVariant.get(v.id)?.engagement ?? 0;
     for (const tag of v.hashtags) {
       hashtagStats.set(tag, (hashtagStats.get(tag) ?? 0) + engagement);
@@ -246,17 +308,12 @@ export default async function AnalyticsPage() {
 
   // Sentiment & Buzz - agregam toate snapshot-urile de sentiment din ultimele
   // 30 de zile pentru variantele acestui workspace. Izolat in try/catch, la
-  // fel ca demografia.
+  // fel ca demografia. O singura interogare (filtru direct prin relatie),
+  // in loc de doua (inainte: cauta id-uri, apoi cauta sentiment cu acele id-uri).
   let sentimentTotals = { positive: 0, neutral: 0, negative: 0 };
   try {
-    const workspaceVariantIds = await prisma.postVariant.findMany({
-      where: { post: { workspaceId: workspace!.id } },
-      select: { id: true },
-    });
-    const idSet = new Set(workspaceVariantIds.map((v) => v.id));
-
     const sentimentRows = await prisma.postSentiment.findMany({
-      where: { variantId: { in: Array.from(idSet) } },
+      where: { variant: { post: { workspaceId: workspace!.id } } },
     });
 
     for (const row of sentimentRows) {
@@ -276,7 +333,7 @@ export default async function AnalyticsPage() {
 
   const hasData = insights.length > 0;
 
-  const bestTimeSlots = await computeBestTimeToPost(workspace!.id);
+  const bestTimeSlots = await computeBestTimeToPost(workspace!.id, byVariant);
 
   const now = new Date();
   const daysLeftInMonth =
@@ -311,22 +368,45 @@ export default async function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display text-2xl font-semibold">Analiză</h1>
-          <p className="text-sm text-mist-500 mt-1">Performanță agregată pe toate platformele conectate.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <GoalProgress
-            workspaceId={workspace!.id}
-            goal={workspace!.monthlyEngagementGoal ?? null}
-            currentEngagement={totalEngagement}
-          />
-          <ExportReportButton rows={exportRows} filename="top-postari-signal.csv" />
-        </div>
-      </header>
+      <PageHeader
+        title="Analiză"
+        description="Social Performance Score — rezumat executiv al ultimelor 30 de zile."
+        leading={
+          <div
+            className={`glass-card flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 ${
+              socialScore >= 70
+                ? "border-state-success text-state-success"
+                : socialScore >= 40
+                  ? "border-signal text-signal-bright"
+                  : "border-state-warning text-state-warning"
+            }`}
+          >
+            <span className="font-mono text-xl font-bold">{socialScore}</span>
+          </div>
+        }
+        actions={
+          <>
+            <GoalProgress
+              workspaceId={workspace!.id}
+              goal={workspace!.monthlyEngagementGoal ?? null}
+              currentEngagement={totalEngagement}
+            />
+            <ExportReportButton rows={exportRows} filename="top-postari-signal.csv" />
+            <a
+              href={`/api/reports/monthly?workspaceId=${workspace!.id}`}
+              className="rounded-xl border border-ink-600 hover:border-ink-500 active:scale-[0.98] transition-all duration-150 text-mist-100 text-sm font-medium px-4 py-2.5 flex items-center gap-2"
+            >
+              <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" xmlns="http://www.w3.org/2000/svg">
+                <path d="M8 3h5l5 5v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                <path d="M13 3v5h5" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+              </svg>
+              Raport PDF (30 zile)
+            </a>
+          </>
+        }
+      />
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCardChart
           label="Afișări totale"
           value={totalImpressions.toLocaleString("ro-RO")}
@@ -377,7 +457,7 @@ export default async function AnalyticsPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
               <h2 className="font-display font-semibold text-sm mb-4">Evoluție în timp</h2>
               <EngagementChart data={engagementSeries} />
@@ -433,7 +513,7 @@ export default async function AnalyticsPage() {
           </div>
 
           {(topHashtags.length > 0 || topPosts.length > 0) && (
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
                 <h2 className="font-display font-semibold text-sm mb-1">Hashtag-uri urmărite</h2>
                 <p className="text-xs text-mist-500 mb-4">Ordonate după interacțiunile generate</p>
@@ -520,13 +600,55 @@ export default async function AnalyticsPage() {
             </div>
           )}
 
+          {(formatBreakdown.length > 0 || contentTagBreakdown.length > 0) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {formatBreakdown.length > 0 && (
+                <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
+                  <h2 className="font-display font-semibold text-sm mb-1">Performanță pe format</h2>
+                  <p className="text-xs text-mist-500 mb-4">
+                    Interacțiuni medii per postare, pe tip de conținut
+                  </p>
+                  <div className="space-y-2.5">
+                    {formatBreakdown.map((f) => (
+                      <div key={f.format} className="flex items-center justify-between text-sm">
+                        <span className="text-mist-300">
+                          {f.format} <span className="text-mist-700">({f.count})</span>
+                        </span>
+                        <span className="font-mono text-signal-bright">{f.avgEngagement.toLocaleString("ro-RO")}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {contentTagBreakdown.length > 0 && (
+                <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
+                  <h2 className="font-display font-semibold text-sm mb-1">Performanță pe categorie</h2>
+                  <p className="text-xs text-mist-500 mb-4">
+                    Interacțiuni medii per postare, pe eticheta de conținut aleasă la compose
+                  </p>
+                  <div className="space-y-2.5">
+                    {contentTagBreakdown.map((t) => (
+                      <div key={t.tag} className="flex items-center justify-between text-sm">
+                        <span className="text-mist-300">
+                          {t.tag} <span className="text-mist-700">({t.count})</span>
+                        </span>
+                        <span className="font-mono text-signal-bright">{t.avgEngagement.toLocaleString("ro-RO")}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {bestTimeSlots.length > 0 && (
             <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
               <h2 className="font-display font-semibold text-sm mb-1">Cel mai bun moment de postat</h2>
               <p className="text-xs text-mist-500 mb-4">
                 Calculat din rata reală de interacțiune a postărilor tale anterioare, pe zi și oră
               </p>
-              <div className="grid grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 {bestTimeSlots.map((slot, idx) => (
                   <div
                     key={`${slot.dayOfWeek}-${slot.hour}`}
@@ -550,7 +672,7 @@ export default async function AnalyticsPage() {
           )}
 
           {(ageDemographics.length > 0 || cityDemographics.length > 0) && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {ageDemographics.length > 0 && (
                 <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
                   <h2 className="font-display font-semibold text-sm mb-1">Demografia audienței</h2>

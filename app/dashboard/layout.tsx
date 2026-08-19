@@ -36,14 +36,23 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!activeWorkspace) redirect("/login");
 
   return (
-    <div className="min-h-screen bg-ink-900">
+    <div className="min-h-screen bg-ink-900 relative overflow-hidden">
+      {/* Pete decorative, blurate, in fundal - dau adancime reala efectului
+          de sticla al cardurilor. Blur redus (60-70px, nu 110-120px) - blur
+          radius mare pe elemente mari costa vizibil la randare. */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -top-32 left-1/4 h-[420px] w-[420px] rounded-full bg-signal/15 blur-[70px]" />
+        <div className="absolute top-1/3 -right-24 h-[380px] w-[380px] rounded-full bg-state-success/10 blur-[70px]" />
+        <div className="absolute bottom-0 left-1/3 h-[320px] w-[320px] rounded-full bg-signal/10 blur-[60px]" />
+      </div>
+
       <Sidebar
         workspaces={workspaces.map((w) => ({ id: w.id, name: w.name, role: w.role }))}
         activeWorkspaceId={activeWorkspace.id}
         userName={user.name}
       />
-      <div className="pl-60">
-        <div className="max-w-6xl mx-auto px-8 py-8 text-mist-100">{children}</div>
+      <div className="pt-14 lg:pt-0 lg:ml-60">
+        <div className="max-w-6xl mx-auto px-4 py-6 sm:px-8 sm:py-8 text-mist-100">{children}</div>
       </div>
     </div>
   );

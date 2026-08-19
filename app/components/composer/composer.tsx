@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { PLATFORM_META, PLATFORM_ORDER, PlatformKey } from "@/lib/platform-meta";
 import { PlatformIcon } from "@/app/components/ui/platform-icon";
 import { PlatformPreview } from "@/app/components/composer/platform-preview";
+import { EmojiPicker } from "@/app/components/composer/emoji-picker";
 
 export interface ComposerAccount {
   id: string;
@@ -44,6 +45,8 @@ export function Composer({
   const [selected, setSelected] = useState<Set<PlatformKey>>(new Set(availablePlatforms));
   const [useSameContent, setUseSameContent] = useState(true);
   const [sharedContent, setSharedContent] = useState("");
+  const CONTENT_TAG_OPTIONS = ["Educațional", "Promoțional", "Behind the scenes", "Testimonial", "Anunț", "Distractiv"];
+  const [contentTags, setContentTags] = useState<string[]>([]);
   const [sharedMedia, setSharedMedia] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<PlatformKey | null>(availablePlatforms[0] ?? null);
   const [perPlatform, setPerPlatform] = useState<Record<string, VariantState>>({});
@@ -91,17 +94,20 @@ export function Composer({
     setUploading(true);
     setError(null);
     try {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch("/api/media/upload", { method: "POST", body: form });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Eroare la upload");
+      // Upload direct din browser catre Vercel Blob - fisierul NU mai trece
+      // prin serverul nostru, deci nu exista limita de marime (~4.5MB) care
+      // dadea eroarea "Request Entity Too Large" la fisiere video mai mari.
+      const { upload } = await import("@vercel/blob/client");
+      const blob = await upload(file.name, file, {
+        access: "public",
+        handleUploadUrl: "/api/media/upload",
+      });
 
       if (target === "shared") {
-        setSharedMedia((prev) => [...prev, data.url]);
+        setSharedMedia((prev) => [...prev, blob.url]);
       } else {
         const v = getVariant(target);
-        updateVariant(target, { mediaUrls: [...v.mediaUrls, data.url] });
+        updateVariant(target, { mediaUrls: [...v.mediaUrls, blob.url] });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Eroare la upload");
@@ -131,6 +137,7 @@ export function Composer({
         content,
         mediaUrls,
         hashtags,
+        contentTags,
         // new Date(...) interpretează string-ul "datetime-local" ca oră locală
         // a browser-ului (corect - user-ul a ales ora din perspectiva lui),
         // iar .toISOString() îl convertește la UTC, fără ambiguitate pe server.
@@ -183,7 +190,7 @@ export function Composer({
   }
 
   return (
-    <div className="grid grid-cols-[1fr_360px] gap-6 items-start">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
       <div className="space-y-5">
         {campaignName && (
           <div className="rounded-xl border border-signal/30 bg-signal-soft px-4 py-2.5 text-sm text-signal-bright">
@@ -192,7 +199,7 @@ export function Composer({
         )}
 
         {/* Selector platforme */}
-        <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
+        <div className="glass-card rounded-2xl p-5">
           <p className="text-xs text-mist-500 uppercase tracking-wide mb-3">Publică pe</p>
           <div className="flex flex-wrap gap-2">
             {availablePlatforms.map((p) => {
@@ -219,7 +226,7 @@ export function Composer({
         </div>
 
         {/* Toggle continut identic */}
-        <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5 flex items-center justify-between">
+        <div className="glass-card rounded-2xl p-5 flex items-center justify-between">
           <div>
             <p className="text-sm font-medium">Același conținut pe toate platformele</p>
             <p className="text-xs text-mist-500 mt-0.5">
@@ -245,7 +252,7 @@ export function Composer({
 
         {/* Editor */}
         {useSameContent ? (
-          <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5 space-y-3">
+          <div className="glass-card rounded-2xl p-5 space-y-3">
             <textarea
               value={sharedContent}
               onChange={(e) => setSharedContent(e.target.value)}
@@ -254,15 +261,18 @@ export function Composer({
               className="w-full bg-ink-900 border border-ink-600 rounded-xl p-3 text-sm text-mist-100 placeholder:text-mist-700 focus:border-signal outline-none resize-none"
             />
             <CharCounts content={sharedContent} platforms={activePlatforms} />
-            <MediaUploader
-              mediaUrls={sharedMedia}
-              onUpload={(f) => handleUpload(f, "shared")}
-              onRemove={(url) => setSharedMedia((prev) => prev.filter((u) => u !== url))}
-              uploading={uploading}
-            />
+            <div className="flex items-center gap-2">
+              <EmojiPicker onSelect={(emoji) => insertIntoActiveContent(emoji)} />
+              <MediaUploader
+                mediaUrls={sharedMedia}
+                onUpload={(f) => handleUpload(f, "shared")}
+                onRemove={(url) => setSharedMedia((prev) => prev.filter((u) => u !== url))}
+                uploading={uploading}
+              />
+            </div>
           </div>
         ) : (
-          <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card overflow-hidden">
+          <div className="glass-card rounded-2xl overflow-hidden">
             <div className="flex border-b border-ink-700">
               {activePlatforms.map((p) => (
                 <button
@@ -289,16 +299,19 @@ export function Composer({
                   className="w-full bg-ink-900 border border-ink-600 rounded-xl p-3 text-sm text-mist-100 placeholder:text-mist-700 focus:border-signal outline-none resize-none"
                 />
                 <CharCounts content={getVariant(activeTab).content} platforms={[activeTab]} />
-                <MediaUploader
-                  mediaUrls={getVariant(activeTab).mediaUrls}
-                  onUpload={(f) => handleUpload(f, activeTab)}
-                  onRemove={(url) =>
-                    updateVariant(activeTab, {
-                      mediaUrls: getVariant(activeTab).mediaUrls.filter((u) => u !== url),
-                    })
-                  }
-                  uploading={uploading}
-                />
+                <div className="flex items-center gap-2">
+                  <EmojiPicker onSelect={(emoji) => insertIntoActiveContent(emoji)} />
+                  <MediaUploader
+                    mediaUrls={getVariant(activeTab).mediaUrls}
+                    onUpload={(f) => handleUpload(f, activeTab)}
+                    onRemove={(url) =>
+                      updateVariant(activeTab, {
+                        mediaUrls: getVariant(activeTab).mediaUrls.filter((u) => u !== url),
+                      })
+                    }
+                    uploading={uploading}
+                  />
+                </div>
                 <label className="block text-xs text-mist-500 pt-1">
                   Oră personalizată pentru {PLATFORM_META[activeTab].label} (opțional)
                   <input
@@ -313,9 +326,40 @@ export function Composer({
           </div>
         )}
 
+        {/* Etichete de conținut (piloni) - pentru breakdown de performanță pe categorie */}
+        <div className="glass-card rounded-2xl p-5">
+          <p className="text-sm font-medium mb-0.5">Categorie de conținut</p>
+          <p className="text-xs text-mist-500 mb-3">
+            Opțional — te ajută să vezi mai târziu ce tip de conținut performează cel mai bine
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {CONTENT_TAG_OPTIONS.map((tag) => {
+              const active = contentTags.includes(tag);
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() =>
+                    setContentTags((prev) =>
+                      active ? prev.filter((t) => t !== tag) : [...prev, tag]
+                    )
+                  }
+                  className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                    active
+                      ? "border-signal bg-signal-soft text-signal-bright"
+                      : "border-ink-600 text-mist-300 hover:border-ink-500"
+                  }`}
+                >
+                  {tag}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Sugestii: hashtag-uri (din performanța ta reală) + cuvinte cheie (din Search Console) */}
         {(suggestedHashtags.length > 0 || suggestedKeywords.length > 0) && (
-          <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5 space-y-4">
+          <div className="glass-card rounded-2xl p-5 space-y-4">
             {suggestedHashtags.length > 0 && (
               <div>
                 <p className="text-sm font-medium mb-0.5">Hashtag-uri sugerate</p>
@@ -361,7 +405,7 @@ export function Composer({
         )}
 
         {/* Programare */}
-        <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
+        <div className="glass-card rounded-2xl p-5">
           <p className="text-sm font-medium mb-3">Când se publică</p>
           {bestTimeHint && (
             <button
@@ -401,22 +445,24 @@ export function Composer({
           <button
             onClick={() => handleSubmit(false)}
             disabled={submitting}
-            className="flex-1 rounded-xl border border-ink-600 hover:border-ink-500 text-mist-100 text-sm font-medium py-3 transition-colors disabled:opacity-50"
+            className="flex-1 rounded-xl border border-ink-600 hover:border-ink-500 active:scale-[0.98] text-mist-100 text-sm font-medium py-3 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
+            {submitting && <ButtonSpinner />}
             {scheduledAt ? "Programează" : "Salvează ca ciornă"}
           </button>
           <button
             onClick={() => handleSubmit(true)}
             disabled={submitting}
-            className="flex-1 rounded-xl bg-signal hover:bg-signal-bright text-white text-sm font-medium py-3 transition-colors disabled:opacity-50"
+            className="flex-1 rounded-xl bg-signal hover:bg-signal-bright active:scale-[0.98] shadow-floating text-white text-sm font-medium py-3 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
+            {submitting && <ButtonSpinner />}
             Publică acum
           </button>
         </div>
       </div>
 
       {/* Preview live */}
-      <div className="sticky top-8 space-y-3">
+      <div className="lg:sticky lg:top-8 space-y-3">
         <p className="text-xs text-mist-500 uppercase tracking-wide">Previzualizare</p>
         {activePlatforms.length === 0 && (
           <p className="text-sm text-mist-500">Alege cel puțin o platformă pentru a vedea previzualizarea.</p>
@@ -500,5 +546,14 @@ function MediaUploader({
         />
       </label>
     </div>
+  );
+}
+
+function ButtonSpinner() {
+  return (
+    <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+      <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.4 0 0 5.4 0 12h4Z" />
+    </svg>
   );
 }

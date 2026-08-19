@@ -69,7 +69,7 @@ export function CampaignsList({ workspaceId, campaigns }: { workspaceId: string;
       <div className="flex justify-end">
         <button
           onClick={() => setCreating((v) => !v)}
-          className="rounded-xl bg-signal hover:bg-signal-bright transition-colors text-white text-sm font-medium px-4 py-2.5"
+          className="rounded-xl bg-signal hover:bg-signal-bright active:scale-[0.98] shadow-floating transition-all duration-150 text-white text-sm font-medium px-4 py-2.5"
         >
           {creating ? "Anulează" : "+ Campanie nouă"}
         </button>
@@ -90,7 +90,7 @@ export function CampaignsList({ workspaceId, campaigns }: { workspaceId: string;
             rows={2}
             className="w-full bg-ink-900 border border-ink-600 rounded-xl p-3 text-sm text-mist-100 placeholder:text-mist-700 focus:border-signal outline-none resize-none"
           />
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <label className="block text-xs text-mist-500">
               Obiectiv (interacțiuni)
               <input
@@ -133,7 +133,7 @@ export function CampaignsList({ workspaceId, campaigns }: { workspaceId: string;
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {campaigns.map((c) => (
             <Link
               key={c.id}

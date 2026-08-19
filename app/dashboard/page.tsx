@@ -4,6 +4,7 @@ import { getActiveWorkspace } from "@/lib/session";
 import { BroadcastTimeline, TimelineVariant } from "@/app/components/timeline/broadcast-timeline";
 import { StatCard, StatIconLink, StatIconClock, StatIconCheck, StatIconWarning } from "@/app/components/ui/stat-card";
 import { RecentPostsList } from "@/app/components/dashboard/recent-posts-list";
+import { PageHeader } from "@/app/components/ui/page-header";
 import { PlatformKey } from "@/lib/platform-meta";
 
 export const dynamic = "force-dynamic";
@@ -43,18 +44,18 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-semibold">Timeline</h1>
-          <p className="text-sm text-mist-500 mt-1">Tot ce se publică, pe toate platformele, dintr-o privire.</p>
-        </div>
-        <Link
-          href="/dashboard/compose"
-          className="rounded-xl bg-signal hover:bg-signal-bright transition-colors text-white text-sm font-medium px-4 py-2.5"
-        >
-          + Postare nouă
-        </Link>
-      </header>
+      <PageHeader
+        title="Timeline"
+        description="Tot ce se publică, pe toate platformele, dintr-o privire."
+        actions={
+          <Link
+            href="/dashboard/compose"
+            className="rounded-xl bg-signal hover:bg-signal-bright active:scale-[0.98] transition-all duration-150 shadow-floating text-white text-sm font-medium px-4 py-2.5"
+          >
+            + Postare nouă
+          </Link>
+        }
+      />
 
       {accountsCount === 0 && (
         <div className="rounded-2xl border border-signal/30 bg-signal-soft px-5 py-4 flex items-center justify-between gap-4">
@@ -75,7 +76,7 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Conturi conectate" value={String(accountsCount)} icon={<StatIconLink />} />
         <StatCard label="Programate" value={String(scheduledCount)} accent="signal" icon={<StatIconClock />} />
         <StatCard label="Publicate (7 zile)" value={String(publishedThisWeek)} accent="success" icon={<StatIconCheck />} />
