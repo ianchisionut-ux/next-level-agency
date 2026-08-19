@@ -1,6 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+
+// "Signal" e un tool intern, secret - nu are sens un banner public de
+// consimtamant cookie-uri acolo, si in plus (bug real) bannerul, fiind
+// fixed + z-index mare, stătea peste partea de jos a sidebar-ului si
+// bloca clickurile pe taburi.
+const HIDDEN_ON = ["/login", "/signup", "/dashboard", "/invite", "/forgot-password", "/reset-password"];
 
 type Prefs = {
   analytics: boolean;
@@ -27,11 +34,15 @@ function savePrefs(prefs: Prefs) {
 }
 
 export default function CookieConsent() {
+  const pathname = usePathname();
+  const hidden = HIDDEN_ON.some((p) => pathname.startsWith(p));
+
   const [visible, setVisible] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [prefs, setPrefs] = useState<Prefs>({ analytics: false, marketing: false });
 
   useEffect(() => {
+    if (hidden) return;
     const existing = readPrefs();
     if (!existing) {
       setVisible(true);
@@ -65,6 +76,8 @@ export default function CookieConsent() {
     setVisible(false);
     setSettingsOpen(false);
   }
+
+  if (hidden) return null;
 
   return (
     <>

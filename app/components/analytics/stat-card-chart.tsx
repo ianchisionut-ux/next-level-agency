@@ -23,10 +23,10 @@ const ACCENT_TEXT = {
 };
 
 const ACCENT_BADGE = {
-  signal: "bg-signal",
-  success: "bg-state-success",
-  warning: "bg-state-warning",
-  error: "bg-state-error",
+  signal: "bg-gradient-to-br from-[#4F7CFF] to-[#2451E0]",
+  success: "bg-gradient-to-br from-[#34D399] to-[#059669]",
+  warning: "bg-gradient-to-br from-[#FBBF24] to-[#D97706]",
+  error: "bg-gradient-to-br from-[#F87171] to-[#DC2626]",
 };
 
 const ACCENT_STROKE = {
@@ -40,11 +40,11 @@ export function StatCardChart({ label, value, trend, accent = "signal", icon, da
   const gradientId = `spark-${dataKey}-${accent}`;
 
   return (
-    <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-4 overflow-hidden">
+    <div className="glass-card rounded-2xl p-4 overflow-hidden">
       <div className="flex items-center gap-3.5">
         {icon && (
           <div
-            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white ${ACCENT_BADGE[accent]}`}
+            className={`icon-badge-gradient flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white ${ACCENT_BADGE[accent]}`}
           >
             {icon}
           </div>

@@ -116,7 +116,11 @@ body {
   --font-display: "Space Grotesk", sans-serif;
   --font-mono: "IBM Plex Mono", monospace;
 
-  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.08);
+  /* Umbre gen "Material Dashboard" - straturi multiple, mai profunde decât
+     o umbra plata standard, pentru senzatia de card "ridicat" de pe fundal. */
+  --shadow-card: 0 1px 2px rgba(20, 32, 61, 0.04), 0 4px 12px -2px rgba(20, 32, 61, 0.06), 0 12px 24px -8px rgba(20, 32, 61, 0.08);
+  --shadow-card-hover: 0 2px 4px rgba(20, 32, 61, 0.06), 0 8px 20px -4px rgba(20, 32, 61, 0.10), 0 20px 36px -10px rgba(20, 32, 61, 0.14);
+  --shadow-floating: 0 8px 16px -4px rgba(59, 102, 246, 0.18), 0 20px 40px -12px rgba(59, 102, 246, 0.22);
   --shadow-glow: 0 0 0 1px #4F7CFF33, 0 0 24px -4px #4F7CFF55;
 }
 
@@ -133,6 +137,47 @@ body {
 }
 .input::placeholder { color: var(--color-mist-700); }
 .input:focus { border-color: var(--color-signal); }
+
+/* Efect de sticla (glassmorphism) - fundal semi-transparent + blur, folosit
+   pe cardurile principale ale dashboard-ului, gen Material Dashboard.
+   Blur redus (8px, nu 20px) - 20px pe MULTE carduri deodata era vizibil
+   lent la randare (fiecare card trebuie sa re-eșantioneze fundalul). */
+.glass-card {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.glass-card:hover {
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* Insigna de iconita cu gradient, gen Material Dashboard - fiecare accent
+   are propriul degrade, nu doar o culoare plata. */
+.icon-badge-gradient {
+  box-shadow: var(--shadow-floating);
+}
+
+/* Upgrade global de sticla (glassmorphism) - orice card din aplicatie care
+   foloseste combinatia bg-ink-800 + border-ink-700 (adica aproape toate
+   cardurile din Signal) primeste automat efectul, fara sa fie nevoie sa
+   umblam prin fiecare fisier in parte. Blur redus la 8px (nu 20px) din
+   acelasi motiv de performanta - pe o pagina cu 10+ carduri (ex Analytics),
+   fiecare cu propriul backdrop-blur, costul de randare se aduna vizibil. */
+.bg-ink-800.border-ink-700,
+.bg-ink-800.border.border-ink-700 {
+  background: rgba(255, 255, 255, 0.78) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-color: rgba(255, 255, 255, 0.55) !important;
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+.bg-ink-800.border-ink-700:hover,
+.bg-ink-800.border.border-ink-700:hover {
+  box-shadow: var(--shadow-card-hover);
+}
 
 /* Input-uri folosite direct in interiorul sidebar-ului dark (ex: workspace switcher) */
 .input-on-dark {

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getActiveWorkspace } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { CampaignsList } from "@/app/components/campaigns/campaigns-list";
+import { PageHeader } from "@/app/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -40,12 +41,10 @@ export default async function CampaignsPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="font-display text-2xl font-semibold">Campanii</h1>
-        <p className="text-sm text-mist-500 mt-1">
-          Grupează mai multe postări sub un obiectiv comun și urmărește progresul agregat.
-        </p>
-      </header>
+      <PageHeader
+        title="Campanii"
+        description="Grupează mai multe postări sub un obiectiv comun și urmărește progresul agregat."
+      />
 
       <CampaignsList workspaceId={workspace.id} campaigns={withStats} />
     </div>

@@ -2,33 +2,18 @@ import { prisma } from "@/lib/prisma";
 
 const DAY_LABELS = ["Duminică", "Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă"];
 
-export type BestTimeSlot = {
-  dayOfWeek: number; // 0-6, 0 = Duminica
-  dayLabel: string;
-  hour: number; // 0-23, ora locala Bucuresti
-  avgEngagementRate: number;
-  sampleSize: number;
-};
-
 /**
- * Analizează postările publicate + insight-urile lor reale și calculează
- * rata medie de interacțiune pe fiecare combinație (zi a săptămânii, oră).
- * 100% calculat din date deja colectate - fără niciun API extern nou.
- *
- * Returnează cele mai bune 5 sloturi, doar dintre cele cu minim 2 postări
- * (ca să nu recomandăm pe baza unui singur exemplu, nereprezentativ).
+ * Pentru pagini care NU au deja datele de interactiune incarcate (ex: Compose,
+ * care nu afiseaza deloc grafice) - face interogarea completa, o singura data.
+ * Pagina de Analytics NU foloseste asta - are deja datele, le trimite direct.
  */
-export async function computeBestTimeToPost(workspaceId: string): Promise<BestTimeSlot[]> {
+export async function fetchEngagementByVariant(
+  workspaceId: string
+): Promise<Map<string, { impressions: number; engagement: number }>> {
   const variants = await prisma.postVariant.findMany({
-    where: {
-      status: "PUBLISHED",
-      publishedAt: { not: null },
-      post: { workspaceId },
-    },
-    select: { id: true, publishedAt: true },
+    where: { status: "PUBLISHED", post: { workspaceId } },
+    select: { id: true },
   });
-
-  if (variants.length === 0) return [];
 
   const insights = await prisma.platformInsight.findMany({
     where: { variantId: { in: variants.map((v) => v.id) } },
@@ -43,6 +28,43 @@ export async function computeBestTimeToPost(workspaceId: string): Promise<BestTi
       engagement: prev.engagement + i.likes + i.comments + i.shares + i.saves,
     });
   }
+  return engagementByVariant;
+}
+
+export type BestTimeSlot = {
+  dayOfWeek: number; // 0-6, 0 = Duminica
+  dayLabel: string;
+  hour: number; // 0-23, ora locala Bucuresti
+  avgEngagementRate: number;
+  sampleSize: number;
+};
+
+/**
+ * Analizează postările publicate + insight-urile lor reale și calculează
+ * rata medie de interacțiune pe fiecare combinație (zi a săptămânii, oră).
+ * 100% calculat din date deja colectate - fără niciun API extern nou.
+ *
+ * Primeste engagementByVariant deja calculat de pagina apelanta (Analytics
+ * il are deja) - evita sa refaca o interogare intreaga pe PlatformInsight,
+ * care ar duplica ce s-a incarcat deja mai sus pe pagina.
+ *
+ * Returnează cele mai bune 5 sloturi, doar dintre cele cu minim 2 postări
+ * (ca să nu recomandăm pe baza unui singur exemplu, nereprezentativ).
+ */
+export async function computeBestTimeToPost(
+  workspaceId: string,
+  engagementByVariant: Map<string, { impressions: number; engagement: number }>
+): Promise<BestTimeSlot[]> {
+  const variants = await prisma.postVariant.findMany({
+    where: {
+      status: "PUBLISHED",
+      publishedAt: { not: null },
+      post: { workspaceId },
+    },
+    select: { id: true, publishedAt: true },
+  });
+
+  if (variants.length === 0) return [];
 
   // Grupam pe (ziuaSaptamanii, ora) - ora convertita la fusul orar local (Bucuresti)
   const buckets = new Map<string, { rateSum: number; count: number }>();
