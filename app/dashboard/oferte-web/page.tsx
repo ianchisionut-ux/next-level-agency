@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { PageHeader } from "@/app/components/ui/page-header";
 import { BriefStatusBadge } from "@/app/components/website-briefs/brief-status-badge";
+import { DeleteBriefButton } from "@/app/components/website-briefs/delete-brief-button";
 import { estimateWebsiteBrief, formatPriceRange } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +48,7 @@ export default async function OferteWebPage() {
                 <th className="px-5 py-3.5 font-semibold">Buget client</th>
                 <th className="px-5 py-3.5 font-semibold">Primit</th>
                 <th className="px-5 py-3.5 font-semibold">Status</th>
+                <th className="px-5 py-3.5 font-semibold"></th>
               </tr>
             </thead>
             <tbody>
@@ -71,6 +73,9 @@ export default async function OferteWebPage() {
                     <td className="px-5 py-4 text-mist-500">{formatDate(b.createdAt)}</td>
                     <td className="px-5 py-4">
                       <BriefStatusBadge status={b.status} />
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <DeleteBriefButton id={b.id} companyName={b.companyName} />
                     </td>
                   </tr>
                 );
