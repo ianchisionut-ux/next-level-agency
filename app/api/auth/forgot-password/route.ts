@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
 
   // Raspundem la fel indiferent daca userul exista, ca sa nu dezvaluim ce email-uri au cont
-  if (user) {
+  if (user && user.email) {
     const token = crypto.randomBytes(24).toString("base64url");
     await prisma.passwordResetToken.create({
       data: { userId: user.id, token, expiresAt: new Date(Date.now() + RESET_TTL_MS) },

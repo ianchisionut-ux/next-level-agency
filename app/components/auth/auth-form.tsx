@@ -6,7 +6,7 @@ import Link from "next/link";
 
 export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [workspaceName, setWorkspaceName] = useState("");
@@ -23,7 +23,9 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
-          mode === "signup" ? { email, password, name, workspaceName } : { email, password }
+          mode === "signup"
+            ? { email: identifier, password, name, workspaceName }
+            : { identifier, password }
         ),
       });
       const data = await res.json();
@@ -81,14 +83,14 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
                 </Field>
               </>
             )}
-            <Field label="Email">
+            <Field label={mode === "signup" ? "Email" : "Email sau username"}>
               <input
-                type="email"
+                type="text"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 className="input"
-                placeholder="tu@agentie.ro"
+                placeholder={mode === "signup" ? "tu@agentie.ro" : "email sau username"}
               />
             </Field>
             <Field label="Parolă">

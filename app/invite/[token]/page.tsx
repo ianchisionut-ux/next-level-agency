@@ -22,7 +22,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
     return <Message title="Invitație expirată" body="Cere o invitație nouă persoanei care te-a invitat." />;
   }
 
-  const emailMismatch = user && user.email.toLowerCase() !== invitation.email.toLowerCase();
+  const emailMismatch = user && (!user.email || user.email.toLowerCase() !== invitation.email.toLowerCase());
 
   return (
     <div className="min-h-screen bg-ink-900 flex items-center justify-center px-4">
@@ -58,7 +58,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
 
         {user && emailMismatch && (
           <p className="text-sm text-state-error">
-            Ești autentificat ca {user.email}, dar invitația e pentru {invitation.email}.
+            Ești autentificat ca {user.email ?? "acest cont"}, dar invitația e pentru {invitation.email}.
             Deconectează-te și intră cu emailul corect.
           </p>
         )}

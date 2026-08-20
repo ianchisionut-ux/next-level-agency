@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     if (!invitation) return NextResponse.json({ error: "Invitație inexistentă" }, { status: 404 });
     if (invitation.acceptedAt) return NextResponse.json({ error: "Invitația a fost deja folosită" }, { status: 409 });
     if (invitation.expiresAt < new Date()) return NextResponse.json({ error: "Invitația a expirat" }, { status: 410 });
-    if (invitation.email !== user.email.toLowerCase()) {
+    if (!invitation.email || invitation.email !== user.email?.toLowerCase()) {
       return NextResponse.json(
         { error: `Această invitație e pentru ${invitation.email}. Autentifică-te cu acel email.` },
         { status: 403 }

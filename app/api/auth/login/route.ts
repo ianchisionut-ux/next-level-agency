@@ -11,15 +11,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Prea multe încercări. Așteaptă câteva minute." }, { status: 429 });
     }
 
-    const { email, password } = await req.json();
+    // "identifier" poate fi fie email, fie username - conturile fara email
+    // (ex: cele seedate manual) se autentifica doar prin username.
+    const body = await req.json();
+    const identifier: string | undefined = body.identifier ?? body.email;
+    const password: string | undefined = body.password;
 
-    if (!email || !password) {
-      return NextResponse.json({ error: "Completează email și parolă" }, { status: 400 });
+    if (!identifier || !password) {
+      return NextResponse.json({ error: "Completează email/username și parolă" }, { status: 400 });
     }
 
-    const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    const normalized = identifier.toLowerCase();
+    const user = await prisma.user.findFirst({
+      where: { OR: [{ email: normalized }, { username: normalized }] },
+    });
+
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
-      return NextResponse.json({ error: "Email sau parolă incorectă" }, { status: 401 });
+      return NextResponse.json({ error: "Date de autentificare incorecte" }, { status: 401 });
     }
 
     const token = await createSessionToken({ userId: user.id, email: user.email, name: user.name });

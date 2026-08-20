@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     const [members, invitations] = await Promise.all([
       prisma.workspaceMember.findMany({
         where: { workspaceId },
-        include: { user: { select: { name: true, email: true } } },
+        include: { user: { select: { name: true, email: true, username: true } } },
         orderBy: { joinedAt: "asc" },
       }),
       prisma.workspaceInvitation.findMany({
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
       members: members.map((m) => ({
         id: m.id,
         name: m.user.name,
-        email: m.user.email,
+        email: m.user.email ?? (m.user.username ? `@${m.user.username}` : "—"),
         role: m.role,
         joinedAt: m.joinedAt,
       })),

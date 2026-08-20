@@ -12,7 +12,7 @@ function getSecret() {
 
 export interface SessionPayload {
   userId: string;
-  email: string;
+  email: string | null;
   name: string;
 }
 
