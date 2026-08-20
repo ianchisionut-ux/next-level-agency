@@ -68,7 +68,7 @@ export default function Footer() {
               <li><Link href="/despre-noi" className="hover:text-white">Despre noi</Link></li>
               <li><Link href="/portofoliu" className="hover:text-white">Portofoliu</Link></li>
               <li><Link href="/blog" className="hover:text-white">Blog</Link></li>
-              <li><Link href="/chestionar-audit" className="hover:text-white">Chestionar Audit</Link></li>
+              <li><Link href="/chestionar-audit" className="hover:text-white">Ofertă</Link></li>
               <li><Link href="/contact" className="hover:text-white">Contact</Link></li>
             </ul>
           </div>
