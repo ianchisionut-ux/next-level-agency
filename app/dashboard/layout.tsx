@@ -1,16 +1,17 @@
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/app/components/ui/sidebar";
-import { getCurrentUser, getActiveWorkspace, getUserWorkspaces } from "@/lib/session";
+import { getCurrentUser, getActiveWorkspace, getUserWorkspaces, isSuperAdmin } from "@/lib/session";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  let workspaces, activeWorkspace;
+  let workspaces, activeWorkspace, superAdmin;
   try {
-    [workspaces, activeWorkspace] = await Promise.all([
+    [workspaces, activeWorkspace, superAdmin] = await Promise.all([
       getUserWorkspaces(user.userId),
       getActiveWorkspace(),
+      isSuperAdmin(user.userId),
     ]);
   } catch (err) {
     // Cel mai probabil: schema.prisma are un camp/tabel nou care nu exista
@@ -51,6 +52,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           workspaces={workspaces.map((w) => ({ id: w.id, name: w.name, role: w.role }))}
           activeWorkspaceId={activeWorkspace.id}
           userName={user.name}
+          isSuperAdmin={superAdmin}
         />
       </div>
       <div className="pt-14 lg:pt-0 lg:ml-60 print:ml-0 print:pt-0">
