@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentUser, isSuperAdmin } from "@/lib/session";
 import { PageHeader } from "@/app/components/ui/page-header";
 import { BriefStatusBadge } from "@/app/components/website-briefs/brief-status-badge";
 import { DeleteBriefButton } from "@/app/components/website-briefs/delete-brief-button";
@@ -16,6 +16,7 @@ function formatDate(d: Date) {
 export default async function OferteWebPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  if (!(await isSuperAdmin(user.userId))) redirect("/dashboard");
 
   const briefs = await prisma.websiteBrief.findMany({
     orderBy: { createdAt: "desc" },

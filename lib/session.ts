@@ -52,4 +52,16 @@ export async function getUserWorkspaces(userId: string) {
   return memberships.map((m) => ({ ...m.workspace, role: m.role }));
 }
 
+/**
+ * Acces global (nu per-workspace) - folosit pentru sectiuni sensibile precum
+ * "Oferte Web", vizibile doar contului/conturilor de super admin.
+ */
+export async function isSuperAdmin(userId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isSuperAdmin: true },
+  });
+  return user?.isSuperAdmin ?? false;
+}
+
 export const ACTIVE_WORKSPACE_COOKIE_NAME = ACTIVE_WORKSPACE_COOKIE;

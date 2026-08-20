@@ -1,12 +1,21 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentUser, isSuperAdmin } from "@/lib/session";
 
 const VALID_STATUSES = ["NEW", "CONTACTED", "ARCHIVED"];
 
-export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+async function requireSuperAdmin() {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!user) return { error: NextResponse.json({ error: "unauthorized" }, { status: 401 }) };
+  if (!(await isSuperAdmin(user.userId))) {
+    return { error: NextResponse.json({ error: "forbidden" }, { status: 403 }) };
+  }
+  return { user };
+}
+
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const check = await requireSuperAdmin();
+  if (check.error) return check.error;
 
   const { id } = await params;
   const { status } = await req.json();
@@ -24,8 +33,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const check = await requireSuperAdmin();
+  if (check.error) return check.error;
 
   const { id } = await params;
 

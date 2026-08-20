@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentUser, isSuperAdmin } from "@/lib/session";
 import { PageHeader } from "@/app/components/ui/page-header";
 import { BriefActions } from "./BriefActions";
 import { estimateWebsiteBrief, formatPriceRange } from "@/lib/pricing";
@@ -46,6 +46,7 @@ function Section({ num, title, children }: { num: number; title: string; childre
 export default async function OfertaWebDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  if (!(await isSuperAdmin(user.userId))) redirect("/dashboard");
 
   const { id } = await params;
   const b = await prisma.websiteBrief.findUnique({ where: { id } });
