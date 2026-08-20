@@ -36,8 +36,8 @@ export default function ResetPasswordPage({ params }: { params: Promise<{ token:
     <div className="min-h-screen bg-ink-900 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="flex items-center gap-2 justify-center mb-8">
-          <span className="h-2.5 w-2.5 rounded-full bg-signal shadow-glow" />
-          <span className="font-display font-semibold text-xl tracking-tight text-mist-100">Signal</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/logo-full-dark.png" alt="Next Level Advertising Agency" className="h-8 w-auto object-contain" />
         </div>
 
         <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-6">
