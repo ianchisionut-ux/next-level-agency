@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/calendar", label: "Calendar", icon: CalendarIcon },
   { href: "/dashboard/compose", label: "Postare nouă", icon: ComposeIcon },
   { href: "/dashboard/campaigns", label: "Campanii", icon: CampaignIcon },
+  { href: "/dashboard/oferte-web", label: "Oferte Web", icon: InboxIcon },
   { href: "/dashboard/analytics", label: "Analiză", icon: ChartIcon },
   { href: "/dashboard/accounts", label: "Conturi conectate", icon: LinkIcon },
   { href: "/dashboard/settings/members", label: "Membri", icon: UsersIcon },
@@ -186,6 +187,14 @@ function PlusIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
       <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+    </svg>
+  );
+}
+function InboxIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active ? "#7C9CFF" : "#8A8F9C"} strokeWidth="1.8">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 7l9 6 9-6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

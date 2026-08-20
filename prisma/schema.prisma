@@ -281,3 +281,62 @@ model PostSentiment {
 
   @@index([variantId, capturedAt])
 }
+
+// ==================== OFERTE WEB (chestionar / audit de pe site-ul public) ====================
+// Nu e legat de niciun Workspace: cine completeaza formularul de pe
+// nextlevel-agency.ro/chestionar-audit nu e autentificat si nu alege un client -
+// e un lead pentru agentie, vizibil global oricui e logat in Signal.
+
+model WebsiteBrief {
+  id     String @id @default(cuid())
+  status String @default("NEW") // "NEW" | "CONTACTED" | "ARCHIVED"
+
+  // 1. Afacerea ta & brand
+  companyName    String
+  activity       String?  @db.Text
+  brandIdentity  String?
+  ctaGoals       String[]
+  linkedCampaign String?
+
+  // 2. Domeniu & Hosting
+  hasDomain       String?
+  domainName      String?
+  hasHosting      String?
+  hostingProvider String?
+  needsEmail      String?
+  wantsSSL        String?
+
+  // 3. Structura & continut
+  pages             String[]
+  pagesOther        String?
+  hasContent        String?
+  languages         String?
+  otherLanguage     String?
+  wantsTestimonials String?
+
+  // 4. Design & functionalitati
+  likedSite1             String?
+  likedSite2             String?
+  visualStyle            String?
+  contactElements        String[]
+  wantsSocialIntegration String?
+  maintenance            String?
+
+  // 5. Marketing & social media
+  socialAccounts        String[]
+  socialOther           String?
+  wantsSocialManagement String?
+  adBudget              String?
+
+  // 6. Termen, buget & contact
+  launchDate   String?
+  budget       String?
+  contactName  String
+  contactPhone String?
+  contactEmail String?
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([status])
+}
