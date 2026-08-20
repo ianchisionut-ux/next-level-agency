@@ -59,7 +59,7 @@ export function Sidebar({
         </button>
         <div className="flex items-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/logo-mark-dark.png" alt="Next Level" className="h-7 w-7 object-contain" />
+          <img src="/brand/logo-mark-dark.png" alt="Next Level" className="h-9 w-9 object-contain" />
           <span className="font-display font-semibold text-base tracking-tight text-nav-text">Signal</span>
         </div>
         <div className="w-9" />
@@ -82,7 +82,7 @@ export function Sidebar({
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/brand/logo-mark-dark.png" alt="Next Level" className="h-7 w-7 object-contain" />
+              <img src="/brand/logo-mark-dark.png" alt="Next Level" className="h-9 w-9 object-contain" />
               <span className="font-display font-semibold text-lg tracking-tight text-nav-text">Signal</span>
             </div>
             <button

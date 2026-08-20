@@ -46,7 +46,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
       <div className="w-full max-w-sm">
         <div className="flex items-center justify-center mb-8">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/logo-full-dark.png" alt="Next Level Advertising Agency" className="h-10 w-auto object-contain" />
+          <img src="/brand/logo-full-transparent.png" alt="Next Level Advertising Agency" className="h-20 w-auto object-contain" />
         </div>
 
         <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-6">
@@ -121,20 +121,14 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
           </form>
         </div>
 
-        <p className="text-center text-sm text-mist-500 mt-4">
-          {mode === "signup" ? (
-            <>
-              Ai deja cont?{" "}
-              <Link href="/login" className="text-signal-bright hover:underline">
-                Autentifică-te
-              </Link>
-            </>
-          ) : (
-            <Link href="/forgot-password" className="text-signal-bright hover:underline">
-              Ai uitat parola?
+        {mode === "signup" && (
+          <p className="text-center text-sm text-mist-500 mt-4">
+            Ai deja cont?{" "}
+            <Link href="/login" className="text-signal-bright hover:underline">
+              Autentifică-te
             </Link>
-          )}
-        </p>
+          </p>
+        )}
       </div>
     </div>
   );

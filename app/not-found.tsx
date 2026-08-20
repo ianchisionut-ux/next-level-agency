@@ -6,7 +6,7 @@ export default function NotFound() {
       <div className="text-center">
         <div className="flex items-center gap-2 justify-center mb-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/logo-full-dark.png" alt="Next Level Advertising Agency" className="h-8 w-auto object-contain" />
+          <img src="/brand/logo-full-transparent.png" alt="Next Level Advertising Agency" className="h-14 w-auto object-contain" />
         </div>
         <h1 className="font-display text-2xl font-semibold text-mist-100 mb-2">Pagina nu există</h1>
         <p className="text-sm text-mist-500 mb-6">
