@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { siteConfig } from "@/lib/data";
@@ -122,6 +123,24 @@ export default function ContactPage() {
                   loading="lazy"
                 />
               </div>
+            </div>
+
+            {/* CTA către chestionarul de audit, pentru cine vrea să dea un brief complet */}
+            <div className="mt-14 rounded-2xl border-2 border-blue bg-navy p-8 text-center sm:p-10">
+              <p className="eyebrow text-blue-bright">Ai deja un proiect de site în minte?</p>
+              <h2 className="mt-3 text-2xl font-extrabold text-white">
+                Completează chestionarul de audit
+              </h2>
+              <p className="mx-auto mt-3 max-w-xl text-sm text-white/60">
+                Un formular ghidat de 3–5 minute prin care ne spui exact ce ai nevoie —
+                pagini, stil vizual, buget, termen. Pregătim propunerea mult mai rapid.
+              </p>
+              <Link
+                href="/chestionar-audit"
+                className="mt-6 inline-block rounded-lg bg-blue px-6 py-3 text-sm font-bold text-white transition hover:bg-blue-glow"
+              >
+                Deschide chestionarul
+              </Link>
             </div>
           </div>
         </section>
