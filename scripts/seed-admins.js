@@ -1,10 +1,12 @@
 // -----------------------------------------------------------------------------
-// Creeaza (sau actualizeaza) cele doua conturi Signal:
-//   1. nextlevel.zalau@gmail.com  -> SUPER ADMIN (vede si "Oferte Web"), login cu email
-//   2. Cristina                    -> admin normal (vede tot in afara de "Oferte Web"),
-//                                      login doar cu username, fara email
+// Creeaza (sau actualizeaza) cele doua conturi Signal, ambele pe login cu
+// username (fara email):
+//   1. username "admin"    -> SUPER ADMIN (vede si "Oferte Web")
+//   2. username "cristina" -> admin normal (vede tot in afara de "Oferte Web")
 //
-// Poti schimba username-ul Cristinei mai jos (CRISTINA_USERNAME) inainte de rulare.
+// Daca ai deja un cont vechi creat cu email (nextlevel.zalau@gmail.com),
+// scriptul il gaseste automat si il converteste la noile date de logare,
+// in loc sa creeze un cont duplicat.
 //
 // Rulare (local, cu DATABASE_URL real in .env):
 //   node scripts/seed-admins.js
@@ -16,19 +18,22 @@ const bcrypt = require("bcryptjs");
 const prisma = new PrismaClient();
 
 const CRISTINA_USERNAME = "cristina"; // <-- schimba daca vrei alt username
+const ADMIN_USERNAME = "admin"; // <-- username-ul contului de super admin
 
 const ACCOUNTS = [
   {
-    email: "nextlevel.zalau@gmail.com",
-    username: null,
-    name: "Next Level",
-    password: "@newmindset1",
+    email: null,
+    username: ADMIN_USERNAME,
+    legacyEmail: "nextlevel.zalau@gmail.com", // contul vechi, creat cu email - il gasim si il convertim
+    name: "Admin",
+    password: "@Newmindset1",
     isSuperAdmin: true,
     workspaceRole: "OWNER",
   },
   {
     email: null,
     username: CRISTINA_USERNAME,
+    legacyEmail: null,
     name: "Cristina",
     password: "@Abovenextlevel",
     isSuperAdmin: false,
@@ -36,11 +41,21 @@ const ACCOUNTS = [
   },
 ];
 
-async function upsertUser({ email, username, name, password, isSuperAdmin }) {
+async function upsertUser({ email, username, legacyEmail, name, password, isSuperAdmin }) {
   const passwordHash = await bcrypt.hash(password, 10);
-  const where = email ? { email } : { username };
-  const existing = await prisma.user.findFirst({ where });
   const label = email || `@${username}`;
+
+  // Cauta contul existent dupa noul username, apoi dupa email nou, apoi dupa
+  // un email vechi (cazul in care contul a fost creat inainte cu alt login).
+  const existing = await prisma.user.findFirst({
+    where: {
+      OR: [
+        username ? { username } : undefined,
+        email ? { email } : undefined,
+        legacyEmail ? { email: legacyEmail } : undefined,
+      ].filter(Boolean),
+    },
+  });
 
   if (existing) {
     const updated = await prisma.user.update({
@@ -92,8 +107,8 @@ async function main() {
   }
 
   console.log("\nGata.");
-  console.log(`  - Super admin: login cu email "nextlevel.zalau@gmail.com"`);
-  console.log(`  - Admin:       login cu username "${CRISTINA_USERNAME}" (fara email)\n`);
+  console.log(`  - Admin (super):  login cu username "${ADMIN_USERNAME}"`);
+  console.log(`  - Cristina:       login cu username "${CRISTINA_USERNAME}"\n`);
 }
 
 main()
