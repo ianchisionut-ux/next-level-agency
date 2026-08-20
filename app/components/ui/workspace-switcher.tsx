@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export interface WorkspaceOption {
@@ -100,6 +101,15 @@ export function WorkspaceSwitcher({
                 + Spațiu nou (client/brand)
               </button>
             )}
+          </div>
+          <div className="border-t border-nav-border p-2">
+            <Link
+              href="/dashboard/settings/workspace"
+              onClick={() => setOpen(false)}
+              className="block w-full rounded-lg px-1 py-1.5 text-left text-xs text-nav-text-muted transition-colors hover:text-nav-text"
+            >
+              Gestionează spațiile (redenumește / șterge)
+            </Link>
           </div>
         </div>
       )}
