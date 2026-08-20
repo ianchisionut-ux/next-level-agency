@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { PageHeader } from "@/app/components/ui/page-header";
 import { BriefStatusBadge } from "@/app/components/website-briefs/brief-status-badge";
+import { estimateWebsiteBrief, formatPriceRange } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -42,30 +43,38 @@ export default async function OferteWebPage() {
               <tr className="border-b border-ink-700 text-xs uppercase tracking-wide text-mist-500">
                 <th className="px-5 py-3.5 font-semibold">Firmă</th>
                 <th className="px-5 py-3.5 font-semibold">Contact</th>
-                <th className="px-5 py-3.5 font-semibold">Buget</th>
+                <th className="px-5 py-3.5 font-semibold">Estimare preț</th>
+                <th className="px-5 py-3.5 font-semibold">Buget client</th>
                 <th className="px-5 py-3.5 font-semibold">Primit</th>
                 <th className="px-5 py-3.5 font-semibold">Status</th>
               </tr>
             </thead>
             <tbody>
-              {briefs.map((b) => (
-                <tr key={b.id} className="border-b border-ink-700 last:border-0 hover:bg-ink-700/40">
-                  <td className="px-5 py-4">
-                    <Link href={`/dashboard/oferte-web/${b.id}`} className="font-semibold text-mist-100 hover:text-signal-bright">
-                      {b.companyName}
-                    </Link>
-                  </td>
-                  <td className="px-5 py-4 text-mist-500">
-                    <div>{b.contactName}</div>
-                    <div className="text-xs">{b.contactPhone || b.contactEmail}</div>
-                  </td>
-                  <td className="px-5 py-4 text-mist-500">{b.budget || "—"}</td>
-                  <td className="px-5 py-4 text-mist-500">{formatDate(b.createdAt)}</td>
-                  <td className="px-5 py-4">
-                    <BriefStatusBadge status={b.status} />
-                  </td>
-                </tr>
-              ))}
+              {briefs.map((b) => {
+                const est = estimateWebsiteBrief(b);
+                return (
+                  <tr key={b.id} className="border-b border-ink-700 last:border-0 hover:bg-ink-700/40">
+                    <td className="px-5 py-4">
+                      <Link href={`/dashboard/oferte-web/${b.id}`} className="font-semibold text-mist-100 hover:text-signal-bright">
+                        {b.companyName}
+                      </Link>
+                    </td>
+                    <td className="px-5 py-4 text-mist-500">
+                      <div>{b.contactName}</div>
+                      <div className="text-xs">{b.contactPhone || b.contactEmail}</div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="font-semibold text-mist-100">{formatPriceRange(est.priceMin, est.priceMax)}</div>
+                      <div className="text-xs text-mist-500">{est.tier}</div>
+                    </td>
+                    <td className="px-5 py-4 text-mist-500">{b.budget || "—"}</td>
+                    <td className="px-5 py-4 text-mist-500">{formatDate(b.createdAt)}</td>
+                    <td className="px-5 py-4">
+                      <BriefStatusBadge status={b.status} />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
