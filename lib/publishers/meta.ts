@@ -185,6 +185,60 @@ async function waitForContainerReady(
   return false;
 }
 
+export interface PageOverview {
+  name: string;
+  fanCount: number | null;
+  followersCount: number | null;
+  pictureUrl: string | null;
+}
+
+/**
+ * Statistici generale despre pagina de Facebook (nu despre o postare
+ * anume) - nume, numar de like-uri, numar de urmaritori, poza de profil.
+ * Afisat direct pe /dashboard/accounts, live (nu se stocheaza in baza de
+ * date - se cere de fiecare data cand se incarca pagina).
+ */
+export async function getFacebookPageOverview(
+  pageId: string,
+  accessToken: string
+): Promise<PageOverview | null> {
+  const res = await fetch(
+    `${GRAPH_BASE}/${pageId}?fields=name,fan_count,followers_count,picture{url}&access_token=${accessToken}`
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  return {
+    name: data.name ?? "",
+    fanCount: data.fan_count ?? null,
+    followersCount: data.followers_count ?? null,
+    pictureUrl: data.picture?.data?.url ?? null,
+  };
+}
+
+export interface InstagramOverview {
+  username: string;
+  followersCount: number | null;
+  mediaCount: number | null;
+  pictureUrl: string | null;
+}
+
+export async function getInstagramAccountOverview(
+  igUserId: string,
+  accessToken: string
+): Promise<InstagramOverview | null> {
+  const res = await fetch(
+    `${GRAPH_BASE}/${igUserId}?fields=username,followers_count,media_count,profile_picture_url&access_token=${accessToken}`
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  return {
+    username: data.username ?? "",
+    followersCount: data.followers_count ?? null,
+    mediaCount: data.media_count ?? null,
+    pictureUrl: data.profile_picture_url ?? null,
+  };
+}
+
 export async function getFacebookInsights(params: {
   postId: string;
   accessToken: string;

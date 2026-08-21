@@ -11,6 +11,7 @@ export interface AccountRow {
   accountName: string;
   connectedAt: string;
   tokenExpiresAt: string | null;
+  overview?: { followers: number | null; pictureUrl: string | null; extra?: string } | null;
 }
 
 const CONNECT_CONFIG: Record<
@@ -128,16 +129,35 @@ export function AccountsList({ accounts, workspaceId }: { accounts: AccountRow[]
                       key={acc.id}
                       className="flex items-center justify-between rounded-lg bg-ink-900 px-3 py-2"
                     >
-                      <div>
-                        <p className="text-sm text-mist-100">{acc.accountName}</p>
-                        <p className="text-xs text-mist-500">
-                          Conectat {new Date(acc.connectedAt).toLocaleDateString("ro-RO")}
-                        </p>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {acc.overview?.pictureUrl && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={acc.overview.pictureUrl}
+                            alt=""
+                            className="h-8 w-8 shrink-0 rounded-full object-cover"
+                          />
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-sm text-mist-100 truncate">{acc.accountName}</p>
+                          {acc.overview ? (
+                            <p className="text-xs text-mist-500">
+                              {acc.overview.followers != null
+                                ? `${acc.overview.followers.toLocaleString("ro-RO")} urmăritori`
+                                : "Statistici indisponibile"}
+                              {acc.overview.extra ? ` · ${acc.overview.extra}` : ""}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-mist-500">
+                              Conectat {new Date(acc.connectedAt).toLocaleDateString("ro-RO")}
+                            </p>
+                          )}
+                        </div>
                       </div>
                       <button
                         onClick={() => disconnect(acc.id)}
                         disabled={disconnecting === acc.id}
-                        className="text-xs text-state-error hover:underline disabled:opacity-50"
+                        className="shrink-0 text-xs text-state-error hover:underline disabled:opacity-50"
                       >
                         Deconectează
                       </button>
