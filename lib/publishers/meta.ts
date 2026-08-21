@@ -246,21 +246,34 @@ export async function getFacebookInsights(params: {
   accessToken: string;
 }) {
   const { postId, accessToken } = params;
-  const metrics = "post_impressions,post_engaged_users,post_clicks";
+  // post_impressions a fost dezactivat de Meta (15 noiembrie 2025) - inlocuit
+  // cu post_media_view. Meta respinge intreg request-ul daca o singura metrica
+  // din lista e invalida (eroare #100), deci actualizarea trebuie facuta pentru
+  // toate metricile odata, nu doar cea gasita vinovata.
+  const metrics = "post_media_view,post_engaged_users,post_clicks";
   const res = await fetch(
     `${GRAPH_BASE}/${postId}/insights?metric=${metrics}&access_token=${accessToken}`
   );
-  if (!res.ok) throw new Error("Nu s-au putut prelua insights de Facebook");
+  if (!res.ok) {
+    const errData = await res.json().catch(() => null);
+    throw new Error(errData?.error?.message || "Nu s-au putut prelua insights de Facebook");
+  }
   return res.json();
 }
 
 export async function getInstagramInsights(params: { mediaId: string; accessToken: string }) {
   const { mediaId, accessToken } = params;
-  const metrics = "impressions,reach,likes,comments,saved,shares";
+  // "impressions" a fost dezactivata de Meta (21 aprilie 2025, API v22.0) -
+  // inlocuita cu "views". Acelasi motiv ca la Facebook: o metrica invalida
+  // pica intregul request.
+  const metrics = "views,reach,likes,comments,saved,shares";
   const res = await fetch(
     `${GRAPH_BASE}/${mediaId}/insights?metric=${metrics}&access_token=${accessToken}`
   );
-  if (!res.ok) throw new Error("Nu s-au putut prelua insights de Instagram");
+  if (!res.ok) {
+    const errData = await res.json().catch(() => null);
+    throw new Error(errData?.error?.message || "Nu s-au putut prelua insights de Instagram");
+  }
   return res.json();
 }
 

@@ -108,7 +108,7 @@ async function fetchMetricsForVariant(platform: string, externalId: string, acce
       (data.data ?? []).map((m: any) => [m.name, m.values?.[0]?.value ?? 0])
     );
     return {
-      impressions: byName.post_impressions ?? 0,
+      impressions: byName.post_media_view ?? 0,
       reach: 0,
       likes: 0,
       comments: 0,
@@ -125,7 +125,7 @@ async function fetchMetricsForVariant(platform: string, externalId: string, acce
       (data.data ?? []).map((m: any) => [m.name, m.values?.[0]?.value ?? 0])
     );
     return {
-      impressions: byName.impressions ?? 0,
+      impressions: byName.views ?? 0,
       reach: byName.reach ?? 0,
       likes: byName.likes ?? 0,
       comments: byName.comments ?? 0,
