@@ -70,6 +70,36 @@ export function PostDetail({ post: initialPost }: { post: DetailPost }) {
     }
   }
 
+  function duplicatePost() {
+    // Refolosim exact acelasi format de "ciorna" pe care Composer-ul il
+    // citeste deja (localStorage) - nu a fost nevoie de niciun cod nou in
+    // Composer, doar sa scriem in acelasi format.
+    const firstVariant = post.variants[0];
+    if (!firstVariant) return;
+
+    const perPlatform: Record<string, { content: string; mediaUrls: string[]; scheduledAt: string }> = {};
+    for (const v of post.variants) {
+      perPlatform[v.platform] = { content: v.content, mediaUrls: v.mediaUrls, scheduledAt: "" };
+    }
+
+    const draft = {
+      useSameContent: false,
+      sharedContent: firstVariant.content,
+      sharedMedia: firstVariant.mediaUrls,
+      contentTags: [],
+      perPlatform,
+      scheduledAt: "",
+      savedAt: Date.now(),
+    };
+
+    try {
+      localStorage.setItem("signal_compose_draft", JSON.stringify(draft));
+    } catch {
+      // ignoram - in cel mai rau caz nu se precompleteaza
+    }
+    router.push("/dashboard/compose");
+  }
+
   async function deletePost() {
     if (!confirm("Sigur vrei să ștergi această postare? Nu poate fi anulat.")) return;
     setDeleting(true);
@@ -118,6 +148,12 @@ export function PostDetail({ post: initialPost }: { post: DetailPost }) {
           </p>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={duplicatePost}
+            className="rounded-lg border border-signal/30 text-signal-bright hover:bg-signal-soft text-sm px-3 py-2 transition-colors"
+          >
+            Duplică
+          </button>
           {canEdit && !editing && (
             <button
               onClick={() => setEditing(true)}
