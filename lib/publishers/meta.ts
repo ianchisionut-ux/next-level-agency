@@ -20,6 +20,78 @@ function isVideoUrl(url: string): boolean {
   return /\.(mp4|mov|m4v)(\?|$)/i.test(url);
 }
 
+/**
+ * Publica un video pe Facebook ca REEL, folosind API-ul dedicat Reels
+ * (diferit de /videos obisnuit - acela posteaza pe Feed, nu apare in tab-ul
+ * Reels). Flux in 3 pasi, documentat de Meta:
+ *   1. upload_phase=start  -> returneaza video_id + upload_url
+ *   2. upload catre upload_url, cu header file_url (Meta descarca singur
+ *      de la Vercel Blob, nu trecem binarul prin serverul nostru)
+ *   3. upload_phase=finish -> ataseaza descrierea si publica (sau programeaza)
+ * Docs: https://developers.facebook.com/docs/video-api/guides/reels-publishing
+ */
+async function publishFacebookReel(params: {
+  pageId: string;
+  accessToken: string;
+  content: string;
+  videoUrl: string;
+  scheduledPublishTime?: number;
+}): Promise<PublishResult> {
+  const { pageId, accessToken, content, videoUrl, scheduledPublishTime } = params;
+
+  try {
+    // Pas 1: initializeaza sesiunea de upload
+    const startRes = await fetch(
+      `${GRAPH_BASE}/${pageId}/video_reels?upload_phase=start&access_token=${accessToken}`,
+      { method: "POST" }
+    );
+    const startData = await startRes.json();
+    if (!startRes.ok) {
+      throw new Error(startData.error?.message || "Eroare la inițializarea Reels-ului");
+    }
+    const { video_id: videoId, upload_url: uploadUrl } = startData;
+
+    // Pas 2: Meta prelucreaza video-ul direct de la URL-ul public (Vercel Blob)
+    const uploadRes = await fetch(uploadUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `OAuth ${accessToken}`,
+        file_url: videoUrl,
+      },
+    });
+    const uploadData = await uploadRes.json();
+    if (!uploadRes.ok || uploadData.success === false) {
+      throw new Error("Eroare la încărcarea video-ului pentru Reels");
+    }
+
+    // Pas 3: finalizeaza - publica imediat sau programeaza
+    const finishParams = new URLSearchParams({
+      upload_phase: "finish",
+      video_id: videoId,
+      description: content,
+      access_token: accessToken,
+    });
+    if (scheduledPublishTime) {
+      finishParams.set("video_state", "SCHEDULED");
+      finishParams.set("scheduled_publish_time", String(scheduledPublishTime));
+    } else {
+      finishParams.set("video_state", "PUBLISHED");
+    }
+
+    const finishRes = await fetch(`${GRAPH_BASE}/${pageId}/video_reels?${finishParams.toString()}`, {
+      method: "POST",
+    });
+    const finishData = await finishRes.json();
+    if (!finishRes.ok || finishData.success === false) {
+      throw new Error(finishData.error?.message || "Eroare la finalizarea Reels-ului");
+    }
+
+    return { success: true, externalPostId: videoId };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Eroare necunoscuta" };
+  }
+}
+
 export async function publishToFacebook(params: {
   pageId: string;
   accessToken: string;
@@ -53,26 +125,10 @@ export async function publishToFacebook(params: {
 
     const firstUrl = mediaUrls[0];
 
-    // Video -> endpoint dedicat /videos, cu file_url (Meta descarca singur
-    // de la URL-ul public din Vercel Blob - nu trecem binarul prin server).
+    // Video -> publicam ca REEL (nu pe /videos simplu), ca sa apara in tab-ul
+    // Reels de pe pagina, la fel cum se intampla deja automat pentru Instagram.
     if (isVideoUrl(firstUrl)) {
-      const body: Record<string, unknown> = {
-        file_url: firstUrl,
-        description: content,
-        access_token: accessToken,
-      };
-      if (scheduledPublishTime) {
-        body.published = false;
-        body.scheduled_publish_time = scheduledPublishTime;
-      }
-      const res = await fetch(`${GRAPH_BASE}/${pageId}/videos`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || "Eroare la publicarea video");
-      return { success: true, externalPostId: data.id };
+      return await publishFacebookReel({ pageId, accessToken, content, videoUrl: firstUrl, scheduledPublishTime });
     }
 
     // Poza -> /photos (prima imagine ca postare simpla)
@@ -183,60 +239,6 @@ async function waitForContainerReady(
     await new Promise((r) => setTimeout(r, intervalMs));
   }
   return false;
-}
-
-export interface PageOverview {
-  name: string;
-  fanCount: number | null;
-  followersCount: number | null;
-  pictureUrl: string | null;
-}
-
-/**
- * Statistici generale despre pagina de Facebook (nu despre o postare
- * anume) - nume, numar de like-uri, numar de urmaritori, poza de profil.
- * Afisat direct pe /dashboard/accounts, live (nu se stocheaza in baza de
- * date - se cere de fiecare data cand se incarca pagina).
- */
-export async function getFacebookPageOverview(
-  pageId: string,
-  accessToken: string
-): Promise<PageOverview | null> {
-  const res = await fetch(
-    `${GRAPH_BASE}/${pageId}?fields=name,fan_count,followers_count,picture{url}&access_token=${accessToken}`
-  );
-  if (!res.ok) return null;
-  const data = await res.json();
-  return {
-    name: data.name ?? "",
-    fanCount: data.fan_count ?? null,
-    followersCount: data.followers_count ?? null,
-    pictureUrl: data.picture?.data?.url ?? null,
-  };
-}
-
-export interface InstagramOverview {
-  username: string;
-  followersCount: number | null;
-  mediaCount: number | null;
-  pictureUrl: string | null;
-}
-
-export async function getInstagramAccountOverview(
-  igUserId: string,
-  accessToken: string
-): Promise<InstagramOverview | null> {
-  const res = await fetch(
-    `${GRAPH_BASE}/${igUserId}?fields=username,followers_count,media_count,profile_picture_url&access_token=${accessToken}`
-  );
-  if (!res.ok) return null;
-  const data = await res.json();
-  return {
-    username: data.username ?? "",
-    followersCount: data.followers_count ?? null,
-    mediaCount: data.media_count ?? null,
-    pictureUrl: data.profile_picture_url ?? null,
-  };
 }
 
 export async function getFacebookInsights(params: {

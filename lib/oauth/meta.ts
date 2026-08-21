@@ -12,6 +12,7 @@ export function getMetaAuthUrl(state: string) {
       "instagram_basic",
       "instagram_content_publish",
       "business_management",
+      "publish_video", // necesar pentru Reels Publishing API (Facebook)
     ].join(","),
     response_type: "code",
   });

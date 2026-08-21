@@ -1,24 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PLATFORM_META, PLATFORM_ORDER, PlatformKey } from "@/lib/platform-meta";
 import { PlatformIcon } from "@/app/components/ui/platform-icon";
 import { PlatformPreview } from "@/app/components/composer/platform-preview";
 import { EmojiPicker } from "@/app/components/composer/emoji-picker";
-import { MediaLibraryPicker } from "@/app/components/composer/media-library-picker";
-
-const DRAFT_STORAGE_KEY = "signal_compose_draft";
-
-interface StoredDraft {
-  useSameContent: boolean;
-  sharedContent: string;
-  sharedMedia: string[];
-  contentTags: string[];
-  perPlatform: Record<string, VariantState>;
-  scheduledAt: string;
-  savedAt: number;
-}
 
 export interface ComposerAccount {
   id: string;
@@ -67,93 +54,6 @@ export function Composer({
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [draftBanner, setDraftBanner] = useState<{ savedAt: number } | null>(null);
-  const [showMediaLibrary, setShowMediaLibrary] = useState<"shared" | PlatformKey | null>(null);
-
-  // La montare: verificam daca exista o ciorna salvata automat (localStorage)
-  // - fie de la o inchidere accidentala, fie de la "Duplica postarea" apasat
-  // pe o postare anterioara (foloseste acelasi mecanism).
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
-      if (!raw) return;
-      const draft: StoredDraft = JSON.parse(raw);
-      // Ignoram ciorne foarte vechi (peste 7 zile) - probabil irelevante.
-      if (Date.now() - draft.savedAt > 7 * 24 * 60 * 60 * 1000) {
-        localStorage.removeItem(DRAFT_STORAGE_KEY);
-        return;
-      }
-      // Nu aratam bannerul daca ciorna e goala (nimic de recuperat).
-      const hasContent = draft.sharedContent.trim() || Object.values(draft.perPlatform).some((v) => v.content.trim());
-      if (hasContent) setDraftBanner({ savedAt: draft.savedAt });
-    } catch {
-      // ciorna corupta - o ignoram silentios
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Auto-salvare: la fiecare schimbare relevanta, salvam starea curenta in
-  // localStorage, cu un mic debounce ca sa nu scriem la fiecare tasta.
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      const hasContent = sharedContent.trim() || Object.values(perPlatform).some((v) => v.content.trim());
-      if (!hasContent) return;
-      const draft: StoredDraft = {
-        useSameContent,
-        sharedContent,
-        sharedMedia,
-        contentTags,
-        perPlatform,
-        scheduledAt,
-        savedAt: Date.now(),
-      };
-      try {
-        localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
-      } catch {
-        // localStorage plin/indisponibil - ignoram silentios, nu e critic
-      }
-    }, 800);
-    return () => clearTimeout(timeout);
-  }, [useSameContent, sharedContent, sharedMedia, contentTags, perPlatform, scheduledAt]);
-
-  // Avertizare daca userul incearca sa inchida tab-ul cu text nesalvat (nepublicat).
-  useEffect(() => {
-    function handler(e: BeforeUnloadEvent) {
-      const hasContent = sharedContent.trim() || Object.values(perPlatform).some((v) => v.content.trim());
-      if (hasContent) {
-        e.preventDefault();
-      }
-    }
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [sharedContent, perPlatform]);
-
-  function restoreDraft() {
-    try {
-      const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
-      if (!raw) return;
-      const draft: StoredDraft = JSON.parse(raw);
-      setUseSameContent(draft.useSameContent);
-      setSharedContent(draft.sharedContent);
-      setSharedMedia(draft.sharedMedia);
-      setContentTags(draft.contentTags);
-      setPerPlatform(draft.perPlatform);
-      setScheduledAt(draft.scheduledAt);
-    } catch {
-      // ignoram
-    } finally {
-      setDraftBanner(null);
-    }
-  }
-
-  function discardDraft() {
-    localStorage.removeItem(DRAFT_STORAGE_KEY);
-    setDraftBanner(null);
-  }
-
-  function clearDraftAfterSubmit() {
-    localStorage.removeItem(DRAFT_STORAGE_KEY);
-  }
 
   const activePlatforms = availablePlatforms.filter((p) => selected.has(p));
 
@@ -270,7 +170,6 @@ export function Composer({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Eroare la salvare");
-      clearDraftAfterSubmit();
       router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Eroare la salvare");
@@ -293,35 +192,6 @@ export function Composer({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
       <div className="space-y-5">
-        {draftBanner && (
-          <div className="rounded-xl border border-signal/30 bg-signal-soft px-4 py-2.5 text-sm text-signal-bright flex items-center justify-between gap-3">
-            <span>
-              Ai o ciornă nesalvată, din{" "}
-              {new Date(draftBanner.savedAt).toLocaleString("ro-RO", {
-                day: "numeric",
-                month: "short",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-              .
-            </span>
-            <div className="flex gap-2 shrink-0">
-              <button
-                onClick={restoreDraft}
-                className="rounded-lg bg-signal hover:bg-signal-bright text-white text-xs font-medium px-3 py-1.5 transition-colors"
-              >
-                Continuă
-              </button>
-              <button
-                onClick={discardDraft}
-                className="rounded-lg border border-ink-600 hover:border-ink-500 text-mist-100 text-xs font-medium px-3 py-1.5 transition-colors"
-              >
-                Renunță
-              </button>
-            </div>
-          </div>
-        )}
-
         {campaignName && (
           <div className="rounded-xl border border-signal/30 bg-signal-soft px-4 py-2.5 text-sm text-signal-bright">
             Această postare va fi asociată campaniei <strong>{campaignName}</strong>
@@ -399,13 +269,6 @@ export function Composer({
                 onRemove={(url) => setSharedMedia((prev) => prev.filter((u) => u !== url))}
                 uploading={uploading}
               />
-              <button
-                type="button"
-                onClick={() => setShowMediaLibrary("shared")}
-                className="h-16 px-3 rounded-lg border border-dashed border-ink-600 hover:border-signal flex items-center justify-center text-mist-500 text-xs transition-colors"
-              >
-                Din bibliotecă
-              </button>
             </div>
           </div>
         ) : (
@@ -448,13 +311,6 @@ export function Composer({
                     }
                     uploading={uploading}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowMediaLibrary(activeTab)}
-                    className="h-16 px-3 rounded-lg border border-dashed border-ink-600 hover:border-signal flex items-center justify-center text-mist-500 text-xs transition-colors"
-                  >
-                    Din bibliotecă
-                  </button>
                 </div>
                 <label className="block text-xs text-mist-500 pt-1">
                   Oră personalizată pentru {PLATFORM_META[activeTab].label} (opțional)
@@ -627,22 +483,6 @@ export function Composer({
           );
         })}
       </div>
-
-      {showMediaLibrary && (
-        <MediaLibraryPicker
-          workspaceId={workspaceId}
-          onClose={() => setShowMediaLibrary(null)}
-          onSelect={(url) => {
-            if (showMediaLibrary === "shared") {
-              setSharedMedia((prev) => [...prev, url]);
-            } else {
-              const v = getVariant(showMediaLibrary);
-              updateVariant(showMediaLibrary, { mediaUrls: [...v.mediaUrls, url] });
-            }
-            setShowMediaLibrary(null);
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -675,36 +515,45 @@ function MediaUploader({
   onRemove: (url: string) => void;
   uploading: boolean;
 }) {
+  const hasVideo = mediaUrls.some((url) => /\.(mp4|mov)$/i.test(url));
+
   return (
-    <div className="flex flex-wrap gap-2">
-      {mediaUrls.map((url) => (
-        <div key={url} className="relative h-16 w-16 rounded-lg overflow-hidden group">
-          {url.match(/\.(mp4|mov)$/i) ? (
-            <video src={url} className="h-full w-full object-cover" />
-          ) : (
-            <img src={url} alt="" className="h-full w-full object-cover" />
-          )}
-          <button
-            onClick={() => onRemove(url)}
-            className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs transition-opacity"
-          >
-            Șterge
-          </button>
-        </div>
-      ))}
-      <label className="h-16 w-16 rounded-lg border border-dashed border-ink-600 hover:border-signal flex items-center justify-center text-mist-500 text-xs cursor-pointer transition-colors">
-        {uploading ? "…" : "+ Media"}
-        <input
-          type="file"
-          accept="image/*,video/mp4,video/quicktime"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) onUpload(file);
-            e.target.value = "";
-          }}
+    <div>
+      <div className="flex flex-wrap gap-2">
+        {mediaUrls.map((url) => (
+          <div key={url} className="relative h-16 w-16 rounded-lg overflow-hidden group">
+            {url.match(/\.(mp4|mov)$/i) ? (
+              <video src={url} className="h-full w-full object-cover" />
+            ) : (
+              <img src={url} alt="" className="h-full w-full object-cover" />
+            )}
+            <button
+              onClick={() => onRemove(url)}
+              className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs transition-opacity"
+            >
+              Șterge
+            </button>
+          </div>
+        ))}
+        <label className="h-16 w-16 rounded-lg border border-dashed border-ink-600 hover:border-signal flex items-center justify-center text-mist-500 text-xs cursor-pointer transition-colors">
+          {uploading ? "…" : "+ Media"}
+          <input
+            type="file"
+            accept="image/*,video/mp4,video/quicktime"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) onUpload(file);
+              e.target.value = "";
+            }}
         />
       </label>
+      </div>
+      {hasVideo && (
+        <p className="mt-1.5 text-xs text-mist-500">
+          Video pentru Facebook se publică automat ca Reel.
+        </p>
+      )}
     </div>
   );
 }
