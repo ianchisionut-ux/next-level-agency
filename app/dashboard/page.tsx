@@ -43,7 +43,7 @@ export default async function DashboardPage() {
   const failedCount = variants.filter((v) => v.status === "FAILED").length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         title="Timeline"
         description="Tot ce se publică, pe toate platformele, dintr-o privire."

@@ -66,6 +66,7 @@ async function publishVariant(variantId: string) {
       externalId: variant.account.externalId,
       content: variant.content,
       mediaUrls: variant.mediaUrls,
+      postAsReel: variant.postAsReel,
     });
   } catch (err) {
     result = { success: false, error: err instanceof Error ? err.message : "Eroare necunoscuta" };
@@ -98,7 +99,7 @@ async function publishVariant(variantId: string) {
 
 async function dispatchToPlatform(
   platform: Platform,
-  params: { accessToken: string; externalId: string; content: string; mediaUrls: string[] }
+  params: { accessToken: string; externalId: string; content: string; mediaUrls: string[]; postAsReel?: boolean }
 ) {
   switch (platform) {
     case "FACEBOOK":
@@ -107,6 +108,7 @@ async function dispatchToPlatform(
         accessToken: params.accessToken,
         content: params.content,
         mediaUrls: params.mediaUrls,
+        postAsReel: params.postAsReel,
       });
 
     case "INSTAGRAM":
@@ -115,6 +117,7 @@ async function dispatchToPlatform(
         accessToken: params.accessToken,
         content: params.content,
         mediaUrls: params.mediaUrls,
+        postAsReel: params.postAsReel,
       });
 
     case "TIKTOK":

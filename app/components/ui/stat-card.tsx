@@ -24,17 +24,17 @@ const ACCENT_GRADIENT = {
 
 export function StatCard({ label, value, trend, accent = "signal", icon }: Props) {
   return (
-    <div className="glass-card rounded-2xl p-4 flex items-center gap-3.5">
+    <div className="glass-card rounded-xl p-3.5 flex items-center gap-3">
       {icon && (
         <div
-          className={`icon-badge-gradient flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white ${ACCENT_GRADIENT[accent]}`}
+          className={`icon-badge-gradient flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white ${ACCENT_GRADIENT[accent]}`}
         >
           {icon}
         </div>
       )}
       <div className="min-w-0">
         <div className="flex items-baseline gap-2">
-          <span className={`font-mono text-xl font-semibold ${ACCENT_TEXT[accent]}`}>{value}</span>
+          <span className={`font-mono text-lg font-semibold ${ACCENT_TEXT[accent]}`}>{value}</span>
           {trend && (
             <span className={`text-xs font-mono ${trend.positive ? "text-state-success" : "text-state-error"}`}>
               {trend.positive ? "↑" : "↓"} {trend.value}

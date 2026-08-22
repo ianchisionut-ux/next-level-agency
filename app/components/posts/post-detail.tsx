@@ -27,6 +27,15 @@ export interface DetailPost {
 
 const EDITABLE_STATUSES = ["DRAFT", "SCHEDULED"];
 
+// Formateaza un ISO string in formatul cerut de <input type="datetime-local">
+// (YYYY-MM-DDTHH:mm), in fusul orar local al browserului, nu UTC.
+function toDatetimeLocalValue(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function PostDetail({ post: initialPost }: { post: DetailPost }) {
   const router = useRouter();
   const [post, setPost] = useState(initialPost);
@@ -34,12 +43,37 @@ export function PostDetail({ post: initialPost }: { post: DetailPost }) {
   const [drafts, setDrafts] = useState<Record<string, string>>(
     Object.fromEntries(post.variants.map((v) => [v.id, v.content]))
   );
+  const [scheduleDraft, setScheduleDraft] = useState(toDatetimeLocalValue(post.scheduledAt));
+  const [reschedOpen, setReschedOpen] = useState(false);
+  const [rescheduling, setRescheduling] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [retrying, setRetrying] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const canEdit = EDITABLE_STATUSES.includes(post.status);
+
+  async function saveReschedule() {
+    if (!scheduleDraft) return;
+    setRescheduling(true);
+    setError(null);
+    try {
+      const newIso = new Date(scheduleDraft).toISOString();
+      const res = await fetch(`/api/posts/${post.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduledAt: newIso }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Eroare la reprogramare");
+      setPost({ ...post, scheduledAt: newIso, status: "SCHEDULED" });
+      setReschedOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Eroare la reprogramare");
+    } finally {
+      setRescheduling(false);
+    }
+  }
 
   async function saveEdits() {
     setSaving(true);
@@ -146,6 +180,40 @@ export function PostDetail({ post: initialPost }: { post: DetailPost }) {
               ? `Programată pentru ${new Date(post.scheduledAt).toLocaleString("ro-RO")}`
               : "Fără programare"}
           </p>
+          {canEdit && !reschedOpen && (
+            <button
+              onClick={() => {
+                setScheduleDraft(toDatetimeLocalValue(post.scheduledAt));
+                setReschedOpen(true);
+              }}
+              className="mt-1 text-xs font-medium text-signal-bright hover:underline"
+            >
+              Reprogramează
+            </button>
+          )}
+          {reschedOpen && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <input
+                type="datetime-local"
+                value={scheduleDraft}
+                onChange={(e) => setScheduleDraft(e.target.value)}
+                className="rounded-lg border border-ink-600 bg-ink-900 px-3 py-1.5 text-sm text-mist-100 outline-none focus:border-signal"
+              />
+              <button
+                onClick={saveReschedule}
+                disabled={rescheduling || !scheduleDraft}
+                className="rounded-lg bg-signal px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-signal-bright disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {rescheduling ? "Se salvează…" : "Salvează ora"}
+              </button>
+              <button
+                onClick={() => setReschedOpen(false)}
+                className="rounded-lg border border-ink-600 px-3 py-1.5 text-xs font-semibold text-mist-500 hover:text-mist-100"
+              >
+                Anulează
+              </button>
+            </div>
+          )}
         </div>
         <div className="flex gap-2">
           <button

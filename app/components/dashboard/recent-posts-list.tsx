@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { PlatformIcon } from "@/app/components/ui/platform-icon";
 import { StatusBadge } from "@/app/components/ui/status-badge";
 import { PlatformKey } from "@/lib/platform-meta";
+import { PostDetailModal } from "@/app/components/posts/post-detail-modal";
 
 export interface RecentPost {
   id: string;
@@ -25,6 +26,7 @@ export function RecentPostsList({
   const router = useRouter();
   const [items, setItems] = useState(posts);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [openPostId, setOpenPostId] = useState<string | null>(null);
 
   async function handleDelete(e: React.MouseEvent, postId: string) {
     e.preventDefault();
@@ -83,15 +85,23 @@ export function RecentPostsList({
           <Link
             key={post.id}
             href={`/dashboard/posts/${post.id}`}
-            className="px-5 py-4 flex items-center justify-between hover:bg-ink-900/50 transition-colors group"
+            onClick={(e) => {
+              // Click normal -> deschide modalul rapid, fara sa navigheze.
+              // Ctrl/Cmd/mijlociu-click -> lasam comportamentul default (tab nou),
+              // pentru cine vrea totusi pagina completa.
+              if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+              e.preventDefault();
+              setOpenPostId(post.id);
+            }}
+            className="px-4 py-3 flex items-center justify-between hover:bg-ink-900/50 transition-colors group"
           >
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium truncate">
                 {post.title || post.variants[0]?.content.slice(0, 60) || "(fără conținut)"}
               </p>
-              <div className="flex items-center gap-2 mt-1.5">
+              <div className="flex items-center gap-2 mt-1">
                 {post.variants.map((v) => (
-                  <PlatformIcon key={v.id} platform={v.platform as PlatformKey} size={14} />
+                  <PlatformIcon key={v.id} platform={v.platform as PlatformKey} size={13} />
                 ))}
                 <span className="text-xs text-mist-500 font-mono ml-1">
                   {post.scheduledAt
@@ -130,6 +140,8 @@ export function RecentPostsList({
           </Link>
         );
       })}
+
+      <PostDetailModal postId={openPostId} onClose={() => setOpenPostId(null)} />
     </>
   );
 }

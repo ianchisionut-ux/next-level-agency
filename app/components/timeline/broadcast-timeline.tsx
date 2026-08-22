@@ -46,10 +46,11 @@ export function BroadcastTimeline({ variants }: Props) {
   }, [variants, days]);
 
   const totalHours = HOUR_END - HOUR_START;
+  const hasAnyItem = Array.from(grouped.values()).some((items) => items.length > 0);
 
   return (
     <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card overflow-hidden">
-      <div className="px-5 py-4 border-b border-ink-700 flex items-center justify-between">
+      <div className="px-4 py-3 border-b border-ink-700 flex items-center justify-between">
         <div>
           <h2 className="font-display font-semibold text-base">Ce se publică următoarele 7 zile</h2>
           <p className="text-xs text-mist-500 mt-0.5">Fiecare punct e o postare programată pe o platformă</p>
@@ -57,22 +58,27 @@ export function BroadcastTimeline({ variants }: Props) {
         <Legend />
       </div>
 
-      <div className="overflow-x-auto">
-        <div className="min-w-[900px]">
-          {/* header cu zile */}
-          <div className="grid grid-cols-7 border-b border-ink-700">
-            {days.map((day, i) => (
-              <div key={i} className="px-3 py-2.5 text-center border-l border-ink-700 first:border-l-0">
-                <div className="text-xs text-mist-500 uppercase tracking-wide">
-                  {day.toLocaleDateString("ro-RO", { weekday: "short" })}
+      {!hasAnyItem ? (
+        <div className="px-5 py-8 text-center">
+          <p className="text-sm text-mist-500">Nimic programat în următoarele 7 zile.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <div className="min-w-[900px]">
+            {/* header cu zile */}
+            <div className="grid grid-cols-7 border-b border-ink-700">
+              {days.map((day, i) => (
+                <div key={i} className="px-3 py-2 text-center border-l border-ink-700 first:border-l-0">
+                  <div className="text-xs text-mist-500 uppercase tracking-wide">
+                    {day.toLocaleDateString("ro-RO", { weekday: "short" })}
+                  </div>
+                  <div className="text-sm font-medium font-mono">{day.getDate()}</div>
                 </div>
-                <div className="text-sm font-medium font-mono">{day.getDate()}</div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
 
-          {/* lanes cu postari */}
-          <div className="grid grid-cols-7 relative" style={{ height: 180 }}>
+            {/* lanes cu postari */}
+            <div className="grid grid-cols-7 relative" style={{ height: 130 }}>
             {days.map((day, i) => {
               const items = grouped.get(day.toDateString()) ?? [];
               return (
@@ -120,8 +126,9 @@ export function BroadcastTimeline({ variants }: Props) {
               );
             })}
           </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

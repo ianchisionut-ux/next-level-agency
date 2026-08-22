@@ -61,7 +61,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
 interface UpdatePostBody {
   scheduledAt?: string | null;
-  variants?: Array<{ id: string; content: string; mediaUrls: string[]; scheduledAt?: string | null }>;
+  variants?: Array<{ id: string; content: string; mediaUrls: string[]; scheduledAt?: string | null; postAsReel?: boolean }>;
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -100,6 +100,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             content: v.content,
             mediaUrls: v.mediaUrls,
             scheduledAt: v.scheduledAt ? new Date(v.scheduledAt) : null,
+            ...(v.postAsReel !== undefined ? { postAsReel: v.postAsReel } : {}),
             status: "PENDING", // resetam orice eroare anterioara odata ce s-a editat
             errorLog: null,
           },

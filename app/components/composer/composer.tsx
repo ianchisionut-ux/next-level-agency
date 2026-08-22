@@ -19,6 +19,31 @@ interface VariantState {
   scheduledAt: string; // datetime-local override, empty = use global
 }
 
+function isVideoUrl(url: string): boolean {
+  return /\.(mp4|mov)$/i.test(url);
+}
+
+function ReelToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex items-center gap-2 cursor-pointer select-none">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`relative h-5 w-9 rounded-full transition-colors ${checked ? "bg-signal" : "bg-ink-600"}`}
+      >
+        <span
+          className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+            checked ? "translate-x-4" : "translate-x-0.5"
+          }`}
+        />
+      </button>
+      <span className="text-xs text-mist-300">Postează ca Reel</span>
+    </label>
+  );
+}
+
 export function Composer({
   accounts,
   workspaceId,
@@ -51,6 +76,7 @@ export function Composer({
   const [activeTab, setActiveTab] = useState<PlatformKey | null>(availablePlatforms[0] ?? null);
   const [perPlatform, setPerPlatform] = useState<Record<string, VariantState>>({});
   const [scheduledAt, setScheduledAt] = useState("");
+  const [postAsReel, setPostAsReel] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -138,6 +164,7 @@ export function Composer({
         mediaUrls,
         hashtags,
         contentTags,
+        postAsReel,
         // new Date(...) interpretează string-ul "datetime-local" ca oră locală
         // a browser-ului (corect - user-ul a ales ora din perspectiva lui),
         // iar .toISOString() îl convertește la UTC, fără ambiguitate pe server.
@@ -269,6 +296,9 @@ export function Composer({
                 onRemove={(url) => setSharedMedia((prev) => prev.filter((u) => u !== url))}
                 uploading={uploading}
               />
+              {sharedMedia.some(isVideoUrl) && (
+                <ReelToggle checked={postAsReel} onChange={setPostAsReel} />
+              )}
             </div>
           </div>
         ) : (
@@ -311,6 +341,9 @@ export function Composer({
                     }
                     uploading={uploading}
                   />
+                  {getVariant(activeTab).mediaUrls.some(isVideoUrl) && (
+                    <ReelToggle checked={postAsReel} onChange={setPostAsReel} />
+                  )}
                 </div>
                 <label className="block text-xs text-mist-500 pt-1">
                   Oră personalizată pentru {PLATFORM_META[activeTab].label} (opțional)
@@ -515,8 +548,6 @@ function MediaUploader({
   onRemove: (url: string) => void;
   uploading: boolean;
 }) {
-  const hasVideo = mediaUrls.some((url) => /\.(mp4|mov)$/i.test(url));
-
   return (
     <div>
       <div className="flex flex-wrap gap-2">
@@ -549,11 +580,6 @@ function MediaUploader({
         />
       </label>
       </div>
-      {hasVideo && (
-        <p className="mt-1.5 text-xs text-mist-500">
-          Video pentru Facebook se publică automat ca Reel.
-        </p>
-      )}
     </div>
   );
 }
