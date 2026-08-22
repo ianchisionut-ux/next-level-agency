@@ -14,8 +14,16 @@ export default async function DashboardPage() {
   const workspaceId = workspace!.id;
 
   const [variants, recentPosts, accountsCount] = await Promise.all([
+    // Filtram dupa "are o programare fie pe varianta, fie pe postarea
+    // parinte" - PostVariant.scheduledAt e populat DOAR cand userul alege
+    // manual o ora diferita per-platforma in Composer; in fluxul normal (o
+    // singura ora, pentru toate platformele), ora reala sta pe Post.scheduledAt.
     prisma.postVariant.findMany({
-      where: { scheduledAt: { not: null }, post: { workspaceId } },
+      where: {
+        post: { workspaceId },
+        OR: [{ scheduledAt: { not: null } }, { post: { scheduledAt: { not: null } } }],
+      },
+      include: { post: { select: { scheduledAt: true } } },
       orderBy: { scheduledAt: "asc" },
       take: 200,
     }),
@@ -28,17 +36,22 @@ export default async function DashboardPage() {
     prisma.connectedAccount.count({ where: { isActive: true, workspaceId } }),
   ]);
 
+  // Ora efectiva: override-ul per-platforma daca exista, altfel ora globala a postarii.
+  function effectiveScheduledAt(v: (typeof variants)[number]): Date | null {
+    return v.scheduledAt ?? v.post.scheduledAt ?? null;
+  }
+
   const timelineData: TimelineVariant[] = variants.map((v) => ({
     id: v.id,
     platform: v.platform as PlatformKey,
     status: v.status,
-    scheduledAt: v.scheduledAt?.toISOString() ?? null,
+    scheduledAt: effectiveScheduledAt(v)?.toISOString() ?? null,
     content: v.content,
   }));
 
   const scheduledCount = variants.filter((v) => v.status === "PENDING").length;
   const publishedThisWeek = variants.filter(
-    (v) => v.status === "PUBLISHED" && v.scheduledAt && v.scheduledAt > new Date(Date.now() - 7 * 86400000)
+    (v) => v.status === "PUBLISHED" && v.publishedAt && v.publishedAt > new Date(Date.now() - 7 * 86400000)
   ).length;
   const failedCount = variants.filter((v) => v.status === "FAILED").length;
 
