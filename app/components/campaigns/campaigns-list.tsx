@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 type Campaign = {
@@ -160,10 +159,15 @@ export function CampaignsList({ workspaceId, campaigns }: { workspaceId: string;
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {campaigns.map((c) => (
-            <Link
+            <div
               key={c.id}
-              href={`/dashboard/campaigns/${c.id}`}
-              className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5 hover:border-signal/40 transition-colors"
+              onClick={() => router.push(`/dashboard/campaigns/${c.id}`)}
+              role="link"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") router.push(`/dashboard/campaigns/${c.id}`);
+              }}
+              className="cursor-pointer rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5 hover:border-signal/40 transition-colors"
             >
               <div className="flex items-start justify-between">
                 <div>
@@ -180,7 +184,7 @@ export function CampaignsList({ workspaceId, campaigns }: { workspaceId: string;
                     onMouseLeave={() => confirmDeleteId === c.id && setConfirmDeleteId(null)}
                     disabled={deletingId === c.id}
                     title={confirmDeleteId === c.id ? "Sigur? Apasă din nou" : "Șterge campania"}
-                    className={`rounded-lg p-1.5 transition-colors disabled:opacity-50 ${
+                    className={`relative z-10 rounded-lg p-1.5 transition-colors disabled:opacity-50 ${
                       confirmDeleteId === c.id
                         ? "bg-state-error text-white"
                         : "text-mist-500 hover:bg-ink-700 hover:text-state-error"
@@ -213,7 +217,7 @@ export function CampaignsList({ workspaceId, campaigns }: { workspaceId: string;
                   {c.engagement.toLocaleString("ro-RO")} interacțiuni totale · {c.publishedCount} publicate
                 </p>
               )}
-            </Link>
+            </div>
           ))}
         </div>
       )}
