@@ -51,7 +51,7 @@ interface CreatePostBody {
     hashtags?: string[];
     contentTags?: string[];
     scheduledAt?: string;
-    postAsReel?: boolean;
+    publishFormat?: "POST" | "STORY" | "REEL";
   }>;
 }
 
@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
             hashtags: v.hashtags ?? [],
             contentTags: v.contentTags ?? [],
             scheduledAt: v.scheduledAt ? new Date(v.scheduledAt) : null,
-            postAsReel: v.postAsReel ?? true,
+            publishFormat: v.publishFormat ?? "POST",
           })),
         },
       },

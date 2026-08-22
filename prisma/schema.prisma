@@ -201,11 +201,10 @@ model PostVariant {
 
   scheduledAt DateTime?
 
-  // Doar pt. video pe Facebook/Instagram: publica prin API-ul dedicat de
-  // Reels (apare in tab-ul Reels) in loc de o postare video normala pe Feed.
-  // Implicit true (comportamentul de dinainte), dar acum e un buton explicit
-  // in Composer, nu doar automat.
-  postAsReel Boolean @default(true)
+  // Ce tip de continut e postarea pe aceasta platforma: "POST" (Feed normal),
+  // "STORY" (dispare dupa 24h) sau "REEL" (video, apare in tab-ul Reels).
+  // Inlocuieste vechiul boolean postAsReel - acum sunt 3 optiuni, nu 2.
+  publishFormat String @default("POST")
 
   status         VariantStatus @default(PENDING)
   externalPostId String?

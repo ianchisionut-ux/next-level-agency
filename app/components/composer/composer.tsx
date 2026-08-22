@@ -23,24 +23,47 @@ function isVideoUrl(url: string): boolean {
   return /\.(mp4|mov)$/i.test(url);
 }
 
-function ReelToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+type PublishFormat = "POST" | "STORY" | "REEL";
+
+/**
+ * Selector explicit Postare / Poveste / Reel, exact ca in Meta Business Suite.
+ * "Reel" e disponibil doar cu video atasat (Instagram/Facebook nu accepta
+ * poze ca Reel). "Poveste" merge cu poza sau video.
+ */
+function FormatSelector({
+  value,
+  onChange,
+  hasVideo,
+}: {
+  value: PublishFormat;
+  onChange: (v: PublishFormat) => void;
+  hasVideo: boolean;
+}) {
+  const options: { key: PublishFormat; label: string; disabled?: boolean }[] = [
+    { key: "POST", label: "Postare" },
+    { key: "STORY", label: "Poveste" },
+    { key: "REEL", label: "Reel", disabled: !hasVideo },
+  ];
+
   return (
-    <label className="flex items-center gap-2 cursor-pointer select-none">
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className={`relative h-5 w-9 rounded-full transition-colors ${checked ? "bg-signal" : "bg-ink-600"}`}
-      >
-        <span
-          className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
-            checked ? "translate-x-4" : "translate-x-0.5"
+    <div className="flex items-center gap-1 rounded-lg border border-ink-600 bg-ink-900 p-0.5">
+      {options.map((opt) => (
+        <button
+          key={opt.key}
+          type="button"
+          disabled={opt.disabled}
+          onClick={() => onChange(opt.key)}
+          title={opt.disabled ? "Necesită un video atașat" : undefined}
+          className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${
+            value === opt.key && !opt.disabled
+              ? "bg-signal text-white"
+              : "text-mist-400 hover:text-mist-100"
           }`}
-        />
-      </button>
-      <span className="text-xs text-mist-300">Postează ca Reel</span>
-    </label>
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -76,7 +99,7 @@ export function Composer({
   const [activeTab, setActiveTab] = useState<PlatformKey | null>(availablePlatforms[0] ?? null);
   const [perPlatform, setPerPlatform] = useState<Record<string, VariantState>>({});
   const [scheduledAt, setScheduledAt] = useState("");
-  const [postAsReel, setPostAsReel] = useState(true);
+  const [publishFormat, setPublishFormat] = useState<PublishFormat>("POST");
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -164,7 +187,10 @@ export function Composer({
         mediaUrls,
         hashtags,
         contentTags,
-        postAsReel,
+        // Siguranta: "Reel" necesita video - daca userul a selectat Reel si
+        // apoi a sters video-ul (sau il aplica unei platforme fara video),
+        // coboram la "Postare" normala in loc sa trimitem o combinatie invalida.
+        publishFormat: publishFormat === "REEL" && !mediaUrls.some(isVideoUrl) ? "POST" : publishFormat,
         // new Date(...) interpretează string-ul "datetime-local" ca oră locală
         // a browser-ului (corect - user-ul a ales ora din perspectiva lui),
         // iar .toISOString() îl convertește la UTC, fără ambiguitate pe server.
@@ -296,10 +322,19 @@ export function Composer({
                 onRemove={(url) => setSharedMedia((prev) => prev.filter((u) => u !== url))}
                 uploading={uploading}
               />
-              {sharedMedia.some(isVideoUrl) && (
-                <ReelToggle checked={postAsReel} onChange={setPostAsReel} />
+              {sharedMedia.length > 0 && (
+                <FormatSelector
+                  value={publishFormat}
+                  onChange={setPublishFormat}
+                  hasVideo={sharedMedia.some(isVideoUrl)}
+                />
               )}
             </div>
+            {publishFormat === "STORY" && sharedMedia.length > 0 && (
+              <p className="text-xs text-mist-500">
+                Textul de mai sus nu apare pe Poveste — Meta nu afișează caption pe Stories.
+              </p>
+            )}
           </div>
         ) : (
           <div className="glass-card rounded-2xl overflow-hidden">
@@ -341,8 +376,12 @@ export function Composer({
                     }
                     uploading={uploading}
                   />
-                  {getVariant(activeTab).mediaUrls.some(isVideoUrl) && (
-                    <ReelToggle checked={postAsReel} onChange={setPostAsReel} />
+                  {getVariant(activeTab).mediaUrls.length > 0 && (
+                    <FormatSelector
+                      value={publishFormat}
+                      onChange={setPublishFormat}
+                      hasVideo={getVariant(activeTab).mediaUrls.some(isVideoUrl)}
+                    />
                   )}
                 </div>
                 <label className="block text-xs text-mist-500 pt-1">

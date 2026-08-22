@@ -92,6 +92,86 @@ async function publishFacebookReel(params: {
   }
 }
 
+/**
+ * Publica o poza pe Facebook ca STORY (dispare dupa 24h). Flux in 2 pasi:
+ *   1. /page_id/photos cu published=false -> incarca poza fara s-o publice, returneaza photo_id
+ *   2. /page_id/photo_stories cu photo_id -> o transforma efectiv in story
+ * Docs: https://developers.facebook.com/docs/page-stories-api/
+ */
+async function publishFacebookPhotoStory(params: {
+  pageId: string;
+  accessToken: string;
+  photoUrl: string;
+}): Promise<PublishResult> {
+  const { pageId, accessToken, photoUrl } = params;
+  try {
+    const uploadRes = await fetch(`${GRAPH_BASE}/${pageId}/photos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: photoUrl, published: false, access_token: accessToken }),
+    });
+    const uploadData = await uploadRes.json();
+    if (!uploadRes.ok) throw new Error(uploadData.error?.message || "Eroare la încărcarea pozei pentru story");
+
+    const storyRes = await fetch(`${GRAPH_BASE}/${pageId}/photo_stories`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ photo_id: uploadData.id, access_token: accessToken }),
+    });
+    const storyData = await storyRes.json();
+    if (!storyRes.ok) throw new Error(storyData.error?.message || "Eroare la publicarea story-ului");
+
+    return { success: true, externalPostId: storyData.post_id || storyData.id || uploadData.id };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Eroare necunoscuta" };
+  }
+}
+
+/**
+ * Publica un video pe Facebook ca STORY (dispare dupa 24h). Acelasi flux in
+ * 3 pasi ca la Reels, dar pe endpoint-ul /video_stories in loc de /video_reels.
+ * Docs: https://developers.facebook.com/docs/page-stories-api/
+ */
+async function publishFacebookVideoStory(params: {
+  pageId: string;
+  accessToken: string;
+  videoUrl: string;
+}): Promise<PublishResult> {
+  const { pageId, accessToken, videoUrl } = params;
+  try {
+    const startRes = await fetch(
+      `${GRAPH_BASE}/${pageId}/video_stories?upload_phase=start&access_token=${accessToken}`,
+      { method: "POST" }
+    );
+    const startData = await startRes.json();
+    if (!startRes.ok) throw new Error(startData.error?.message || "Eroare la inițializarea story-ului video");
+    const { video_id: videoId, upload_url: uploadUrl } = startData;
+
+    const uploadRes = await fetch(uploadUrl, {
+      method: "POST",
+      headers: { Authorization: `OAuth ${accessToken}`, file_url: videoUrl },
+    });
+    const uploadData = await uploadRes.json();
+    if (!uploadRes.ok || uploadData.success === false) {
+      throw new Error("Eroare la încărcarea video-ului pentru story");
+    }
+
+    const finishRes = await fetch(`${GRAPH_BASE}/${pageId}/video_stories`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ video_id: videoId, upload_phase: "finish", access_token: accessToken }),
+    });
+    const finishData = await finishRes.json();
+    if (!finishRes.ok || finishData.success === false) {
+      throw new Error(finishData.error?.message || "Eroare la finalizarea story-ului video");
+    }
+
+    return { success: true, externalPostId: videoId };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Eroare necunoscuta" };
+  }
+}
+
 export async function publishToFacebook(params: {
   pageId: string;
   accessToken: string;
@@ -100,16 +180,26 @@ export async function publishToFacebook(params: {
   /** Unix timestamp (secunde) - daca e furnizat, folosim programarea NATIVA
    * Meta (published: false + scheduled_publish_time), in loc sa publicam
    * imediat. Util mai ales pentru video, caruia Meta ii ia timp sa il
-   * proceseze - il urcam din timp, iar Meta il publica exact la ora fixata. */
+   * proceseze - il urcam din timp, iar Meta il publica exact la ora fixata.
+   * Nu se aplica la Stories - Meta nu suporta programare nativa pentru ele. */
   scheduledPublishTime?: number;
-  /** Buton explicit din Composer: daca e video si postAsReel=true (implicit),
-   * publicam prin API-ul de Reels. Daca e false, publicam ca video normal
-   * pe Feed (/videos), la fel ca o poza - nu apare in tab-ul Reels. */
-  postAsReel?: boolean;
+  /** Ales explicit in Composer: "POST" (Feed normal), "STORY" (dispare in
+   * 24h) sau "REEL" (video, apare in tab-ul Reels). Implicit "POST". */
+  publishFormat?: "POST" | "STORY" | "REEL";
 }): Promise<PublishResult> {
-  const { pageId, accessToken, content, mediaUrls, scheduledPublishTime, postAsReel = true } = params;
+  const { pageId, accessToken, content, mediaUrls, scheduledPublishTime, publishFormat = "POST" } = params;
 
   try {
+    if (publishFormat === "STORY") {
+      if (mediaUrls.length === 0) {
+        return { success: false, error: "Un story are nevoie de o poză sau un video" };
+      }
+      const firstUrl = mediaUrls[0];
+      return isVideoUrl(firstUrl)
+        ? await publishFacebookVideoStory({ pageId, accessToken, videoUrl: firstUrl })
+        : await publishFacebookPhotoStory({ pageId, accessToken, photoUrl: firstUrl });
+    }
+
     // Fara media -> postare simpla pe /feed
     if (mediaUrls.length === 0) {
       const body: Record<string, unknown> = { message: content, access_token: accessToken };
@@ -130,13 +220,12 @@ export async function publishToFacebook(params: {
     const firstUrl = mediaUrls[0];
 
     if (isVideoUrl(firstUrl)) {
-      // Buton "Postează ca Reel" bifat (implicit) -> API dedicat Reels, apare
-      // in tab-ul Reels de pe pagina.
-      if (postAsReel) {
+      // Ales explicit "Reel" -> API dedicat Reels, apare in tab-ul Reels.
+      if (publishFormat === "REEL") {
         return await publishFacebookReel({ pageId, accessToken, content, videoUrl: firstUrl, scheduledPublishTime });
       }
 
-      // Debifat -> video normal pe Feed, ca inainte de introducerea Reels.
+      // "Postare" normala -> video pe Feed, ca o postare obisnuita.
       const body: Record<string, unknown> = {
         file_url: firstUrl,
         description: content,
@@ -179,12 +268,12 @@ export async function publishToInstagram(params: {
   accessToken: string;
   content: string;
   mediaUrls: string[];
-  /** Buton explicit din Composer: daca e video si postAsReel=true (implicit),
-   * media_type=REELS. Daca e false, media_type=VIDEO (postare video normala
-   * pe grid/feed, nu in tab-ul Reels). */
-  postAsReel?: boolean;
+  /** Ales explicit in Composer: "POST" (Feed/grid normal), "STORY" (dispare
+   * in 24h, fara caption - Instagram nu suporta text pe Stories) sau "REEL"
+   * (doar video, apare in tab-ul Reels). Implicit "POST". */
+  publishFormat?: "POST" | "STORY" | "REEL";
 }): Promise<PublishResult> {
-  const { igUserId, accessToken, content, mediaUrls, postAsReel = true } = params;
+  const { igUserId, accessToken, content, mediaUrls, publishFormat = "POST" } = params;
 
   if (mediaUrls.length === 0) {
     return { success: false, error: "Instagram necesita cel putin o imagine sau un video" };
@@ -194,17 +283,24 @@ export async function publishToInstagram(params: {
   const isVideo = isVideoUrl(firstUrl);
 
   try {
-    // Pas 1: creeaza media container. Pentru video (Reels), Instagram
+    // Pas 1: creeaza media container. Pentru video (Reels/Stories), Instagram
     // proceseaza asincron - containerul nu e gata instant ca la poze.
-    const containerBody: Record<string, unknown> = {
-      caption: content,
-      access_token: accessToken,
-    };
-    if (isVideo) {
-      containerBody.media_type = postAsReel ? "REELS" : "VIDEO";
-      containerBody.video_url = firstUrl;
+    const containerBody: Record<string, unknown> = { access_token: accessToken };
+
+    if (publishFormat === "STORY") {
+      // Instagram nu accepta caption pe Stories - textul scris de user, daca
+      // exista, e pur si simplu ignorat de API oricum, dar nu il trimitem deloc.
+      containerBody.media_type = "STORIES";
+      if (isVideo) containerBody.video_url = firstUrl;
+      else containerBody.image_url = firstUrl;
     } else {
-      containerBody.image_url = firstUrl;
+      containerBody.caption = content;
+      if (isVideo) {
+        containerBody.media_type = publishFormat === "REEL" ? "REELS" : "VIDEO";
+        containerBody.video_url = firstUrl;
+      } else {
+        containerBody.image_url = firstUrl;
+      }
     }
 
     const containerRes = await fetch(`${GRAPH_BASE}/${igUserId}/media`, {
