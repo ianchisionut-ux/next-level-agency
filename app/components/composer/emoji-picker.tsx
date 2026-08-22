@@ -41,7 +41,7 @@ export function EmojiPicker({ onSelect }: { onSelect: (emoji: string) => void })
       </button>
 
       {open && (
-        <div className="glass-card absolute bottom-full left-0 mb-2 w-72 rounded-2xl p-3 z-30 shadow-floating">
+        <div className="glass-card absolute bottom-full left-0 mb-2 w-72 max-w-[85vw] rounded-2xl p-3 z-30 shadow-floating">
           <div className="max-h-56 overflow-y-auto space-y-3 pr-1">
             {EMOJI_CATEGORIES.map((cat) => (
               <div key={cat.label}>

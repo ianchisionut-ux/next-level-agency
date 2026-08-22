@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import CookieConsent from "@/components/CookieConsent";
+import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
 export const metadata: Metadata = {
   // TODO: înlocuiește cu domeniul real odată ce e cumpărat și conectat.
@@ -9,8 +10,15 @@ export const metadata: Metadata = {
   title: "Next Level Advertising Agency | Marketing digital, Branding & Web Design",
   description:
     "Transformăm afaceri în branduri puternice și generăm rezultate reale prin marketing digital, design și automatizări inteligente.",
+  manifest: "/manifest.webmanifest",
   icons: {
     icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Signal",
   },
   openGraph: {
     title: "Next Level Advertising Agency",
@@ -18,6 +26,12 @@ export const metadata: Metadata = {
       "Marketing digital, branding și web design care generează rezultate reale.",
     images: ["/brand/logo-full.png"],
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#00122E",
 };
 
 export default function RootLayout({
@@ -41,6 +55,7 @@ export default function RootLayout({
         {children}
         <WhatsAppButton />
         <CookieConsent />
+        <ServiceWorkerRegister />
       </body>
     </html>
   );
