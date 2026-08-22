@@ -93,7 +93,7 @@ export async function collectInsights() {
           shares: metrics.shares,
           saves: metrics.saves,
           clicks: metrics.clicks,
-          rawData: metrics.raw,
+          rawData: JSON.parse(JSON.stringify(metrics.raw)),
         },
       });
       saved++;
