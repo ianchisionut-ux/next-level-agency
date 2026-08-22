@@ -229,18 +229,28 @@ export async function publishToInstagram(params: {
       }
     }
 
-    // Pas 2: publica containerul
-    const publishRes = await fetch(`${GRAPH_BASE}/${igUserId}/media_publish`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        creation_id: containerData.id,
-        access_token: accessToken,
-      }),
-    });
-    const publishData = await publishRes.json();
-    if (!publishRes.ok) {
-      throw new Error(publishData.error?.message || "Eroare la publicare");
+    // Pas 2: publica containerul. Chiar si pentru poze, Meta uneori raspunde
+    // cu "Media ID is not available" (cod 9007) - o eroare tranzitorie foarte
+    // cunoscuta, insemnand doar ca procesarea nu s-a terminat inca (cateva
+    // secunde). O singura reincercare rapida rezolva majoritatea cazurilor,
+    // fara sa astepte un ciclu intreg de cron (poate dura minute).
+    const publishOnce = async () => {
+      const res = await fetch(`${GRAPH_BASE}/${igUserId}/media_publish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ creation_id: containerData.id, access_token: accessToken }),
+      });
+      const data = await res.json();
+      return { ok: res.ok, data };
+    };
+
+    let { ok, data: publishData } = await publishOnce();
+    if (!ok && /media id is not available/i.test(publishData?.error?.message ?? "")) {
+      await new Promise((r) => setTimeout(r, 5000));
+      ({ ok, data: publishData } = await publishOnce());
+    }
+    if (!ok) {
+      throw new Error(publishData?.error?.message || "Eroare la publicare");
     }
 
     return { success: true, externalPostId: publishData.id };
