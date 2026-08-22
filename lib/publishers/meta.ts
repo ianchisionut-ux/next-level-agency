@@ -514,17 +514,24 @@ async function fetchSingleMetric(
   objectId: string,
   metric: string,
   accessToken: string,
-  period: "day" | "days_28" = "days_28"
+  period: "day" | "days_28" = "days_28",
+  useTotalValue = false
 ): Promise<number | null> {
   try {
-    const res = await fetch(
-      `${GRAPH_BASE}/${objectId}/insights?metric=${metric}&period=${period}&access_token=${accessToken}`
-    );
+    const url =
+      `${GRAPH_BASE}/${objectId}/insights?metric=${metric}&period=${period}` +
+      (useTotalValue ? `&metric_type=total_value` : "") +
+      `&access_token=${accessToken}`;
+    const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
+    // API-ul nou (folosit de Instagram pentru metricile de tip "views") intoarce
+    // rezultatul in total_value.value, nu in values[] ca formatul clasic - incercam
+    // ambele forme, ca sa functioneze indiferent de care varianta raspunde Meta.
+    const totalValue = data.data?.[0]?.total_value?.value;
+    if (typeof totalValue === "number") return totalValue;
     const values = data.data?.[0]?.values;
     if (!values || values.length === 0) return null;
-    // Luam ultima valoare (cea mai recenta zi/perioada din raspuns)
     const last = values[values.length - 1]?.value;
     return typeof last === "number" ? last : null;
   } catch {
@@ -593,7 +600,10 @@ export async function getInstagramAccountOverviewStats(
 
   const entries = Object.entries(candidates) as [keyof Omit<PageStatsSnapshot, "failedMetrics">, string][];
   const results = await Promise.all(
-    entries.map(async ([key, metric]) => [key, metric, await fetchSingleMetric(igUserId, metric, accessToken)] as const)
+    entries.map(
+      async ([key, metric]) =>
+        [key, metric, await fetchSingleMetric(igUserId, metric, accessToken, "days_28", true)] as const
+    )
   );
 
   const snapshot: PageStatsSnapshot = {
