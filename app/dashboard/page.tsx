@@ -4,16 +4,29 @@ import { getActiveWorkspace } from "@/lib/session";
 import { BroadcastTimeline, TimelineVariant } from "@/app/components/timeline/broadcast-timeline";
 import { StatCard, StatIconLink, StatIconClock, StatIconCheck, StatIconWarning } from "@/app/components/ui/stat-card";
 import { RecentPostsList } from "@/app/components/dashboard/recent-posts-list";
+import { MiniWeekCalendar } from "@/app/components/dashboard/mini-week-calendar";
 import { PageHeader } from "@/app/components/ui/page-header";
 import { PlatformKey } from "@/lib/platform-meta";
 
 export const dynamic = "force-dynamic";
 
+function startOfWeek(d: Date): Date {
+  const date = new Date(d);
+  const day = (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - day);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
 export default async function DashboardPage() {
   const workspace = await getActiveWorkspace();
   const workspaceId = workspace!.id;
 
-  const [variants, recentPosts, accountsCount] = await Promise.all([
+  const weekStart = startOfWeek(new Date());
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+
+  const [variants, recentPosts, accountsCount, weekPosts] = await Promise.all([
     // Filtram dupa "are o programare fie pe varianta, fie pe postarea
     // parinte" - PostVariant.scheduledAt e populat DOAR cand userul alege
     // manual o ora diferita per-platforma in Composer; in fluxul normal (o
@@ -34,6 +47,12 @@ export default async function DashboardPage() {
       include: { variants: true },
     }),
     prisma.connectedAccount.count({ where: { isActive: true, workspaceId } }),
+    // Postarile saptamanii curente (Luni-Duminica), pentru mini-calendarul de pe Timeline.
+    prisma.post.findMany({
+      where: { workspaceId, scheduledAt: { gte: weekStart, lt: weekEnd } },
+      include: { variants: true },
+      orderBy: { scheduledAt: "asc" },
+    }),
   ]);
 
   // Ora efectiva: override-ul per-platforma daca exista, altfel ora globala a postarii.
@@ -102,6 +121,18 @@ export default async function DashboardPage() {
       </div>
 
       <BroadcastTimeline variants={timelineData} />
+
+      <MiniWeekCalendar
+        posts={weekPosts
+          .filter((p) => p.scheduledAt)
+          .map((p) => ({
+            id: p.id,
+            title: p.title || p.variants[0]?.content.slice(0, 40) || "(fără titlu)",
+            status: p.status,
+            scheduledAt: p.scheduledAt!.toISOString(),
+            platforms: p.variants.map((v) => v.platform as PlatformKey),
+          }))}
+      />
 
       <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card">
         <div className="px-5 py-4 border-b border-ink-700">

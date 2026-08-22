@@ -2,33 +2,76 @@ import { prisma } from "@/lib/prisma";
 import { getActiveWorkspace } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/app/components/ui/page-header";
-import { CalendarView } from "@/app/components/calendar/calendar-view";
+import { CalendarView, CalendarViewMode } from "@/app/components/calendar/calendar-view";
 import { PlatformKey } from "@/lib/platform-meta";
 
 export const dynamic = "force-dynamic";
 
+function parseDateParam(d?: string): Date {
+  if (d) {
+    const parsed = new Date(`${d}T00:00:00`);
+    if (!isNaN(parsed.getTime())) return parsed;
+  }
+  return new Date();
+}
+
+// Luni = inceputul saptamanii, indiferent de setarile locale ale browserului.
+function startOfWeek(d: Date): Date {
+  const date = new Date(d);
+  const day = (date.getDay() + 6) % 7; // 0 = Luni
+  date.setDate(date.getDate() - day);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+const VIEW_DESCRIPTIONS: Record<CalendarViewMode, string> = {
+  month: "Vedere lunară a tuturor postărilor programate. Trage un post pe altă zi ca să-l reprogramezi.",
+  week: "Vedere săptămânală, cu toate postările zilei vizibile dintr-o privire.",
+  day: "Toate postările programate pentru ziua selectată, în ordine cronologică.",
+};
+
 export default async function CalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ view?: string; date?: string; month?: string }>;
 }) {
-  const { month } = await searchParams;
+  const { view, date, month } = await searchParams;
   const workspace = await getActiveWorkspace();
   if (!workspace) redirect("/login");
 
-  // "month" vine ca "YYYY-MM" din URL (navigare inainte/inapoi) - implicit, luna curenta.
-  const now = new Date();
-  const [year, monthNum] = month
-    ? month.split("-").map(Number)
-    : [now.getFullYear(), now.getMonth() + 1];
+  const viewMode: CalendarViewMode = view === "week" || view === "day" ? view : "month";
 
-  // Randam o grila completa de saptamani (poate include cateva zile din
-  // luna anterioara/urmatoare, ca sa completam saptamana) - de aceea luam
-  // un interval usor mai larg decat exact prima->ultima zi a lunii.
-  const rangeStart = new Date(year, monthNum - 1, 1);
-  rangeStart.setDate(rangeStart.getDate() - 7);
-  const rangeEnd = new Date(year, monthNum, 0);
-  rangeEnd.setDate(rangeEnd.getDate() + 7);
+  // Compatibilitate cu link-uri vechi ("?month=YYYY-MM") - daca vine asa,
+  // il folosim ca data ancora pentru prima zi a lunii respective.
+  const anchor = date
+    ? parseDateParam(date)
+    : month
+      ? new Date(`${month}-01T00:00:00`)
+      : new Date();
+
+  let rangeStart: Date;
+  let rangeEnd: Date;
+
+  if (viewMode === "day") {
+    rangeStart = new Date(anchor);
+    rangeStart.setHours(0, 0, 0, 0);
+    rangeEnd = new Date(anchor);
+    rangeEnd.setHours(23, 59, 59, 999);
+  } else if (viewMode === "week") {
+    rangeStart = startOfWeek(anchor);
+    rangeEnd = new Date(rangeStart);
+    rangeEnd.setDate(rangeEnd.getDate() + 6);
+    rangeEnd.setHours(23, 59, 59, 999);
+  } else {
+    const year = anchor.getFullYear();
+    const monthNum = anchor.getMonth() + 1;
+    // Randam o grila completa de saptamani (poate include cateva zile din
+    // luna anterioara/urmatoare) - de aceea luam un interval usor mai larg.
+    rangeStart = new Date(year, monthNum - 1, 1);
+    rangeStart.setDate(rangeStart.getDate() - 7);
+    rangeEnd = new Date(year, monthNum, 0);
+    rangeEnd.setDate(rangeEnd.getDate() + 7);
+  }
 
   const posts = await prisma.post.findMany({
     where: {
@@ -51,11 +94,8 @@ export default async function CalendarPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Calendar"
-        description="Vedere lunară a tuturor postărilor programate. Trage un post pe altă zi ca să-l reprogramezi."
-      />
-      <CalendarView year={year} month={monthNum} posts={calendarPosts} />
+      <PageHeader title="Calendar" description={VIEW_DESCRIPTIONS[viewMode]} />
+      <CalendarView viewMode={viewMode} anchorDate={anchor.toISOString()} posts={calendarPosts} />
     </div>
   );
 }
