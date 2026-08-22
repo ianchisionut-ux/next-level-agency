@@ -501,9 +501,14 @@ export default async function AnalyticsPage() {
                     ))}
                   </div>
                   {snap.failedMetrics.length > 0 && (
-                    <p className="text-xs text-mist-700 mt-2">
-                      Indisponibile momentan la Meta: {snap.failedMetrics.join(", ")}
-                    </p>
+                    <div className="mt-2 space-y-0.5">
+                      <p className="text-xs text-mist-700">Indisponibile momentan la Meta:</p>
+                      {snap.failedMetrics.map((m, i) => (
+                        <p key={i} className="text-xs text-mist-700 font-mono pl-2">
+                          · {m}
+                        </p>
+                      ))}
+                    </div>
                   )}
                 </div>
               );

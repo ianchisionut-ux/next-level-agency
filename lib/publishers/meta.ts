@@ -518,26 +518,28 @@ async function fetchSingleMetric(
   accessToken: string,
   period: "day" | "days_28" = "days_28",
   useTotalValue = false
-): Promise<number | null> {
+): Promise<{ value: number } | { error: string }> {
   try {
     const url =
       `${GRAPH_BASE}/${objectId}/insights?metric=${metric}&period=${period}` +
       (useTotalValue ? `&metric_type=total_value` : "") +
       `&access_token=${accessToken}`;
     const res = await fetch(url);
-    if (!res.ok) return null;
-    const data = await res.json();
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      return { error: data?.error?.message || `HTTP ${res.status}` };
+    }
     // API-ul nou (folosit de Instagram pentru metricile de tip "views") intoarce
     // rezultatul in total_value.value, nu in values[] ca formatul clasic - incercam
     // ambele forme, ca sa functioneze indiferent de care varianta raspunde Meta.
-    const totalValue = data.data?.[0]?.total_value?.value;
-    if (typeof totalValue === "number") return totalValue;
-    const values = data.data?.[0]?.values;
-    if (!values || values.length === 0) return null;
+    const totalValue = data?.data?.[0]?.total_value?.value;
+    if (typeof totalValue === "number") return { value: totalValue };
+    const values = data?.data?.[0]?.values;
+    if (!values || values.length === 0) return { error: "răspuns fără valoare" };
     const last = values[values.length - 1]?.value;
-    return typeof last === "number" ? last : null;
-  } catch {
-    return null;
+    return typeof last === "number" ? { value: last } : { error: "răspuns fără valoare" };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "eroare de rețea" };
   }
 }
 
@@ -576,16 +578,18 @@ export async function getFacebookPageOverviewStats(
     unfollows: null,
     failedMetrics: [],
   };
-  for (const [key, metric, value] of results) {
-    snapshot[key] = value;
-    if (value === null) snapshot.failedMetrics.push(metric);
+  for (const [key, metric, result] of results) {
+    if ("value" in result) snapshot[key] = result.value;
+    else snapshot.failedMetrics.push(`${metric}: ${result.error}`);
   }
   return snapshot;
 }
 
 /**
  * Echivalentul pentru Instagram Business - Views/Reach/Vizite profil/Conturi
- * atinse, pe ultimele 28 de zile.
+ * atinse, pe ultimele 28 de zile. "profile_views" a fost confirmat dezactivata
+ * de Meta in v22.0 - folosim "reach" ca aproximare pentru "Vizite", nu exista
+ * inlocuitor 1-la-1 documentat momentan.
  */
 export async function getInstagramAccountOverviewStats(
   igUserId: string,
@@ -594,7 +598,7 @@ export async function getInstagramAccountOverviewStats(
   const candidates: Record<keyof Omit<PageStatsSnapshot, "failedMetrics">, string> = {
     views: "views",
     follows: "follower_count",
-    visits: "profile_views",
+    visits: "reach",
     interactions: "accounts_engaged",
     videoViews: "video_views",
     unfollows: "unfollows",
@@ -617,9 +621,9 @@ export async function getInstagramAccountOverviewStats(
     unfollows: null,
     failedMetrics: [],
   };
-  for (const [key, metric, value] of results) {
-    snapshot[key] = value;
-    if (value === null) snapshot.failedMetrics.push(metric);
+  for (const [key, metric, result] of results) {
+    if ("value" in result) snapshot[key] = result.value;
+    else snapshot.failedMetrics.push(`${metric}: ${result.error}`);
   }
   return snapshot;
 }
