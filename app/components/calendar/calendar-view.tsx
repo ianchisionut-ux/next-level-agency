@@ -313,7 +313,7 @@ function MonthGrid({ anchor, postsByDay, today, draggingId, dragOverDay, setDrag
                 e.preventDefault();
                 onDrop(day);
               }}
-              className={`min-h-[92px] border-b border-r border-ink-700 p-1.5 sm:p-2 transition-colors ${
+              className={`min-h-[130px] border-b border-r border-ink-700 p-1.5 sm:p-2 transition-colors ${
                 isCurrentMonth ? "bg-transparent" : "bg-ink-900/40"
               } ${isDragOver ? "bg-signal-soft" : ""}`}
             >
@@ -330,11 +330,11 @@ function MonthGrid({ anchor, postsByDay, today, draggingId, dragOverDay, setDrag
               </span>
 
               <div className="mt-1 space-y-1">
-                {dayPosts.slice(0, 3).map((post) => (
+                {dayPosts.slice(0, 5).map((post) => (
                   <DayCard key={post.id} post={post} draggingId={draggingId} setDraggingId={setDraggingId} />
                 ))}
-                {dayPosts.length > 3 && (
-                  <p className="text-[10px] text-mist-500 pl-1">+{dayPosts.length - 3} mai multe</p>
+                {dayPosts.length > 5 && (
+                  <p className="text-[10px] text-mist-500 pl-1">+{dayPosts.length - 5} mai multe</p>
                 )}
               </div>
             </div>
@@ -370,7 +370,7 @@ function WeekGrid({ anchor, postsByDay, today, draggingId, dragOverDay, setDragg
         })}
       </div>
 
-      <div className="grid grid-cols-7" style={{ minHeight: 320 }}>
+      <div className="grid grid-cols-7" style={{ minHeight: 420 }}>
         {days.map((day) => {
           const key = dateKey(day);
           const dayPosts = postsByDay.get(key) ?? [];

@@ -71,32 +71,32 @@ export function MiniWeekCalendar({ posts }: { posts: MiniWeekPost[] }) {
           const dayPosts = postsByDay.get(key) ?? [];
 
           return (
-            <div key={key} className="border-l border-ink-700 first:border-l-0 p-2 min-h-[110px]">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <span className="text-[10px] text-mist-500 uppercase">{DAY_LABELS[i]}</span>
+            <div key={key} className="border-l border-ink-700 first:border-l-0 p-2.5 min-h-[220px]">
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="text-xs text-mist-500 uppercase">{DAY_LABELS[i]}</span>
                 <span
-                  className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-mono ${
+                  className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-mono ${
                     isToday ? "bg-signal text-white font-semibold" : "text-mist-300"
                   }`}
                 >
                   {day.getDate()}
                 </span>
               </div>
-              <div className="space-y-1">
-                {dayPosts.slice(0, 2).map((post) => (
+              <div className="space-y-1.5">
+                {dayPosts.slice(0, 5).map((post) => (
                   <Link
                     key={post.id}
                     href={`/dashboard/posts/${post.id}`}
-                    className="flex items-center gap-1 rounded-md border border-ink-600 bg-ink-900 px-1.5 py-1 text-[10px] text-mist-300 hover:border-signal transition-colors"
+                    className="flex items-center gap-1.5 rounded-md border border-ink-600 bg-ink-900 px-2 py-1.5 text-xs text-mist-300 hover:border-signal transition-colors"
                     title={post.title}
                   >
                     <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_DOT[post.status] ?? "bg-mist-500"}`} />
-                    {post.platforms[0] && <PlatformIcon platform={post.platforms[0]} size={9} />}
+                    {post.platforms[0] && <PlatformIcon platform={post.platforms[0]} size={11} />}
                     <span className="truncate">{post.title}</span>
                   </Link>
                 ))}
-                {dayPosts.length > 2 && (
-                  <p className="text-[9px] text-mist-500 pl-1">+{dayPosts.length - 2} mai multe</p>
+                {dayPosts.length > 5 && (
+                  <p className="text-[10px] text-mist-500 pl-1">+{dayPosts.length - 5} mai multe</p>
                 )}
               </div>
             </div>
