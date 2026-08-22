@@ -274,22 +274,26 @@ async function waitForContainerReady(
  * Cere o singura metrica de insights pentru o postare/media, izolat. Meta
  * respinge intreg request-ul daca oricare metrica dintr-o lista batch e
  * invalida (eroare #100) - iar metricile astea se schimba des. Returneaza
- * null pe orice eroare (metrica invalida, postare stearsa, permisiune
- * lipsa) - apelantul decide ce face cu lipsa valorii.
+ * eroarea exacta de la Meta per metrica (nu doar null) - esential pentru
+ * diagnostic cand TOATE metricile pica deodata, caz in care "nu stim de ce"
+ * nu ne ajuta cu nimic.
  */
 async function fetchSinglePostMetric(
   objectId: string,
   metric: string,
   accessToken: string
-): Promise<{ value: number; metric: string } | null> {
+): Promise<{ value: number } | { error: string }> {
   try {
     const res = await fetch(`${GRAPH_BASE}/${objectId}/insights?metric=${metric}&access_token=${accessToken}`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    const value = data.data?.[0]?.values?.[0]?.value;
-    return typeof value === "number" ? { value, metric } : null;
-  } catch {
-    return null;
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      return { error: data?.error?.message || `HTTP ${res.status}` };
+    }
+    const value = data?.data?.[0]?.values?.[0]?.value;
+    if (typeof value !== "number") return { error: "răspuns fără valoare" };
+    return { value };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "eroare de rețea" };
   }
 }
 
@@ -313,16 +317,12 @@ export async function getFacebookInsights(params: {
   const data: PostInsightsResult["data"] = [];
   const failedMetrics: string[] = [];
   results.forEach((r, i) => {
-    if (r) data.push({ name: r.metric, values: [{ value: r.value }] });
-    else failedMetrics.push(metricNames[i]);
+    if ("value" in r) data.push({ name: metricNames[i], values: [{ value: r.value }] });
+    else failedMetrics.push(`${metricNames[i]}: ${r.error}`);
   });
 
   if (data.length === 0) {
-    throw new Error(
-      failedMetrics.length === metricNames.length
-        ? "Nicio metrică nu a putut fi preluată (postare ștearsă, permisiune lipsă, sau token expirat)"
-        : "Nu s-au putut prelua insights de Facebook"
-    );
+    throw new Error(failedMetrics.join(" | "));
   }
 
   return { data, failedMetrics };
@@ -341,16 +341,12 @@ export async function getInstagramInsights(params: {
   const data: PostInsightsResult["data"] = [];
   const failedMetrics: string[] = [];
   results.forEach((r, i) => {
-    if (r) data.push({ name: r.metric, values: [{ value: r.value }] });
-    else failedMetrics.push(metricNames[i]);
+    if ("value" in r) data.push({ name: metricNames[i], values: [{ value: r.value }] });
+    else failedMetrics.push(`${metricNames[i]}: ${r.error}`);
   });
 
   if (data.length === 0) {
-    throw new Error(
-      failedMetrics.length === metricNames.length
-        ? "Nicio metrică nu a putut fi preluată (media ștearsă, permisiune lipsă, sau token expirat)"
-        : "Nu s-au putut prelua insights de Instagram"
-    );
+    throw new Error(failedMetrics.join(" | "));
   }
 
   return { data, failedMetrics };
