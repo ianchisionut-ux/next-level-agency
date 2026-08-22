@@ -270,40 +270,90 @@ async function waitForContainerReady(
   return false;
 }
 
+/**
+ * Cere o singura metrica de insights pentru o postare/media, izolat. Meta
+ * respinge intreg request-ul daca oricare metrica dintr-o lista batch e
+ * invalida (eroare #100) - iar metricile astea se schimba des. Returneaza
+ * null pe orice eroare (metrica invalida, postare stearsa, permisiune
+ * lipsa) - apelantul decide ce face cu lipsa valorii.
+ */
+async function fetchSinglePostMetric(
+  objectId: string,
+  metric: string,
+  accessToken: string
+): Promise<{ value: number; metric: string } | null> {
+  try {
+    const res = await fetch(`${GRAPH_BASE}/${objectId}/insights?metric=${metric}&access_token=${accessToken}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const value = data.data?.[0]?.values?.[0]?.value;
+    return typeof value === "number" ? { value, metric } : null;
+  } catch {
+    return null;
+  }
+}
+
+export interface PostInsightsResult {
+  data: { name: string; values: { value: number }[] }[];
+  failedMetrics: string[];
+}
+
 export async function getFacebookInsights(params: {
   postId: string;
   accessToken: string;
-}) {
+}): Promise<PostInsightsResult> {
   const { postId, accessToken } = params;
   // post_impressions a fost dezactivat de Meta (15 noiembrie 2025) - inlocuit
-  // cu post_media_view. Meta respinge intreg request-ul daca o singura metrica
-  // din lista e invalida (eroare #100), deci actualizarea trebuie facuta pentru
-  // toate metricile odata, nu doar cea gasita vinovata.
-  const metrics = "post_media_view,post_engaged_users,post_clicks";
-  const res = await fetch(
-    `${GRAPH_BASE}/${postId}/insights?metric=${metrics}&access_token=${accessToken}`
-  );
-  if (!res.ok) {
-    const errData = await res.json().catch(() => null);
-    throw new Error(errData?.error?.message || "Nu s-au putut prelua insights de Facebook");
+  // cu post_media_view. Fiecare metrica se cere separat (nu grupat), ca o
+  // eventuala metrica invalida/schimbata de Meta sa nu strice tot raspunsul -
+  // doar acea valoare lipseste.
+  const metricNames = ["post_media_view", "post_engaged_users", "post_clicks"];
+  const results = await Promise.all(metricNames.map((m) => fetchSinglePostMetric(postId, m, accessToken)));
+
+  const data: PostInsightsResult["data"] = [];
+  const failedMetrics: string[] = [];
+  results.forEach((r, i) => {
+    if (r) data.push({ name: r.metric, values: [{ value: r.value }] });
+    else failedMetrics.push(metricNames[i]);
+  });
+
+  if (data.length === 0) {
+    throw new Error(
+      failedMetrics.length === metricNames.length
+        ? "Nicio metrică nu a putut fi preluată (postare ștearsă, permisiune lipsă, sau token expirat)"
+        : "Nu s-au putut prelua insights de Facebook"
+    );
   }
-  return res.json();
+
+  return { data, failedMetrics };
 }
 
-export async function getInstagramInsights(params: { mediaId: string; accessToken: string }) {
+export async function getInstagramInsights(params: {
+  mediaId: string;
+  accessToken: string;
+}): Promise<PostInsightsResult> {
   const { mediaId, accessToken } = params;
-  // "impressions" a fost dezactivata de Meta (21 aprilie 2025, API v22.0) -
-  // inlocuita cu "views". Acelasi motiv ca la Facebook: o metrica invalida
-  // pica intregul request.
-  const metrics = "views,reach,likes,comments,saved,shares";
-  const res = await fetch(
-    `${GRAPH_BASE}/${mediaId}/insights?metric=${metrics}&access_token=${accessToken}`
-  );
-  if (!res.ok) {
-    const errData = await res.json().catch(() => null);
-    throw new Error(errData?.error?.message || "Nu s-au putut prelua insights de Instagram");
+  // "impressions" a fost dezactivata de Meta (21 aprilie 2025) - inlocuita cu
+  // "views". Fiecare metrica separat, din acelasi motiv ca la Facebook.
+  const metricNames = ["views", "reach", "likes", "comments", "saved", "shares"];
+  const results = await Promise.all(metricNames.map((m) => fetchSinglePostMetric(mediaId, m, accessToken)));
+
+  const data: PostInsightsResult["data"] = [];
+  const failedMetrics: string[] = [];
+  results.forEach((r, i) => {
+    if (r) data.push({ name: r.metric, values: [{ value: r.value }] });
+    else failedMetrics.push(metricNames[i]);
+  });
+
+  if (data.length === 0) {
+    throw new Error(
+      failedMetrics.length === metricNames.length
+        ? "Nicio metrică nu a putut fi preluată (media ștearsă, permisiune lipsă, sau token expirat)"
+        : "Nu s-au putut prelua insights de Instagram"
+    );
   }
-  return res.json();
+
+  return { data, failedMetrics };
 }
 
 /**
