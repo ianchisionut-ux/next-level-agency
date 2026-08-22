@@ -178,22 +178,43 @@ export function CampaignsList({ workspaceId, campaigns }: { workspaceId: string;
                   <span className="text-xs text-mist-500">
                     {c.postsCount} {c.postsCount === 1 ? "postare" : "postări"}
                   </span>
-                  <button
-                    type="button"
-                    onClick={(e) => handleDelete(e, c.id)}
-                    onMouseLeave={() => confirmDeleteId === c.id && setConfirmDeleteId(null)}
-                    disabled={deletingId === c.id}
-                    title={confirmDeleteId === c.id ? "Sigur? Apasă din nou" : "Șterge campania"}
-                    className={`relative z-10 rounded-lg p-1.5 transition-colors disabled:opacity-50 ${
-                      confirmDeleteId === c.id
-                        ? "bg-state-error text-white"
-                        : "text-mist-500 hover:bg-ink-700 hover:text-state-error"
-                    }`}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                      <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
+                  {confirmDeleteId === c.id ? (
+                    <div className="flex items-center gap-1 relative z-10">
+                      <button
+                        type="button"
+                        onClick={(e) => handleDelete(e, c.id)}
+                        disabled={deletingId === c.id}
+                        title="Confirmă ștergerea"
+                        className="rounded-lg bg-state-error px-2 py-1 text-xs font-semibold text-white transition-colors hover:bg-state-error/80 disabled:opacity-50"
+                      >
+                        {deletingId === c.id ? "…" : "Șterge"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setConfirmDeleteId(null);
+                        }}
+                        disabled={deletingId === c.id}
+                        title="Anulează"
+                        className="rounded-lg border border-ink-600 px-2 py-1 text-xs font-semibold text-mist-500 transition-colors hover:text-mist-100 disabled:opacity-50"
+                      >
+                        Anulează
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => handleDelete(e, c.id)}
+                      title="Șterge campania"
+                      className="relative z-10 rounded-lg p-1.5 text-mist-500 transition-colors hover:bg-ink-700 hover:text-state-error"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                        <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
 
