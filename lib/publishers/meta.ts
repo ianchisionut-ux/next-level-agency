@@ -284,7 +284,12 @@ async function fetchSinglePostMetric(
   accessToken: string
 ): Promise<{ value: number } | { error: string }> {
   try {
-    const res = await fetch(`${GRAPH_BASE}/${objectId}/insights?metric=${metric}&access_token=${accessToken}`);
+    // "period=lifetime" e obligatoriu pentru metricile de tip post/media -
+    // fara el, Meta raspunde 200 OK dar cu values gol (nu eroare!), motiv
+    // pentru care lipsa asta a fost multa vreme invizibila in diagnostic.
+    const res = await fetch(
+      `${GRAPH_BASE}/${objectId}/insights?metric=${metric}&period=lifetime&access_token=${accessToken}`
+    );
     const data = await res.json().catch(() => null);
     if (!res.ok) {
       return { error: data?.error?.message || `HTTP ${res.status}` };
@@ -308,10 +313,11 @@ export async function getFacebookInsights(params: {
 }): Promise<PostInsightsResult> {
   const { postId, accessToken } = params;
   // post_impressions a fost dezactivat de Meta (15 noiembrie 2025) - inlocuit
-  // cu post_media_view. Fiecare metrica se cere separat (nu grupat), ca o
-  // eventuala metrica invalida/schimbata de Meta sa nu strice tot raspunsul -
-  // doar acea valoare lipseste.
-  const metricNames = ["post_media_view", "post_engaged_users", "post_clicks"];
+  // cu post_media_view. post_engaged_users e de asemenea dezactivat (eroare
+  // #100 confirmata) - inlocuit cu post_reactions_like_total, metrica
+  // confirmata valida in documentatia oficiala Meta. Fiecare metrica se cere
+  // separat, ca o eventuala metrica invalida sa nu strice tot raspunsul.
+  const metricNames = ["post_media_view", "post_reactions_like_total", "post_clicks"];
   const results = await Promise.all(metricNames.map((m) => fetchSinglePostMetric(postId, m, accessToken)));
 
   const data: PostInsightsResult["data"] = [];

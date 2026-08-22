@@ -161,7 +161,7 @@ async function fetchMetricsForVariant(platform: string, externalId: string, acce
     return {
       impressions: byName.post_media_view ?? 0,
       reach: 0,
-      likes: 0,
+      likes: byName.post_reactions_like_total ?? 0,
       comments: 0,
       shares: 0,
       saves: 0,
