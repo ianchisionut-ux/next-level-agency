@@ -570,13 +570,15 @@ export async function getFacebookPageOverviewStats(
   pageId: string,
   accessToken: string
 ): Promise<PageStatsSnapshot> {
-  const candidates: Record<keyof Omit<PageStatsSnapshot, "failedMetrics">, string> = {
+  const candidates: Partial<Record<keyof Omit<PageStatsSnapshot, "failedMetrics">, string>> = {
     views: "page_views_total",
     follows: "page_follows",
     visits: "page_views_total",
     interactions: "page_post_engagements",
     videoViews: "page_video_views",
-    unfollows: "page_fan_removes",
+    // "unfollows" (page_fan_removes) a fost confirmata moarta la Meta (#100) -
+    // nu exista inlocuitor documentat, si nu e un tile esential. Scoasa din
+    // candidati in loc sa continue sa apara mereu ca eroare.
   };
 
   const entries = Object.entries(candidates) as [keyof Omit<PageStatsSnapshot, "failedMetrics">, string][];
