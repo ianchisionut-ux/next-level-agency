@@ -13,6 +13,7 @@ export interface DetailVariant {
   mediaUrls: string[];
   status: string;
   errorLog: string | null;
+  retryCount: number;
   scheduledAt: string | null;
   publishedAt: string | null;
   accountName: string;
@@ -291,6 +292,20 @@ export function PostDetail({ post: initialPost }: { post: DetailPost }) {
                   >
                     {retrying === variant.id ? "Se reîncearcă…" : "Reîncearcă publicarea"}
                   </button>
+                </div>
+              )}
+
+              {/* Statusul ramane "PENDING" (nu "FAILED") atat timp cat mai
+                  sunt reincercari automate disponibile (max 3) - fara asta,
+                  o eroare reala ar parea ca "asteapta", fara nicio explicatie,
+                  pana la a 3-a incercare esuata. */}
+              {variant.status === "PENDING" && variant.retryCount > 0 && variant.errorLog && (
+                <div className="mt-3 rounded-lg bg-state-warning/10 border border-state-warning/30 px-3 py-2">
+                  <p className="text-xs text-state-warning font-medium">
+                    A eșuat de {variant.retryCount} {variant.retryCount === 1 ? "dată" : "ori"} — se reîncearcă automat
+                    (max 3 încercări).
+                  </p>
+                  <p className="text-xs text-mist-500 mt-1">{variant.errorLog}</p>
                 </div>
               )}
 

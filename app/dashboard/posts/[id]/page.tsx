@@ -35,6 +35,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
           mediaUrls: v.mediaUrls,
           status: v.status,
           errorLog: v.errorLog,
+          retryCount: v.retryCount,
           scheduledAt: v.scheduledAt?.toISOString() ?? null,
           publishedAt: v.publishedAt?.toISOString() ?? null,
           accountName: v.account.accountName,
