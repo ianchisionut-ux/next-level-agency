@@ -295,7 +295,10 @@ async function fetchSinglePostMetric(
       return { error: data?.error?.message || `HTTP ${res.status}` };
     }
     const value = data?.data?.[0]?.values?.[0]?.value;
-    if (typeof value !== "number") return { error: "răspuns fără valoare" };
+    // Raspuns 200 OK dar fara nicio valoare = cel mai probabil metrica e
+    // legitim zero (ex: 0 click-uri pe o postare noua/mica) - Meta omite
+    // punctul de date in loc sa intoarca value:0. Tratam ca 0, nu ca eroare.
+    if (typeof value !== "number") return { value: 0 };
     return { value };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "eroare de rețea" };
@@ -535,9 +538,11 @@ async function fetchSingleMetric(
     const totalValue = data?.data?.[0]?.total_value?.value;
     if (typeof totalValue === "number") return { value: totalValue };
     const values = data?.data?.[0]?.values;
-    if (!values || values.length === 0) return { error: "răspuns fără valoare" };
+    // Raspuns 200 OK dar fara valori = cel mai probabil metrica e legitim
+    // zero (cont/pagina noua, fara trafic real inca), nu o eroare reala.
+    if (!values || values.length === 0) return { value: 0 };
     const last = values[values.length - 1]?.value;
-    return typeof last === "number" ? { value: last } : { error: "răspuns fără valoare" };
+    return typeof last === "number" ? { value: last } : { value: 0 };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "eroare de rețea" };
   }
