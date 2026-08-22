@@ -7,23 +7,12 @@ import { computeBestTimeToPost, fetchEngagementByVariant } from "@/lib/best-time
 
 export const dynamic = "force-dynamic";
 
-export default async function ComposePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ campaignId?: string }>;
-}) {
-  const { campaignId } = await searchParams;
-  const workspace = await getActiveWorkspace();
-  const accounts = await prisma.connectedAccount.findMany({
-    where: { workspaceId: workspace!.id, isActive: true },
-  });
-
-  // Top hashtag-uri, pe baza performantei reale (aceeasi logica ca la Analytics) -
-  // sugestiile nu sunt "AI", sunt pur si simplu ce a functionat deja pentru tine.
-  let suggestedHashtags: string[] = [];
+// Top hashtag-uri, pe baza performantei reale (aceeasi logica ca la Analytics) -
+// sugestiile nu sunt "AI", sunt pur si simplu ce a functionat deja pentru tine.
+async function loadSuggestedHashtags(workspaceId: string): Promise<string[]> {
   try {
     const publishedVariants = await prisma.postVariant.findMany({
-      where: { status: "PUBLISHED", post: { workspaceId: workspace!.id } },
+      where: { status: "PUBLISHED", post: { workspaceId } },
       select: { id: true, hashtags: true },
     });
     const insights = await prisma.platformInsight.findMany({
@@ -42,45 +31,63 @@ export default async function ComposePage({
         hashtagScores.set(tag, (hashtagScores.get(tag) ?? 0) + engagement);
       }
     }
-    suggestedHashtags = Array.from(hashtagScores.entries())
+    return Array.from(hashtagScores.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10)
       .map(([tag]) => tag);
   } catch {
-    // fara date inca - ramane lista goala, componenta trateaza gratios
+    return []; // fara date inca - componenta trateaza gratios o lista goala
   }
+}
 
-  // Top cuvinte cheie din Google Search Console, ca inspiratie pentru text.
-  let suggestedKeywords: string[] = [];
+// Top cuvinte cheie din Google Search Console, ca inspiratie pentru text.
+async function loadSuggestedKeywords(workspaceId: string): Promise<string[]> {
   try {
     const latest = await prisma.keywordSnapshot.findFirst({
-      where: { workspaceId: workspace!.id },
+      where: { workspaceId },
       orderBy: { capturedAt: "desc" },
     });
-    if (latest) {
-      const rows = await prisma.keywordSnapshot.findMany({
-        where: { workspaceId: workspace!.id, capturedAt: latest.capturedAt },
-        orderBy: { clicks: "desc" },
-        take: 8,
-      });
-      suggestedKeywords = rows.map((r) => r.keyword);
-    }
-  } catch {
-    // fara date inca
-  }
-
-  const engagementByVariant = await fetchEngagementByVariant(workspace!.id);
-  const bestTimeSlots = await computeBestTimeToPost(workspace!.id, engagementByVariant);
-  const bestTime = bestTimeSlots[0] ?? null;
-
-  let campaignName: string | null = null;
-  if (campaignId) {
-    const campaign = await prisma.campaign.findFirst({
-      where: { id: campaignId, workspaceId: workspace!.id },
-      select: { name: true },
+    if (!latest) return [];
+    const rows = await prisma.keywordSnapshot.findMany({
+      where: { workspaceId, capturedAt: latest.capturedAt },
+      orderBy: { clicks: "desc" },
+      take: 8,
     });
-    campaignName = campaign?.name ?? null;
+    return rows.map((r) => r.keyword);
+  } catch {
+    return [];
   }
+}
+
+async function loadBestTimeHint(workspaceId: string): Promise<string | null> {
+  const engagementByVariant = await fetchEngagementByVariant(workspaceId);
+  const bestTimeSlots = await computeBestTimeToPost(workspaceId, engagementByVariant);
+  const bestTime = bestTimeSlots[0] ?? null;
+  return bestTime ? `${bestTime.dayLabel}, ${String(bestTime.hour).padStart(2, "0")}:00` : null;
+}
+
+export default async function ComposePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ campaignId?: string }>;
+}) {
+  const { campaignId } = await searchParams;
+  const workspace = await getActiveWorkspace();
+  const workspaceId = workspace!.id;
+
+  // Cele 4 seturi de date de mai jos sunt complet independente unul de
+  // altul - inainte rulau unul dupa altul (accounts -> hashtags -> keywords
+  // -> best-time -> campanie), adaugand de 4-5 ori latenta de retea catre
+  // baza de date pe fiecare incarcare a paginii de compunere.
+  const [accounts, suggestedHashtags, suggestedKeywords, bestTimeHint, campaign] = await Promise.all([
+    prisma.connectedAccount.findMany({ where: { workspaceId, isActive: true } }),
+    loadSuggestedHashtags(workspaceId),
+    loadSuggestedKeywords(workspaceId),
+    loadBestTimeHint(workspaceId),
+    campaignId
+      ? prisma.campaign.findFirst({ where: { id: campaignId, workspaceId }, select: { name: true } })
+      : Promise.resolve(null),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -90,7 +97,7 @@ export default async function ComposePage({
       />
 
       <Composer
-        workspaceId={workspace!.id}
+        workspaceId={workspaceId}
         accounts={accounts.map((a) => ({
           id: a.id,
           platform: a.platform as PlatformKey,
@@ -98,9 +105,9 @@ export default async function ComposePage({
         }))}
         suggestedHashtags={suggestedHashtags}
         suggestedKeywords={suggestedKeywords}
-        bestTimeHint={bestTime ? `${bestTime.dayLabel}, ${String(bestTime.hour).padStart(2, "0")}:00` : null}
+        bestTimeHint={bestTimeHint}
         campaignId={campaignId ?? null}
-        campaignName={campaignName}
+        campaignName={campaign?.name ?? null}
       />
     </div>
   );

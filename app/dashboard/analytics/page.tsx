@@ -163,13 +163,40 @@ export default async function AnalyticsPage() {
     .slice(0, 5)
     .map(([id]) => id);
 
-  const topVariants =
+  // Toate interogarile de mai jos sunt independente una de alta (niciuna nu
+  // are nevoie de rezultatul celeilalte) - inainte rulau una dupa alta,
+  // adaugand de 5 ori latenta de retea catre baza de date. Rulate in
+  // paralel, timpul total scade la cel al celei mai lente, nu la suma lor.
+  const [topVariants, allPublishedVariants, sentimentRowsResult, latestAge, latestCity, bestTimeSlots] = await Promise.all([
     topVariantIds.length > 0
-      ? await prisma.postVariant.findMany({
+      ? prisma.postVariant.findMany({
           where: { id: { in: topVariantIds } },
           include: { post: true },
         })
-      : [];
+      : Promise.resolve([]),
+    // Toate campurile necesare pentru format + hashtag-uri intr-o singura
+    // interogare (in loc de doua separate, identice ca WHERE).
+    prisma.postVariant.findMany({
+      where: { status: "PUBLISHED", post: { workspaceId: workspace!.id } },
+      select: { id: true, mediaUrls: true, contentTags: true, hashtags: true },
+    }),
+    prisma.postSentiment
+      .findMany({ where: { variant: { post: { workspaceId: workspace!.id } } } })
+      .catch((err) => {
+        console.error("Nu am putut incarca sentimentul:", err);
+        return [];
+      }),
+    prisma.audienceDemographic
+      .findFirst({ where: { account: { workspaceId: workspace!.id }, dimension: "age" }, orderBy: { capturedAt: "desc" } })
+      .catch(() => null),
+    prisma.audienceDemographic
+      .findFirst({ where: { account: { workspaceId: workspace!.id }, dimension: "city" }, orderBy: { capturedAt: "desc" } })
+      .catch(() => null),
+    // Nu depinde de nimic din batch-ul asta (doar de "insights", deja adus mai
+    // sus) - inainte rula separat, dupa tot restul paginii, adaugand inca o
+    // calatorie dus-intors in plus.
+    computeBestTimeToPost(workspace!.id, byVariant),
+  ]);
 
   // Performanță pe FORMAT de conținut (Video/Reel, Carusel, Foto, Doar text) -
   // dedusă automat din mediaUrls, fără câmp nou in schema. Inspirat din
@@ -180,14 +207,6 @@ export default async function AnalyticsPage() {
     if (/\.(mp4|mov|m4v)(\?|$)/i.test(mediaUrls[0])) return "Video / Reel";
     return "Foto";
   }
-
-  // O singura interogare pentru toate variantele publicate, cu toate campurile
-  // necesare (mediaUrls, contentTags, hashtags) - inainte erau 2 interogari
-  // separate, identice ca WHERE, doar cu campuri diferite selectate.
-  const allPublishedVariants = await prisma.postVariant.findMany({
-    where: { status: "PUBLISHED", post: { workspaceId: workspace!.id } },
-    select: { id: true, mediaUrls: true, contentTags: true, hashtags: true },
-  });
 
   const byFormat = new Map<string, { engagement: number; count: number }>();
   const byContentTag = new Map<string, { engagement: number; count: number }>();
@@ -280,59 +299,37 @@ export default async function AnalyticsPage() {
   const viralityScore = Math.round(Math.min(100, bestEngRate + bestReachShare));
 
   // Demografie audienta (varsta + oras) - date reale din Meta Graph API, colectate
-  // zilnic prin cron. Izolat in try/catch: daca tabelul lipseste sau apare orice alta
-  // eroare, afisam pur si simplu fara aceasta sectiune, in loc sa cadă toata pagina.
+  // zilnic prin cron. latestAge/latestCity au fost deja aduse in batch-ul de mai
+  // sus - acum mai facem un singur Promise.all (nu 2 secvential) pentru listele
+  // complete, doar daca exista macar un snapshot de fiecare tip.
   let ageDemographics: Awaited<ReturnType<typeof prisma.audienceDemographic.findMany>> = [];
   let cityDemographics: Awaited<ReturnType<typeof prisma.audienceDemographic.findMany>> = [];
   try {
-    const [latestAge, latestCity] = await Promise.all([
-      prisma.audienceDemographic.findFirst({
-        where: { account: { workspaceId: workspace!.id }, dimension: "age" },
-        orderBy: { capturedAt: "desc" },
-      }),
-      prisma.audienceDemographic.findFirst({
-        where: { account: { workspaceId: workspace!.id }, dimension: "city" },
-        orderBy: { capturedAt: "desc" },
-      }),
+    const [ageRows, cityRows] = await Promise.all([
+      latestAge
+        ? prisma.audienceDemographic.findMany({
+            where: { account: { workspaceId: workspace!.id }, dimension: "age", capturedAt: latestAge.capturedAt },
+            orderBy: { percentage: "desc" },
+          })
+        : Promise.resolve([]),
+      latestCity
+        ? prisma.audienceDemographic.findMany({
+            where: { account: { workspaceId: workspace!.id }, dimension: "city", capturedAt: latestCity.capturedAt },
+            orderBy: { percentage: "desc" },
+            take: 5,
+          })
+        : Promise.resolve([]),
     ]);
-
-    if (latestAge) {
-      ageDemographics = await prisma.audienceDemographic.findMany({
-        where: {
-          account: { workspaceId: workspace!.id },
-          dimension: "age",
-          capturedAt: latestAge.capturedAt,
-        },
-        orderBy: { percentage: "desc" },
-      });
-    }
-
-    if (latestCity) {
-      cityDemographics = await prisma.audienceDemographic.findMany({
-        where: {
-          account: { workspaceId: workspace!.id },
-          dimension: "city",
-          capturedAt: latestCity.capturedAt,
-        },
-        orderBy: { percentage: "desc" },
-        take: 5,
-      });
-    }
+    ageDemographics = ageRows;
+    cityDemographics = cityRows;
   } catch (err) {
     console.error("Nu am putut incarca demografia audientei:", err);
   }
 
-  // Sentiment & Buzz - agregam toate snapshot-urile de sentiment din ultimele
-  // 30 de zile pentru variantele acestui workspace. Izolat in try/catch, la
-  // fel ca demografia. O singura interogare (filtru direct prin relatie),
-  // in loc de doua (inainte: cauta id-uri, apoi cauta sentiment cu acele id-uri).
+  // Sentiment & Buzz - agregam snapshot-urile deja aduse in batch-ul de mai sus.
   let sentimentTotals = { positive: 0, neutral: 0, negative: 0 };
   try {
-    const sentimentRows = await prisma.postSentiment.findMany({
-      where: { variant: { post: { workspaceId: workspace!.id } } },
-    });
-
-    for (const row of sentimentRows) {
+    for (const row of sentimentRowsResult) {
       sentimentTotals.positive += row.positiveCount;
       sentimentTotals.neutral += row.neutralCount;
       sentimentTotals.negative += row.negativeCount;
@@ -348,8 +345,6 @@ export default async function AnalyticsPage() {
   };
 
   const hasData = insights.length > 0;
-
-  const bestTimeSlots = await computeBestTimeToPost(workspace!.id, byVariant);
 
   const now = new Date();
   const daysLeftInMonth =

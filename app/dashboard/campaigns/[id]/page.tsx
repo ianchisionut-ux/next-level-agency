@@ -21,14 +21,18 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
   const workspace = await getActiveWorkspace();
   if (!workspace) redirect("/login");
 
-  const campaign = await prisma.campaign.findUnique({ where: { id } });
+  // Cele doua interogari sunt independente (posts se filtreaza direct dupa
+  // campaignId, nu dupa rezultatul primei) - le rulam in paralel si doar
+  // verificam apartenenta la workspace dupa, inainte sa afisam ceva.
+  const [campaign, posts] = await Promise.all([
+    prisma.campaign.findUnique({ where: { id } }),
+    prisma.post.findMany({
+      where: { campaignId: id },
+      include: { variants: { include: { account: true, insights: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
   if (!campaign || campaign.workspaceId !== workspace.id) notFound();
-
-  const posts = await prisma.post.findMany({
-    where: { campaignId: id },
-    include: { variants: { include: { account: true, insights: true } } },
-    orderBy: { createdAt: "desc" },
-  });
 
   let totalEngagement = 0;
   let totalImpressions = 0;
