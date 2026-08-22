@@ -97,6 +97,25 @@ async function publishVariant(variantId: string) {
   return result;
 }
 
+/**
+ * Publica o varianta IMEDIAT, sincron - nu doar o marcheaza ca "gata acum"
+ * si asteapta urmatorul ciclu de cron extern (care poate fi la minute
+ * distanta). Folosita de butonul "Publică acum" din UI, atat pentru
+ * variante FAILED cat si PENDING (programate dar inca neincercate).
+ */
+export async function publishVariantNow(variantId: string) {
+  // Resetam contorul de reincercari - o interventie manuala a userului
+  // merita un buget complet de reincercari automate, nu doar ce mai ramasese.
+  await prisma.postVariant.update({
+    where: { id: variantId },
+    data: { retryCount: 0, errorLog: null },
+  });
+  const result = await publishVariant(variantId);
+  const variant = await prisma.postVariant.findUniqueOrThrow({ where: { id: variantId } });
+  await recomputePostStatus(variant.postId);
+  return result;
+}
+
 async function dispatchToPlatform(
   platform: Platform,
   params: { accessToken: string; externalId: string; content: string; mediaUrls: string[]; postAsReel?: boolean }

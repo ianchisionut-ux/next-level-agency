@@ -149,20 +149,38 @@ export function PostDetail({ post: initialPost }: { post: DetailPost }) {
     }
   }
 
-  async function retryVariant(variantId: string) {
+  async function publishNowVariant(variantId: string) {
     setRetrying(variantId);
+    setError(null);
     try {
       const res = await fetch(`/api/posts/${post.id}/variants/${variantId}/retry`, { method: "POST" });
-      if (!res.ok) throw new Error("Eroare la reîncercare");
-      setPost({
-        ...post,
-        status: "SCHEDULED",
-        variants: post.variants.map((v) =>
-          v.id === variantId ? { ...v, status: "PENDING", errorLog: null } : v
-        ),
-      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Publicarea a eșuat");
+
+      // Rezultatul poate fi succes (PUBLISHED) sau eșec din nou (FAILED/PENDING) -
+      // reincarcam postarea reala, nu presupunem starea local.
+      const fresh = await fetch(`/api/posts/${post.id}`).then((r) => r.json());
+      if (fresh.post) {
+        setPost({
+          id: fresh.post.id,
+          status: fresh.post.status,
+          scheduledAt: fresh.post.scheduledAt,
+          variants: fresh.post.variants.map((v: any) => ({
+            id: v.id,
+            platform: v.platform,
+            content: v.content,
+            mediaUrls: v.mediaUrls,
+            status: v.status,
+            errorLog: v.errorLog,
+            retryCount: v.retryCount,
+            scheduledAt: v.scheduledAt,
+            publishedAt: v.publishedAt,
+            accountName: v.account.accountName,
+          })),
+        });
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Eroare la reîncercare");
+      setError(err instanceof Error ? err.message : "Publicarea a eșuat");
     } finally {
       setRetrying(null);
     }
@@ -286,11 +304,11 @@ export function PostDetail({ post: initialPost }: { post: DetailPost }) {
                 <div className="mt-3 rounded-lg bg-state-error/10 border border-state-error/30 px-3 py-2">
                   <p className="text-xs text-state-error">{variant.errorLog}</p>
                   <button
-                    onClick={() => retryVariant(variant.id)}
+                    onClick={() => publishNowVariant(variant.id)}
                     disabled={retrying === variant.id}
                     className="text-xs text-signal-bright font-medium hover:underline mt-1.5 disabled:opacity-50"
                   >
-                    {retrying === variant.id ? "Se reîncearcă…" : "Reîncearcă publicarea"}
+                    {retrying === variant.id ? "Se publică…" : "Publică acum"}
                   </button>
                 </div>
               )}
@@ -299,13 +317,30 @@ export function PostDetail({ post: initialPost }: { post: DetailPost }) {
                   sunt reincercari automate disponibile (max 3) - fara asta,
                   o eroare reala ar parea ca "asteapta", fara nicio explicatie,
                   pana la a 3-a incercare esuata. */}
-              {variant.status === "PENDING" && variant.retryCount > 0 && variant.errorLog && (
-                <div className="mt-3 rounded-lg bg-state-warning/10 border border-state-warning/30 px-3 py-2">
-                  <p className="text-xs text-state-warning font-medium">
-                    A eșuat de {variant.retryCount} {variant.retryCount === 1 ? "dată" : "ori"} — se reîncearcă automat
-                    (max 3 încercări).
-                  </p>
-                  <p className="text-xs text-mist-500 mt-1">{variant.errorLog}</p>
+              {variant.status === "PENDING" && (
+                <div
+                  className={`mt-3 rounded-lg px-3 py-2 ${
+                    variant.retryCount > 0
+                      ? "bg-state-warning/10 border border-state-warning/30"
+                      : "bg-ink-900 border border-ink-700"
+                  }`}
+                >
+                  {variant.retryCount > 0 && variant.errorLog && (
+                    <>
+                      <p className="text-xs text-state-warning font-medium">
+                        A eșuat de {variant.retryCount} {variant.retryCount === 1 ? "dată" : "ori"} — se reîncearcă
+                        automat (max 3 încercări).
+                      </p>
+                      <p className="text-xs text-mist-500 mt-1">{variant.errorLog}</p>
+                    </>
+                  )}
+                  <button
+                    onClick={() => publishNowVariant(variant.id)}
+                    disabled={retrying === variant.id}
+                    className="text-xs text-signal-bright font-medium hover:underline mt-1.5 disabled:opacity-50"
+                  >
+                    {retrying === variant.id ? "Se publică…" : "Publică acum"}
+                  </button>
                 </div>
               )}
 

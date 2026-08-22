@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { publishVariantNow } from "@/lib/publish-orchestrator";
 
 export async function POST(
   req: NextRequest,
@@ -24,24 +25,24 @@ export async function POST(
     });
     if (!member) return NextResponse.json({ error: "Nu ai acces la această postare" }, { status: 403 });
 
-    if (variant.status !== "FAILED") {
-      return NextResponse.json({ error: "Doar variantele eșuate pot fi reîncercate" }, { status: 409 });
+    // "Publică acum" - disponibil atat pentru variante esuate, cat si pentru
+    // cele in asteptare (programate dar inca neincercate, sau in reincercare
+    // automata) - userul poate forta publicarea imediata in ambele cazuri.
+    if (variant.status !== "FAILED" && variant.status !== "PENDING") {
+      return NextResponse.json(
+        { error: "Doar variantele eșuate sau în așteptare pot fi publicate manual" },
+        { status: 409 }
+      );
     }
 
-    await prisma.$transaction([
-      prisma.postVariant.update({
-        where: { id: variantId },
-        data: { status: "PENDING", retryCount: 0, errorLog: null, scheduledAt: new Date() },
-      }),
-      prisma.post.update({
-        where: { id },
-        data: { status: "SCHEDULED" },
-      }),
-    ]);
+    const result = await publishVariantNow(variantId);
+    if (!result.success) {
+      return NextResponse.json({ error: result.error || "Publicarea a eșuat" }, { status: 502 });
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("Eroare la reincercarea postarii:", err);
-    return NextResponse.json({ error: "Nu am putut reîncerca publicarea" }, { status: 500 });
+    console.error("Eroare la publicarea manuala:", err);
+    return NextResponse.json({ error: "Nu am putut publica postarea" }, { status: 500 });
   }
 }
