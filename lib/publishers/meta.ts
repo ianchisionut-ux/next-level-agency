@@ -359,3 +359,56 @@ export async function getInstagramAudienceDemographics(params: {
 
   return results;
 }
+
+export interface FacebookPageOverview {
+  followersCount: number | null;
+  fanCount: number | null;
+  pictureUrl: string | null;
+}
+
+/**
+ * Statistici generale (nume, poza, urmaritori) pentru o Pagina de Facebook,
+ * cerute live din Graph API de fiecare data cand se afiseaza "Conturi conectate"
+ * - nu se stocheaza in baza de date, deci sunt intotdeauna la zi.
+ */
+export async function getFacebookPageOverview(
+  pageId: string,
+  accessToken: string
+): Promise<FacebookPageOverview | null> {
+  const res = await fetch(
+    `${GRAPH_BASE}/${pageId}?fields=followers_count,fan_count,picture{url}&access_token=${accessToken}`
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  return {
+    followersCount: data.followers_count ?? null,
+    fanCount: data.fan_count ?? null,
+    pictureUrl: data.picture?.data?.url ?? null,
+  };
+}
+
+export interface InstagramAccountOverview {
+  followersCount: number | null;
+  mediaCount: number | null;
+  pictureUrl: string | null;
+}
+
+/**
+ * Statistici generale pentru un cont Instagram Business, la fel ca la
+ * Facebook - live din Graph API, fara stocare locala.
+ */
+export async function getInstagramAccountOverview(
+  igUserId: string,
+  accessToken: string
+): Promise<InstagramAccountOverview | null> {
+  const res = await fetch(
+    `${GRAPH_BASE}/${igUserId}?fields=followers_count,media_count,profile_picture_url&access_token=${accessToken}`
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  return {
+    followersCount: data.followers_count ?? null,
+    mediaCount: data.media_count ?? null,
+    pictureUrl: data.profile_picture_url ?? null,
+  };
+}
