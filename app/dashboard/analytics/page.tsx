@@ -28,7 +28,7 @@ export default async function AnalyticsPage() {
   // rulau (majoritatea) pe rand, adaugand latenta de retea de fiecare data.
   // Rulate in paralel, timpul total scade la cel al celei mai lente, nu la
   // suma tuturor.
-  const [insights, previousInsights, postsThisPeriod, postsPrevPeriod, keywords] = await Promise.all([
+  const [insights, previousInsights, postsThisPeriod, postsPrevPeriod, keywords, pageSnapshots] = await Promise.all([
     prisma.platformInsight.findMany({
       where: { account: { workspaceId: workspace!.id } },
       include: { account: true },
@@ -56,7 +56,23 @@ export default async function AnalyticsPage() {
       orderBy: { capturedAt: "desc" },
       take: 20,
     }),
+    // Cel mai recent instantaneu per cont (Vizualizari/Urmariri/Vizite/
+    // Interactiuni) - echivalentul "Prezentare generala" din Meta Business Suite.
+    prisma.pageInsightSnapshot.findMany({
+      where: { account: { workspaceId: workspace!.id } },
+      include: { account: true },
+      orderBy: { capturedAt: "desc" },
+      take: 50,
+    }),
   ]);
+
+  // Ultimul instantaneu per cont (findMany a adus mai multe, pastram doar
+  // cel mai recent din fiecare, ca in Meta Business Suite - "acum").
+  const latestPageSnapshotByAccount = new Map<string, (typeof pageSnapshots)[number]>();
+  for (const s of pageSnapshots) {
+    if (!latestPageSnapshotByAccount.has(s.accountId)) latestPageSnapshotByAccount.set(s.accountId, s);
+  }
+  const pageStatsCards = Array.from(latestPageSnapshotByAccount.values());
 
   const prevImpressions = previousInsights.reduce((sum, i) => sum + i.impressions, 0);
   const prevEngagement = previousInsights.reduce((sum, i) => sum + i.likes + i.comments + i.shares + i.saves, 0);
@@ -445,6 +461,51 @@ export default async function AnalyticsPage() {
       <p className="text-xs text-mist-500 -mt-2">
         Graficele mici arată evoluția zilnică din perioada afișată mai jos.
       </p>
+
+      {pageStatsCards.length > 0 && (
+        <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
+          <h2 className="font-display font-semibold text-base mb-1">Statistici pagină / cont</h2>
+          <p className="text-xs text-mist-500 mb-4">
+            Vizualizări, urmăriri, vizite și interacțiuni — la nivel de pagină, ultimele 28 de zile
+            (echivalentul din Meta Business Suite).
+          </p>
+          <div className="space-y-5">
+            {pageStatsCards.map((snap) => {
+              const meta = PLATFORM_META[snap.account.platform as PlatformKey];
+              const tiles: { label: string; value: number | null }[] = [
+                { label: "Vizualizări", value: snap.views },
+                { label: "Urmăriri", value: snap.follows },
+                { label: "Vizite", value: snap.visits },
+                { label: "Interacțiuni", value: snap.interactions },
+              ];
+              return (
+                <div key={snap.accountId}>
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <PlatformIcon platform={snap.account.platform as PlatformKey} size={16} />
+                    <span className="text-sm font-medium">{snap.account.accountName}</span>
+                    <span className="text-xs text-mist-500">· {meta.label}</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {tiles.map((t) => (
+                      <div key={t.label} className="rounded-xl border border-ink-700 bg-ink-900 px-3.5 py-3">
+                        <p className="text-xs text-mist-500">{t.label}</p>
+                        <p className="font-mono text-lg font-semibold mt-0.5">
+                          {t.value !== null ? t.value.toLocaleString("ro-RO") : "—"}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  {snap.failedMetrics.length > 0 && (
+                    <p className="text-xs text-mist-700 mt-2">
+                      Indisponibile momentan la Meta: {snap.failedMetrics.join(", ")}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {hasData && <ProfessionalAnalysis insights={professionalInsights} />}
 

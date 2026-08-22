@@ -102,8 +102,12 @@ export async function publishToFacebook(params: {
    * imediat. Util mai ales pentru video, caruia Meta ii ia timp sa il
    * proceseze - il urcam din timp, iar Meta il publica exact la ora fixata. */
   scheduledPublishTime?: number;
+  /** Buton explicit din Composer: daca e video si postAsReel=true (implicit),
+   * publicam prin API-ul de Reels. Daca e false, publicam ca video normal
+   * pe Feed (/videos), la fel ca o poza - nu apare in tab-ul Reels. */
+  postAsReel?: boolean;
 }): Promise<PublishResult> {
-  const { pageId, accessToken, content, mediaUrls, scheduledPublishTime } = params;
+  const { pageId, accessToken, content, mediaUrls, scheduledPublishTime, postAsReel = true } = params;
 
   try {
     // Fara media -> postare simpla pe /feed
@@ -125,10 +129,31 @@ export async function publishToFacebook(params: {
 
     const firstUrl = mediaUrls[0];
 
-    // Video -> publicam ca REEL (nu pe /videos simplu), ca sa apara in tab-ul
-    // Reels de pe pagina, la fel cum se intampla deja automat pentru Instagram.
     if (isVideoUrl(firstUrl)) {
-      return await publishFacebookReel({ pageId, accessToken, content, videoUrl: firstUrl, scheduledPublishTime });
+      // Buton "Postează ca Reel" bifat (implicit) -> API dedicat Reels, apare
+      // in tab-ul Reels de pe pagina.
+      if (postAsReel) {
+        return await publishFacebookReel({ pageId, accessToken, content, videoUrl: firstUrl, scheduledPublishTime });
+      }
+
+      // Debifat -> video normal pe Feed, ca inainte de introducerea Reels.
+      const body: Record<string, unknown> = {
+        file_url: firstUrl,
+        description: content,
+        access_token: accessToken,
+      };
+      if (scheduledPublishTime) {
+        body.published = false;
+        body.scheduled_publish_time = scheduledPublishTime;
+      }
+      const res = await fetch(`${GRAPH_BASE}/${pageId}/videos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || "Eroare la publicarea video");
+      return { success: true, externalPostId: data.id };
     }
 
     // Poza -> /photos (prima imagine ca postare simpla)
@@ -154,8 +179,12 @@ export async function publishToInstagram(params: {
   accessToken: string;
   content: string;
   mediaUrls: string[];
+  /** Buton explicit din Composer: daca e video si postAsReel=true (implicit),
+   * media_type=REELS. Daca e false, media_type=VIDEO (postare video normala
+   * pe grid/feed, nu in tab-ul Reels). */
+  postAsReel?: boolean;
 }): Promise<PublishResult> {
-  const { igUserId, accessToken, content, mediaUrls } = params;
+  const { igUserId, accessToken, content, mediaUrls, postAsReel = true } = params;
 
   if (mediaUrls.length === 0) {
     return { success: false, error: "Instagram necesita cel putin o imagine sau un video" };
@@ -172,7 +201,7 @@ export async function publishToInstagram(params: {
       access_token: accessToken,
     };
     if (isVideo) {
-      containerBody.media_type = "REELS";
+      containerBody.media_type = postAsReel ? "REELS" : "VIDEO";
       containerBody.video_url = firstUrl;
     } else {
       containerBody.image_url = firstUrl;
@@ -411,4 +440,101 @@ export async function getInstagramAccountOverview(
     mediaCount: data.media_count ?? null,
     pictureUrl: data.profile_picture_url ?? null,
   };
+}
+
+export interface PageStatsSnapshot {
+  views: number | null;
+  follows: number | null;
+  visits: number | null;
+  interactions: number | null;
+  failedMetrics: string[];
+}
+
+/**
+ * Cere o singura metrica Graph API, izolat. Meta respinge intreg request-ul
+ * daca oricare metrica dintr-o lista batch e invalida (eroare #100) - iar
+ * metricile de Page/Account Insights au fost schimbate de Meta de 3 ori in
+ * ultimii 2 ani (nov 2023, apr 2025, nov 2025, iun 2026). Cerand fiecare
+ * metrica separat, o eventuala metrica noua dezactivata NU mai strica
+ * restul - doar acea valoare lipseste, restul tot se salveaza.
+ */
+async function fetchSingleMetric(
+  objectId: string,
+  metric: string,
+  accessToken: string,
+  period: "day" | "days_28" = "days_28"
+): Promise<number | null> {
+  try {
+    const res = await fetch(
+      `${GRAPH_BASE}/${objectId}/insights?metric=${metric}&period=${period}&access_token=${accessToken}`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const values = data.data?.[0]?.values;
+    if (!values || values.length === 0) return null;
+    // Luam ultima valoare (cea mai recenta zi/perioada din raspuns)
+    const last = values[values.length - 1]?.value;
+    return typeof last === "number" ? last : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Statisticile de tip "Prezentare generala" din Meta Business Suite -
+ * Vizualizari / Urmariri / Vizite / Interactiuni - pentru o Pagina de
+ * Facebook, pe ultimele 28 de zile. Candidatii de metrici de mai jos sunt
+ * cei mai probabil valizi la data scrierii codului (august 2026); daca Meta
+ * mai schimba ceva, doar campul respectiv devine null, restul tot merge.
+ */
+export async function getFacebookPageOverviewStats(
+  pageId: string,
+  accessToken: string
+): Promise<PageStatsSnapshot> {
+  const candidates: Record<keyof Omit<PageStatsSnapshot, "failedMetrics">, string> = {
+    views: "page_views_total",
+    follows: "page_follows",
+    visits: "page_views_total",
+    interactions: "page_post_engagements",
+  };
+
+  const entries = Object.entries(candidates) as [keyof Omit<PageStatsSnapshot, "failedMetrics">, string][];
+  const results = await Promise.all(
+    entries.map(async ([key, metric]) => [key, metric, await fetchSingleMetric(pageId, metric, accessToken)] as const)
+  );
+
+  const snapshot: PageStatsSnapshot = { views: null, follows: null, visits: null, interactions: null, failedMetrics: [] };
+  for (const [key, metric, value] of results) {
+    snapshot[key] = value;
+    if (value === null) snapshot.failedMetrics.push(metric);
+  }
+  return snapshot;
+}
+
+/**
+ * Echivalentul pentru Instagram Business - Views/Reach/Vizite profil/Conturi
+ * atinse, pe ultimele 28 de zile.
+ */
+export async function getInstagramAccountOverviewStats(
+  igUserId: string,
+  accessToken: string
+): Promise<PageStatsSnapshot> {
+  const candidates: Record<keyof Omit<PageStatsSnapshot, "failedMetrics">, string> = {
+    views: "views",
+    follows: "follower_count",
+    visits: "profile_views",
+    interactions: "accounts_engaged",
+  };
+
+  const entries = Object.entries(candidates) as [keyof Omit<PageStatsSnapshot, "failedMetrics">, string][];
+  const results = await Promise.all(
+    entries.map(async ([key, metric]) => [key, metric, await fetchSingleMetric(igUserId, metric, accessToken)] as const)
+  );
+
+  const snapshot: PageStatsSnapshot = { views: null, follows: null, visits: null, interactions: null, failedMetrics: [] };
+  for (const [key, metric, value] of results) {
+    snapshot[key] = value;
+    if (value === null) snapshot.failedMetrics.push(metric);
+  }
+  return snapshot;
 }

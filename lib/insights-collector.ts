@@ -1,8 +1,57 @@
 import { prisma } from "@/lib/prisma";
 import { ensureFreshToken } from "@/lib/token-refresh";
-import { getFacebookInsights, getInstagramInsights, getInstagramAudienceDemographics, getPostComments } from "@/lib/publishers/meta";
+import {
+  getFacebookInsights,
+  getInstagramInsights,
+  getInstagramAudienceDemographics,
+  getPostComments,
+  getFacebookPageOverviewStats,
+  getInstagramAccountOverviewStats,
+} from "@/lib/publishers/meta";
 import { classifyComments } from "@/lib/sentiment";
 import { fetchSearchConsoleKeywords } from "@/lib/publishers/google-business";
+
+/**
+ * Preia statisticile de tip "Prezentare generala" (Vizualizari / Urmariri /
+ * Vizite / Interactiuni) pentru fiecare cont Facebook/Instagram conectat si
+ * activ, si salveaza un PageInsightSnapshot. Fiecare metrica se cere separat
+ * (vezi getFacebookPageOverviewStats) - daca una lipseste, restul tot se
+ * salveaza, nu pierdem tot din cauza uneia singure.
+ */
+export async function collectPageInsights() {
+  const accounts = await prisma.connectedAccount.findMany({
+    where: { isActive: true, platform: { in: ["FACEBOOK", "INSTAGRAM"] } },
+  });
+
+  let saved = 0;
+  const errors: string[] = [];
+
+  for (const account of accounts) {
+    try {
+      const accessToken = await ensureFreshToken(account);
+      const stats =
+        account.platform === "FACEBOOK"
+          ? await getFacebookPageOverviewStats(account.externalId, accessToken)
+          : await getInstagramAccountOverviewStats(account.externalId, accessToken);
+
+      await prisma.pageInsightSnapshot.create({
+        data: {
+          accountId: account.id,
+          views: stats.views,
+          follows: stats.follows,
+          visits: stats.visits,
+          interactions: stats.interactions,
+          failedMetrics: stats.failedMetrics,
+        },
+      });
+      saved++;
+    } catch (err) {
+      errors.push(`${account.id}: ${err instanceof Error ? err.message : "eroare necunoscuta"}`);
+    }
+  }
+
+  return { saved, errors };
+}
 
 /**
  * Preia insights pentru toate variantele publicate in ultimele 30 de zile

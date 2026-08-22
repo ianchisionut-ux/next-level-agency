@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { collectInsights, collectSentiment, collectKeywordSnapshots, collectAudienceDemographics } from "@/lib/insights-collector";
+import { collectInsights, collectSentiment, collectKeywordSnapshots, collectAudienceDemographics, collectPageInsights } from "@/lib/insights-collector";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
   try {
     const insightsResult = await collectInsights();
     const sentimentResult = await collectSentiment();
+    const pageInsightsResult = await collectPageInsights();
 
     const workspaces = await prisma.workspace.findMany();
     const keywordResults = [];
@@ -26,6 +27,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       insights: insightsResult,
+      pageInsights: pageInsightsResult,
       sentiment: sentimentResult,
       keywords: keywordResults,
       demographics: demographicsResults,

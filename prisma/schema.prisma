@@ -134,6 +134,7 @@ model ConnectedAccount {
   variants PostVariant[]
   insights PlatformInsight[]
   demographics AudienceDemographic[]
+  pageInsightSnapshots PageInsightSnapshot[]
 
   @@unique([workspaceId, platform, externalId])
 }
@@ -200,6 +201,12 @@ model PostVariant {
 
   scheduledAt DateTime?
 
+  // Doar pt. video pe Facebook/Instagram: publica prin API-ul dedicat de
+  // Reels (apare in tab-ul Reels) in loc de o postare video normala pe Feed.
+  // Implicit true (comportamentul de dinainte), dar acum e un buton explicit
+  // in Composer, nu doar automat.
+  postAsReel Boolean @default(true)
+
   status         VariantStatus @default(PENDING)
   externalPostId String?
   publishedAt    DateTime?
@@ -251,6 +258,31 @@ model AudienceDemographic {
   capturedAt DateTime @default(now())
 
   @@index([accountId, dimension, capturedAt])
+}
+
+// Instantaneu zilnic de statistici LA NIVEL DE PAGINA/CONT (nu per postare) -
+// echivalentul cardurilor "Vizualizari / Urmariri / Vizite / Interactiuni" din
+// Meta Business Suite -> Statistici -> Prezentare generala. Fiecare camp e
+// opțional pentru ca metricile Meta se schimba des (3 valuri de deprecieri
+// intre 2023-2026) - colectam fiecare metrica separat, nu grupat, ca daca una
+// pica din API, restul tot se salveaza (vezi getFacebookPageOverviewStats).
+model PageInsightSnapshot {
+  id        String           @id @default(cuid())
+  accountId String
+  account   ConnectedAccount @relation(fields: [accountId], references: [id])
+
+  views       Int? // page_views_total / IG: views
+  follows     Int? // page_follows / IG: follower_count (aproximare, nu delta)
+  visits      Int? // page_views_total (FB) / profile_views (IG)
+  interactions Int? // page_post_engagements / IG: accounts_engaged
+
+  // Ce metrici au esuat la aceasta colectare (nume + motiv) - util pentru
+  // diagnostic cand Meta mai scoate din API alte metrici pe neasteptate.
+  failedMetrics String[]
+
+  capturedAt DateTime @default(now())
+
+  @@index([accountId, capturedAt])
 }
 
 model KeywordSnapshot {
