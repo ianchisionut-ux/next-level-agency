@@ -27,6 +27,31 @@ export function CampaignsList({ workspaceId, campaigns }: { workspaceId: string;
   const [endDate, setEndDate] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function handleDelete(e: React.MouseEvent, campaignId: string) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (confirmDeleteId !== campaignId) {
+      setConfirmDeleteId(campaignId);
+      return;
+    }
+
+    setDeletingId(campaignId);
+    try {
+      const res = await fetch(`/api/campaigns/${campaignId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Eroare la ștergere");
+      router.refresh();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Eroare la ștergere");
+    } finally {
+      setDeletingId(null);
+      setConfirmDeleteId(null);
+    }
+  }
 
   async function handleCreate() {
     if (!name.trim()) {
@@ -145,9 +170,27 @@ export function CampaignsList({ workspaceId, campaigns }: { workspaceId: string;
                   <p className="font-semibold text-mist-100">{c.name}</p>
                   {c.description && <p className="text-xs text-mist-500 mt-0.5">{c.description}</p>}
                 </div>
-                <span className="text-xs text-mist-500 shrink-0 ml-2">
-                  {c.postsCount} {c.postsCount === 1 ? "postare" : "postări"}
-                </span>
+                <div className="flex items-center gap-2 shrink-0 ml-2">
+                  <span className="text-xs text-mist-500">
+                    {c.postsCount} {c.postsCount === 1 ? "postare" : "postări"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => handleDelete(e, c.id)}
+                    onMouseLeave={() => confirmDeleteId === c.id && setConfirmDeleteId(null)}
+                    disabled={deletingId === c.id}
+                    title={confirmDeleteId === c.id ? "Sigur? Apasă din nou" : "Șterge campania"}
+                    className={`rounded-lg p-1.5 transition-colors disabled:opacity-50 ${
+                      confirmDeleteId === c.id
+                        ? "bg-state-error text-white"
+                        : "text-mist-500 hover:bg-ink-700 hover:text-state-error"
+                    }`}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                      <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               {c.goal ? (

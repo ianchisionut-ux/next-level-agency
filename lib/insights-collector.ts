@@ -41,6 +41,8 @@ export async function collectPageInsights() {
           follows: stats.follows,
           visits: stats.visits,
           interactions: stats.interactions,
+          videoViews: stats.videoViews,
+          unfollows: stats.unfollows,
           failedMetrics: stats.failedMetrics,
         },
       });

@@ -447,6 +447,8 @@ export interface PageStatsSnapshot {
   follows: number | null;
   visits: number | null;
   interactions: number | null;
+  videoViews: number | null;
+  unfollows: number | null;
   failedMetrics: string[];
 }
 
@@ -485,7 +487,8 @@ async function fetchSingleMetric(
  * Vizualizari / Urmariri / Vizite / Interactiuni - pentru o Pagina de
  * Facebook, pe ultimele 28 de zile. Candidatii de metrici de mai jos sunt
  * cei mai probabil valizi la data scrierii codului (august 2026); daca Meta
- * mai schimba ceva, doar campul respectiv devine null, restul tot merge.
+ * mai schimba ceva, doar campul respectiv devine null, restul tot merge -
+ * verifica failedMetrics ca sa vezi exact ce anume a picat.
  */
 export async function getFacebookPageOverviewStats(
   pageId: string,
@@ -496,6 +499,8 @@ export async function getFacebookPageOverviewStats(
     follows: "page_follows",
     visits: "page_views_total",
     interactions: "page_post_engagements",
+    videoViews: "page_video_views",
+    unfollows: "page_fan_removes",
   };
 
   const entries = Object.entries(candidates) as [keyof Omit<PageStatsSnapshot, "failedMetrics">, string][];
@@ -503,7 +508,15 @@ export async function getFacebookPageOverviewStats(
     entries.map(async ([key, metric]) => [key, metric, await fetchSingleMetric(pageId, metric, accessToken)] as const)
   );
 
-  const snapshot: PageStatsSnapshot = { views: null, follows: null, visits: null, interactions: null, failedMetrics: [] };
+  const snapshot: PageStatsSnapshot = {
+    views: null,
+    follows: null,
+    visits: null,
+    interactions: null,
+    videoViews: null,
+    unfollows: null,
+    failedMetrics: [],
+  };
   for (const [key, metric, value] of results) {
     snapshot[key] = value;
     if (value === null) snapshot.failedMetrics.push(metric);
@@ -524,6 +537,8 @@ export async function getInstagramAccountOverviewStats(
     follows: "follower_count",
     visits: "profile_views",
     interactions: "accounts_engaged",
+    videoViews: "video_views",
+    unfollows: "unfollows",
   };
 
   const entries = Object.entries(candidates) as [keyof Omit<PageStatsSnapshot, "failedMetrics">, string][];
@@ -531,7 +546,15 @@ export async function getInstagramAccountOverviewStats(
     entries.map(async ([key, metric]) => [key, metric, await fetchSingleMetric(igUserId, metric, accessToken)] as const)
   );
 
-  const snapshot: PageStatsSnapshot = { views: null, follows: null, visits: null, interactions: null, failedMetrics: [] };
+  const snapshot: PageStatsSnapshot = {
+    views: null,
+    follows: null,
+    visits: null,
+    interactions: null,
+    videoViews: null,
+    unfollows: null,
+    failedMetrics: [],
+  };
   for (const [key, metric, value] of results) {
     snapshot[key] = value;
     if (value === null) snapshot.failedMetrics.push(metric);

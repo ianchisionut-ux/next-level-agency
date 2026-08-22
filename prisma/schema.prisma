@@ -275,6 +275,8 @@ model PageInsightSnapshot {
   follows     Int? // page_follows / IG: follower_count (aproximare, nu delta)
   visits      Int? // page_views_total (FB) / profile_views (IG)
   interactions Int? // page_post_engagements / IG: accounts_engaged
+  videoViews  Int? // page_video_views / IG: video_views (best-effort - Meta schimba des numele)
+  unfollows   Int? // page_fan_removes (best-effort, poate sa nu mai existe)
 
   // Ce metrici au esuat la aceasta colectare (nume + motiv) - util pentru
   // diagnostic cand Meta mai scoate din API alte metrici pe neasteptate.

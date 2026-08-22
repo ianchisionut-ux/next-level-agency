@@ -462,7 +462,7 @@ export default async function AnalyticsPage() {
         Graficele mici arată evoluția zilnică din perioada afișată mai jos.
       </p>
 
-      {pageStatsCards.length > 0 && (
+      {pageStatsCards.length > 0 ? (
         <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
           <h2 className="font-display font-semibold text-base mb-1">Statistici pagină / cont</h2>
           <p className="text-xs text-mist-500 mb-4">
@@ -477,13 +477,18 @@ export default async function AnalyticsPage() {
                 { label: "Urmăriri", value: snap.follows },
                 { label: "Vizite", value: snap.visits },
                 { label: "Interacțiuni", value: snap.interactions },
-              ];
+                { label: "Vizionări video", value: snap.videoViews },
+                { label: "Dezabonări", value: snap.unfollows },
+              ].filter((t) => t.value !== null || ["Vizualizări", "Urmăriri", "Vizite", "Interacțiuni"].includes(t.label));
               return (
                 <div key={snap.accountId}>
                   <div className="flex items-center gap-2 mb-2.5">
                     <PlatformIcon platform={snap.account.platform as PlatformKey} size={16} />
                     <span className="text-sm font-medium">{snap.account.accountName}</span>
                     <span className="text-xs text-mist-500">· {meta.label}</span>
+                    <span className="text-xs text-mist-700 ml-auto">
+                      actualizat {new Date(snap.capturedAt).toLocaleDateString("ro-RO", { day: "numeric", month: "short" })}
+                    </span>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {tiles.map((t) => (
@@ -504,6 +509,18 @@ export default async function AnalyticsPage() {
               );
             })}
           </div>
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-ink-700 bg-ink-800 p-6">
+          <h2 className="font-display font-semibold text-base mb-1">Statistici pagină / cont</h2>
+          <p className="text-sm text-mist-500">
+            Încă nu există niciun instantaneu colectat. Aceste statistici se actualizează o dată pe
+            zi, automat, printr-un cron separat de restul insight-urilor.
+          </p>
+          <p className="text-xs text-mist-700 mt-2">
+            Dacă tocmai ai activat funcția asta, declanșează manual prima colectare — cronul
+            zilnic obișnuit include acum și pasul acesta.
+          </p>
         </div>
       )}
 
