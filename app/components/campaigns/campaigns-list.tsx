@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/app/components/ui/toast";
 
 type Campaign = {
   id: string;
@@ -18,6 +19,7 @@ type Campaign = {
 
 export function CampaignsList({ workspaceId, campaigns }: { workspaceId: string; campaigns: Campaign[] }) {
   const router = useRouter();
+  const toast = useToast();
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -43,9 +45,10 @@ export function CampaignsList({ workspaceId, campaigns }: { workspaceId: string;
       const res = await fetch(`/api/campaigns/${campaignId}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Eroare la ștergere");
+      toast.success("Campania a fost ștearsă.");
       router.refresh();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Eroare la ștergere");
+      toast.error(err instanceof Error ? err.message : "Eroare la ștergere");
     } finally {
       setDeletingId(null);
       setConfirmDeleteId(null);
@@ -74,6 +77,7 @@ export function CampaignsList({ workspaceId, campaigns }: { workspaceId: string;
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Eroare la creare");
+      toast.success("Campania a fost creată.");
       router.refresh();
       setCreating(false);
       setName("");

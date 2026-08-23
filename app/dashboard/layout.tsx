@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/app/components/ui/sidebar";
 import { getCurrentUser, getActiveWorkspace, getUserWorkspaces, isSuperAdmin } from "@/lib/session";
+import { ToastProvider } from "@/app/components/ui/toast";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -37,6 +38,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!activeWorkspace) redirect("/login");
 
   return (
+    <ToastProvider>
     <div className="min-h-screen bg-ink-900 relative overflow-hidden print:bg-white print:overflow-visible">
       {/* Pete decorative, blurate, in fundal - dau adancime reala efectului
           de sticla al cardurilor. Blur redus (60-70px, nu 110-120px) - blur
@@ -59,5 +61,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <div className="max-w-[1600px] mx-auto px-4 py-6 sm:px-8 sm:py-8 text-mist-100 print:max-w-none print:p-0 print:text-black">{children}</div>
       </div>
     </div>
+    </ToastProvider>
   );
 }

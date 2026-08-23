@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { PlatformIcon } from "@/app/components/ui/platform-icon";
 import { StatusBadge } from "@/app/components/ui/status-badge";
 import { PlatformKey } from "@/lib/platform-meta";
+import { useToast } from "@/app/components/ui/toast";
 
 export interface RecentPost {
   id: string;
@@ -23,6 +24,7 @@ export function RecentPostsList({
   accountsCount: number;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [items, setItems] = useState(posts);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -37,9 +39,10 @@ export function RecentPostsList({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Eroare la ștergere");
       setItems((prev) => prev.filter((p) => p.id !== postId));
+      toast.success("Postarea a fost ștearsă.");
       router.refresh();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Eroare la ștergere");
+      toast.error(err instanceof Error ? err.message : "Eroare la ștergere");
     } finally {
       setDeletingId(null);
     }
