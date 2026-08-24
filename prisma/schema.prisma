@@ -378,23 +378,16 @@ model WebsiteBrief {
   @@index([createdAt])
   @@index([status])
 }
-<<<<<<< HEAD
-=======
-
 // ==================== REGISTRU INTERN (proiecte & plati) ====================
 // Global, nu per-Workspace - e evidenta financiara proprie a agentiei
-// (Next Level), nu a unui client anume. Vizibil doar pentru super admin,
-// la fel ca Oferte Web.
+// (Next Level), nu a unui client anume. Editabil de orice user autentificat.
 model RegistryEntry {
   id          String  @id @default(cuid())
   orderNumber Int     @default(autoincrement())
   projectName String
   amount      Decimal @db.Decimal(10, 2)
   isPaid      Boolean @default(false)
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
   @@index([orderNumber])
 }
->>>>>>> 77ceee4 (Registru intern: acces pentru toata echipa (nu doar super admin) + grafice)
