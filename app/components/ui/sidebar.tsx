@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/compose", label: "Postare nouă", icon: ComposeIcon },
   { href: "/dashboard/campaigns", label: "Campanii", icon: CampaignIcon },
   { href: "/dashboard/oferte-web", label: "Oferte Web", icon: InboxIcon, superAdminOnly: true },
+  { href: "/dashboard/contabilitate", label: "Facturare", icon: InvoiceIcon, superAdminOnly: true },
   { href: "/dashboard/registru", label: "Registru intern", icon: RegistryIcon },
   { href: "/dashboard/analytics", label: "Analiză", icon: ChartIcon },
   { href: "/dashboard/accounts", label: "Conturi conectate", icon: LinkIcon },
@@ -202,6 +203,14 @@ function InboxIcon({ active }: { active: boolean }) {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active ? "#7C9CFF" : "#8A8F9C"} strokeWidth="1.8">
       <rect x="3" y="5" width="18" height="14" rx="2" />
       <path d="M3 7l9 6 9-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function InvoiceIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active ? "#7C9CFF" : "#8A8F9C"} strokeWidth="1.8">
+      <path d="M6 3h12a2 2 0 0 1 2 2v16l-3-2-3 2-3-2-3 2-3-2V5a2 2 0 0 1 2-2Z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9 8h6M9 12h6M9 16h3" strokeLinecap="round" />
     </svg>
   );
 }
