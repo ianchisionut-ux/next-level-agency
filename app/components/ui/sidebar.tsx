@@ -11,10 +11,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/compose", label: "Postare nouă", icon: ComposeIcon },
   { href: "/dashboard/campaigns", label: "Campanii", icon: CampaignIcon },
   { href: "/dashboard/oferte-web", label: "Oferte Web", icon: InboxIcon, superAdminOnly: true },
-<<<<<<< HEAD
-=======
   { href: "/dashboard/registru", label: "Registru intern", icon: RegistryIcon },
->>>>>>> 77ceee4 (Registru intern: acces pentru toata echipa (nu doar super admin) + grafice)
   { href: "/dashboard/analytics", label: "Analiză", icon: ChartIcon },
   { href: "/dashboard/accounts", label: "Conturi conectate", icon: LinkIcon },
   { href: "/dashboard/settings/members", label: "Membri", icon: UsersIcon },
@@ -216,8 +213,6 @@ function SettingsIcon({ active }: { active: boolean }) {
     </svg>
   );
 }
-<<<<<<< HEAD
-=======
 function RegistryIcon({ active }: { active: boolean }) {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active ? "#7C9CFF" : "#8A8F9C"} strokeWidth="1.8">
@@ -226,4 +221,3 @@ function RegistryIcon({ active }: { active: boolean }) {
     </svg>
   );
 }
->>>>>>> 77ceee4 (Registru intern: acces pentru toata echipa (nu doar super admin) + grafice)
