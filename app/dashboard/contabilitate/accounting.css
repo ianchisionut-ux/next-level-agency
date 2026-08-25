@@ -109,3 +109,25 @@
   .accounting-brand { align-items:flex-start; flex-direction:column; gap:12px; }
   .accounting-brand-logo { width:230px; height:78px; }
 }
+
+/* Registrul de evidenta fiscala */
+.ref-actions { display:flex; align-items:center; gap:8px; }
+.ref-year { width:92px !important; }
+.ref-notice { margin-bottom:16px; padding:11px 14px; border:1px solid #cfe0f7; border-radius:12px; background:#edf5ff; color:var(--text-dim); font-size:12px; line-height:1.5; }
+.ref-error { margin-bottom:14px; padding:10px 13px; border:1px solid #f4c7cb; border-radius:10px; background:#fff7f8; color:var(--red); font-size:12px; font-weight:700; }
+.ref-summary-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; margin-bottom:24px; }
+.ref-layout { display:grid; grid-template-columns:minmax(0,1fr) 330px; gap:16px; align-items:start; }
+.ref-table { min-width:980px !important; }
+.ref-auto { margin-top:4px; color:var(--text-faint); font-size:9px; text-transform:uppercase; letter-spacing:.04em; }
+.ref-form { position:sticky; top:18px; display:flex; flex-direction:column; gap:12px; }
+.ref-form .section-label { display:flex; align-items:center; gap:5px; margin-bottom:0; }
+.ref-form .field-label { margin:0; }
+.ref-form .field-label .input { margin-top:5px; }
+.ref-form-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.ref-type-toggle { display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:4px; border-radius:10px; background:#eef2f7; }
+.ref-type-toggle button { padding:8px; border-radius:8px; color:var(--text-dim); font-size:12px; font-weight:800; cursor:pointer; }
+.ref-type-toggle button.active { background:#fff; color:var(--cyan-strong); box-shadow:0 2px 8px rgba(0,26,61,.08); }
+.ref-preview { display:flex; justify-content:space-between; align-items:center; padding:10px; border-radius:10px; background:#edf5ff; color:var(--text-dim); font-size:11px; }
+.ref-preview strong { color:var(--cyan-strong); font-family:var(--font-mono); font-size:13px; }
+@media (max-width: 1250px) { .ref-summary-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } .ref-layout { grid-template-columns:1fr; } .ref-form { position:static; } }
+@media (max-width: 700px) { .ref-summary-grid { grid-template-columns:1fr 1fr; } .ref-actions { align-items:stretch; flex-direction:column; } .ref-year { width:100% !important; } }
