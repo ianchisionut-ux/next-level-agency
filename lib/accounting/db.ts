@@ -1,6 +1,6 @@
 import { Pool } from "pg";
 
-const ACCOUNTING_SCHEMA_VERSION = 3;
+const ACCOUNTING_SCHEMA_VERSION = 4;
 
 declare global {
   // eslint-disable-next-line no-var
@@ -219,6 +219,40 @@ async function ensureSchema(pool: Pool) {
     CREATE INDEX IF NOT EXISTS "ref_transactions_date_idx" ON ref_transactions (date);
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS anaf_connections (
+      id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id=1),
+      "accessToken" TEXT NOT NULL,
+      "refreshToken" TEXT NOT NULL DEFAULT '',
+      "expiresAt" TIMESTAMPTZ NOT NULL,
+      scope TEXT NOT NULL DEFAULT '',
+      "connectedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS efactura_submissions (
+      id SERIAL PRIMARY KEY,
+      "invoiceId" INTEGER NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+      "uploadId" TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'DRAFT',
+      message TEXT NOT NULL DEFAULT '',
+      "downloadId" TEXT NOT NULL DEFAULT '',
+      "xmlSnapshot" TEXT NOT NULL,
+      "submittedAt" TIMESTAMPTZ,
+      "checkedAt" TIMESTAMPTZ,
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS "efactura_submissions_invoice_idx" ON efactura_submissions ("invoiceId", id DESC);
+    CREATE TABLE IF NOT EXISTS efactura_messages (
+      id SERIAL PRIMARY KEY,
+      "messageId" TEXT NOT NULL UNIQUE,
+      direction TEXT NOT NULL CHECK (direction IN ('RECEIVED','SENT')),
+      cif TEXT NOT NULL DEFAULT '',
+      details TEXT NOT NULL DEFAULT '',
+      "documentDate" TEXT NOT NULL DEFAULT '',
+      "downloadId" TEXT NOT NULL DEFAULT '',
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
   // Populam idempotent registrul cu incasarile deja existente in Facturare.
   await pool.query(`
     INSERT INTO ref_transactions

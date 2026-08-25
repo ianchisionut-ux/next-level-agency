@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Download, AlertTriangle, Cable, RefreshCw } from "lucide-react";
+import { Plus, Download, AlertTriangle, Search, Building2, Loader2 } from "lucide-react";
 
 type Client = {
   id: number; name: string; clientType: "PF" | "PJ"; regCom: string; cif: string; cnp: string;
@@ -26,6 +26,9 @@ export default function ClientsPage() {
   const [showForm, setShowForm] = useState(false);
   const [connectionId, setConnectionId] = useState("");
   const [importing, setImporting] = useState(false);
+  const [search, setSearch] = useState("");
+  const [anafLoading, setAnafLoading] = useState(false);
+  const [anafError, setAnafError] = useState("");
 
   function load() {
     fetch("/api/accounting/clients").then((r) => r.json()).then(setClients);
@@ -49,6 +52,28 @@ export default function ClientsPage() {
     load();
   }
 
+  async function lookupAnaf() {
+    const cui = form.cif.replace(/\D/g, "");
+    if (!cui) { setAnafError("Introdu mai întâi CUI-ul firmei."); return; }
+    setAnafLoading(true); setAnafError("");
+    const response = await fetch(`/api/accounting/anaf/company-lookup?cui=${encodeURIComponent(cui)}`);
+    const company = await response.json();
+    setAnafLoading(false);
+    if (!response.ok) { setAnafError(company.error || "Firma nu a fost găsită la ANAF."); return; }
+    setForm((current) => ({
+      ...current,
+      clientType: "PJ",
+      cif: company.cui || current.cif,
+      name: company.name || current.name,
+      address: company.address || current.address,
+      regCom: company.regCom || current.regCom,
+      phone: company.phone || current.phone,
+      postalCode: company.postalCode || current.postalCode,
+      judet: company.judet || current.judet,
+      city: company.city || current.city,
+      vatPayer: company.vatPayer ? 1 : 0,
+    }));
+  }
   async function submit() {
     if (!form.name.trim()) return;
     const response = await fetch(editingId ? `/api/accounting/clients/${editingId}` : "/api/accounting/clients", {
@@ -84,6 +109,11 @@ export default function ClientsPage() {
     load();
   }
 
+  const normalizedSearch = search.trim().toLocaleLowerCase("ro-RO");
+  const visibleClients = normalizedSearch
+    ? clients.filter((client) => `${client.name} ${client.cif} ${client.cnp} ${client.regCom}`.toLocaleLowerCase("ro-RO").includes(normalizedSearch))
+    : clients;
+
   return (
     <div>
       <div className="page-head">
@@ -108,7 +138,7 @@ export default function ClientsPage() {
           </div>
           <div className="col-span-2"><label className="field-label">Denumire firmă / Nume și prenume</label><input className="input" value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})}/></div>
           {form.clientType === "PJ" ? <>
-            <div><label className="field-label">CIF / CUI</label><input className="input" value={form.cif} onChange={(e)=>setForm({...form,cif:e.target.value})}/></div>
+            <div><label className="field-label">CIF / CUI</label><div className="flex gap-2"><input className="input" value={form.cif} onChange={(e)=>{setForm({...form,cif:e.target.value});setAnafError("");}}/><button type="button" onClick={lookupAnaf} disabled={anafLoading} className="btn-secondary whitespace-nowrap">{anafLoading?<Loader2 size={14} className="animate-spin"/>:<Building2 size={14}/>} Caută ANAF</button></div>{anafError&&<p className="text-xs mt-1" style={{color:"var(--red)"}}>{anafError}</p>}</div>
             <div><label className="field-label">Nr. Registrul Comerțului</label><input className="input" value={form.regCom} onChange={(e)=>setForm({...form,regCom:e.target.value})}/></div>
           </> : <>
             <div><label className="field-label">CNP</label><input className="input" value={form.cnp} onChange={(e)=>setForm({...form,cnp:e.target.value})}/></div>
@@ -126,9 +156,11 @@ export default function ClientsPage() {
         </div>
       )}
 
+      <div className="card mb-4"><label className="field-label">Caută client după nume sau CUI</label><div className="relative"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{color:"var(--text-faint)"}}/><input className="input pl-9" value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Ex: NEXT LEVEL sau 12345678"/></div></div>
+
       <div className="card-table"><table><thead><tr><th>Beneficiar</th><th>Identificare</th><th>Adresă</th><th>Contact</th><th>Status</th><th></th></tr></thead>
-        <tbody>{clients.length===0&&<tr><td colSpan={6} className="empty-row">Niciun client înregistrat încă.</td></tr>}
-          {clients.map((c)=><tr key={c.id}>
+        <tbody>{visibleClients.length===0&&<tr><td colSpan={6} className="empty-row">Niciun client înregistrat încă.</td></tr>}
+          {visibleClients.map((c)=><tr key={c.id}>
             <td><strong>{c.name}</strong>{c.sourceNib&&<div className="text-xs mt-1" style={{color:"var(--cyan-strong)"}}>din {c.sourceNib}</div>}</td>
             <td><span className="doc-chip">{c.clientType || "PJ"}</span><div className="num mt-1">{c.clientType==="PF" ? c.cnp : c.cif}</div>{c.regCom&&<div className="text-xs">{c.regCom}</div>}</td>
             <td>{c.address || "—"}{(c.city||c.judet)&&<div className="text-xs mt-1" style={{color:"var(--text-faint)"}}>{[c.city,c.judet].filter(Boolean).join(", ")}</div>}</td>
