@@ -126,7 +126,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/40 sm:flex-row">
-          <p>© {new Date().getFullYear()} Next Level Advertising Agency. Toate drepturile rezervate.</p>
+          <p>© {new Date().getFullYear()} {siteConfig.legalName} · CUI {siteConfig.cui} · {siteConfig.tradeRegistryNumber}</p>
           <div className="flex flex-wrap justify-center gap-5">
             <Link href="/termeni-si-conditii" className="hover:text-white/70">Termeni și Condiții</Link>
             <Link href="/politica-de-confidentialitate" className="hover:text-white/70">Politica de Confidențialitate</Link>

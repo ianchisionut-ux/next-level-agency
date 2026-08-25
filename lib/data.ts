@@ -6,9 +6,14 @@
 export const siteConfig = {
   name: "NEXT LEVEL",
   tagline: "ADVERTISING AGENCY",
+  legalName: "NEXTLEVEL AUTOMATION S.R.L.",
+  cui: "55476878",
+  tradeRegistryNumber: "J2026051349006",
+  caen: "6210",
+  registrationDate: "24 august 2026",
   phone: "+40 740 565 663",
   email: "nextlevel.zalau@gmail.com",
-  address: "Zalău, Sălaj, România",
+  address: "Str. Fundătura nr. 1A, sat Mirșid, com. Mirșid, jud. Sălaj, România",
   // Numărul de WhatsApp în format internațional, FĂRĂ + și fără spații.
   whatsappNumber: "40740565663",
   whatsappMessage: "Salut! Vreau să discutăm despre un proiect.",

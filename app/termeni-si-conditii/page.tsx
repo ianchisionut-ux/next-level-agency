@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Termeni și Condiții" updated="26 iulie 2026">
+    <LegalPage title="Termeni și Condiții" updated="25 august 2026">
       <p>
         Acești Termeni și Condiții reglementează utilizarea website-ului{" "}
         <strong>{siteConfig.name} {siteConfig.tagline}</strong> (denumit în
@@ -19,10 +19,10 @@ export default function TermsPage() {
 
       <h2>1. Informații despre operator</h2>
       <p>
-        Site-ul este operat de {siteConfig.name} {siteConfig.tagline}, cu
-        sediul în {siteConfig.address}. Datele complete de identificare ale
-        societății (denumire legală, CUI, nr. Registrul Comerțului) vor fi
-        completate aici odată ce sunt disponibile.
+        Site-ul este operat de <strong>{siteConfig.legalName}</strong>, cu sediul social în {siteConfig.address},
+        CUI {siteConfig.cui}, înregistrată la Registrul Comerțului sub nr. {siteConfig.tradeRegistryNumber}.
+        Societatea a fost înființată la {siteConfig.registrationDate}, iar activitatea principală este realizarea
+        de software la comandă (CAEN {siteConfig.caen}).
       </p>
 
       <h2>2. Obiectul site-ului</h2>
@@ -90,13 +90,6 @@ export default function TermsPage() {
           {siteConfig.email}
         </a>{" "}
         sau la {siteConfig.phone}.
-      </p>
-
-      <p className="mt-8 rounded-lg border border-line-light bg-paper-soft p-4 text-xs">
-        Notă: acest document este un model standard, orientativ. Recomandăm
-        revizuirea lui de către un consultant juridic înainte de publicare,
-        pentru a reflecta exact activitatea și structura juridică a
-        companiei tale.
       </p>
     </LegalPage>
   );

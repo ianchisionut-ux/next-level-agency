@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <LegalPage title="Politica de Confidențialitate" updated="26 iulie 2026">
+    <LegalPage title="Politica de Confidențialitate" updated="25 august 2026">
       <p>
         Această Politică de Confidențialitate explică modul în care{" "}
         <strong>{siteConfig.name} {siteConfig.tagline}</strong> colectează,
@@ -19,12 +19,12 @@ export default function PrivacyPolicyPage() {
 
       <h2>1. Operatorul de date</h2>
       <p>
-        Operator de date este {siteConfig.name}, cu sediul în{" "}
-        {siteConfig.address}, adresă de contact{" "}
+        Operator de date este <strong>{siteConfig.legalName}</strong>, cu sediul social în {siteConfig.address},
+        CUI {siteConfig.cui}, înregistrată la Registrul Comerțului sub nr. {siteConfig.tradeRegistryNumber}.
+        Ne poți contacta la{" "}
         <a href={`mailto:${siteConfig.email}`} className="text-blue underline">
           {siteConfig.email}
-        </a>
-        .
+        </a>.
       </p>
 
       <h2>2. Ce date colectăm</h2>

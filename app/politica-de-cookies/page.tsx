@@ -9,10 +9,10 @@ export const metadata: Metadata = {
 
 export default function CookiePolicyPage() {
   return (
-    <LegalPage title="Politica de Cookies" updated="26 iulie 2026">
+    <LegalPage title="Politica de Cookies" updated="25 august 2026">
       <p>
         Această pagină explică ce sunt cookie-urile, ce tipuri de cookie-uri
-        folosește site-ul {siteConfig.name} {siteConfig.tagline} și cum îți
+        folosește site-ul operat de {siteConfig.legalName} și cum îți
         poți gestiona preferințele.
       </p>
 
