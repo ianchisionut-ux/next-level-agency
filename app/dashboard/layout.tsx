@@ -11,6 +11,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
   await Promise.all([
     prisma.user.updateMany({ where: { username: "admin", name: { not: "Ionuț" } }, data: { name: "Ionuț" } }),
     prisma.user.updateMany({ where: { username: "cristina", name: { not: "Cristina" } }, data: { name: "Cristina" } }),
+    prisma.workspace.updateMany({
+      where: { name: { in: ["Ionut", "Ionuț"] } },
+      data: { name: "Next Level Agency" },
+    }),
   ]);
   const currentProfile = await prisma.user.findUnique({ where: { id: user.userId }, select: { name: true } });
 
