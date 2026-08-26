@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { exchangeMetaCode, getLongLivedToken, getManagedPages, getInstagramUsername } from "@/lib/oauth/meta";
+import {
+  exchangeMetaCode,
+  getLongLivedToken,
+  getManagedPages,
+  getInstagramUsername,
+  inspectMetaToken,
+  META_ANALYTICS_SCOPES,
+} from "@/lib/oauth/meta";
 import { encrypt } from "@/lib/crypto";
 import { prisma } from "@/lib/prisma";
 import { collectAudienceDemographics, collectInsights, collectPageInsights } from "@/lib/insights-collector";
@@ -29,13 +36,30 @@ export async function GET(req: NextRequest) {
     // 1. schimba code -> short-lived token -> long-lived token
     const shortLived = await exchangeMetaCode(code);
     const longLived = await getLongLivedToken(shortLived.access_token);
-    const expiresAt =
+    let accountToken = longLived.access_token;
+    let expiresAt =
       typeof longLived.expires_in === "number" && Number.isFinite(longLived.expires_in)
         ? new Date(Date.now() + longLived.expires_in * 1000)
         : null;
 
+    // Dacă agenția are un System User Token complet, îl păstrăm ca sursă
+    // unică pentru publicare + insights. Tokenul emis de OAuth-ul utilizatorului
+    // nu trebuie să suprascrie un token cu drepturi analytics deja funcțional.
+    const systemToken = process.env.META_SYSTEM_USER_TOKEN;
+    if (systemToken) {
+      const diagnostic = await inspectMetaToken(systemToken);
+      const hasAnalyticsScopes =
+        diagnostic.isValid &&
+        diagnostic.appIdMatches &&
+        META_ANALYTICS_SCOPES.every((scope) => diagnostic.scopes.includes(scope));
+      if (hasAnalyticsScopes) {
+        accountToken = systemToken;
+        expiresAt = null;
+      }
+    }
+
     // 2. preia paginile de Facebook gestionate (fiecare are propriul access_token, care mosteneste durata)
-    const pages = await getManagedPages(longLived.access_token);
+    const pages = await getManagedPages(accountToken);
 
     if (pages.length === 0) {
       redirectBase.searchParams.set("error", "Nu ai nicio pagina de Facebook administrata");
