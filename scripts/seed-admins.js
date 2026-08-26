@@ -25,7 +25,7 @@ const ACCOUNTS = [
     email: null,
     username: ADMIN_USERNAME,
     legacyEmail: "nextlevel.zalau@gmail.com", // contul vechi, creat cu email - il gasim si il convertim
-    name: "Admin",
+    name: "Ionuț",
     password: "@Newmindset1",
     isSuperAdmin: true,
     workspaceRole: "OWNER",
@@ -107,7 +107,7 @@ async function main() {
   }
 
   console.log("\nGata.");
-  console.log(`  - Admin (super):  login cu username "${ADMIN_USERNAME}"`);
+  console.log(`  - Ionuț (superadmin):  login cu username "${ADMIN_USERNAME}"`);
   console.log(`  - Cristina:       login cu username "${CRISTINA_USERNAME}"\n`);
 }
 

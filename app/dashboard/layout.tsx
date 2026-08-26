@@ -2,10 +2,17 @@ import { redirect } from "next/navigation";
 import { Sidebar } from "@/app/components/ui/sidebar";
 import { getCurrentUser, getActiveWorkspace, getUserWorkspaces, isSuperAdmin } from "@/lib/session";
 import { ToastProvider } from "@/app/components/ui/toast";
+import { prisma } from "@/lib/prisma";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+
+  await Promise.all([
+    prisma.user.updateMany({ where: { username: "admin", name: { not: "Ionuț" } }, data: { name: "Ionuț" } }),
+    prisma.user.updateMany({ where: { username: "cristina", name: { not: "Cristina" } }, data: { name: "Cristina" } }),
+  ]);
+  const currentProfile = await prisma.user.findUnique({ where: { id: user.userId }, select: { name: true } });
 
   let workspaces, activeWorkspace, superAdmin;
   try {
@@ -53,7 +60,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <Sidebar
           workspaces={workspaces.map((w) => ({ id: w.id, name: w.name, role: w.role }))}
           activeWorkspaceId={activeWorkspace.id}
-          userName={user.name}
+          userName={currentProfile?.name || user.name}
           isSuperAdmin={superAdmin}
         />
       </div>
