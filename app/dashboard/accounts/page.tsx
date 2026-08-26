@@ -11,9 +11,9 @@ export const dynamic = "force-dynamic";
 export default async function AccountsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ connected?: string; error?: string }>;
+  searchParams: Promise<{ connected?: string; error?: string; analyticsSynced?: string; analyticsWarning?: string }>;
 }) {
-  const { connected, error } = await searchParams;
+  const { connected, error, analyticsSynced, analyticsWarning } = await searchParams;
   const workspace = await getActiveWorkspace();
   const accounts = await prisma.connectedAccount.findMany({
     where: { workspaceId: workspace!.id, isActive: true },
@@ -71,6 +71,16 @@ export default async function AccountsPage({
       {error && (
         <div className="rounded-xl border border-state-error/30 bg-state-error/10 px-4 py-3 text-sm text-state-error">
           {error}
+        </div>
+      )}
+      {analyticsSynced && (
+        <div className="rounded-xl border border-state-success/30 bg-state-success/10 px-4 py-3 text-sm text-state-success">
+          Analytics sincronizat imediat: {analyticsSynced} snapshot(uri) actualizat(e).
+        </div>
+      )}
+      {analyticsWarning && (
+        <div className="rounded-xl border border-state-warning/30 bg-state-warning/10 px-4 py-3 text-sm text-state-warning">
+          Unele date Meta nu au putut fi citite: {analyticsWarning}
         </div>
       )}
 

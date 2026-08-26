@@ -18,9 +18,9 @@ import { fetchSearchConsoleKeywords } from "@/lib/publishers/google-business";
  * (vezi getFacebookPageOverviewStats) - daca una lipseste, restul tot se
  * salveaza, nu pierdem tot din cauza uneia singure.
  */
-export async function collectPageInsights() {
+export async function collectPageInsights(workspaceId?: string) {
   const accounts = await prisma.connectedAccount.findMany({
-    where: { isActive: true, platform: { in: ["FACEBOOK", "INSTAGRAM"] } },
+    where: { workspaceId, isActive: true, platform: { in: ["FACEBOOK", "INSTAGRAM"] } },
   });
 
   let saved = 0;
@@ -60,7 +60,7 @@ export async function collectPageInsights() {
  * si salveaza un nou PlatformInsight snapshot pentru fiecare.
  * Apelata dintr-un cron separat (o data pe zi e suficient).
  */
-export async function collectInsights() {
+export async function collectInsights(workspaceId?: string) {
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
   const variants = await prisma.postVariant.findMany({
@@ -69,6 +69,7 @@ export async function collectInsights() {
       publishedAt: { gte: since },
       externalPostId: { not: null },
       platform: { in: ["FACEBOOK", "INSTAGRAM"] }, // TikTok/Google insights necesita alte permisiuni, adaugate cand sunt disponibile
+      account: workspaceId ? { workspaceId } : undefined,
     },
     include: { account: true },
   });
@@ -111,7 +112,7 @@ export async function collectInsights() {
  * lib/sentiment.ts, și salvează un snapshot agregat PostSentiment.
  * Apelata din cronul zilnic, alaturi de collectInsights().
  */
-export async function collectSentiment() {
+export async function collectSentiment(workspaceId?: string) {
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
   const variants = await prisma.postVariant.findMany({
@@ -120,6 +121,7 @@ export async function collectSentiment() {
       publishedAt: { gte: since },
       externalPostId: { not: null },
       platform: { in: ["FACEBOOK", "INSTAGRAM"] },
+      account: workspaceId ? { workspaceId } : undefined,
     },
     include: { account: true },
   });

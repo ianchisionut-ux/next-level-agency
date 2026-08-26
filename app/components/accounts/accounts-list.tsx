@@ -43,7 +43,19 @@ export function AccountsList({ accounts, workspaceId }: { accounts: AccountRow[]
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Eroare la sincronizare");
-      setSyncResult(`${data.connected} cont(uri) sincronizat(e) din Business Portfolio.`);
+      const saved = (data.analytics?.postInsights?.saved ?? 0) + (data.analytics?.pageInsights?.saved ?? 0);
+      const errors = [
+        ...(data.analytics?.postInsights?.errors ?? []),
+        ...(data.analytics?.pageInsights?.errors ?? []),
+        ...(data.analytics?.demographics?.errors ?? []),
+      ];
+      setSyncResult(
+        `${data.connected} cont(uri) sincronizat(e); ${saved} snapshot(uri) analytics actualizat(e).` +
+          (data.tokenDiagnostic?.missingScopes?.length
+            ? ` Lipsesc din System User Token: ${data.tokenDiagnostic.missingScopes.join(", ")}.`
+            : "")
+      );
+      if (errors.length) setSyncError(`Meta: ${errors.slice(0, 3).join(" | ")}`);
       router.refresh();
     } catch (err) {
       setSyncError(err instanceof Error ? err.message : "Eroare la sincronizare");
@@ -75,11 +87,18 @@ export function AccountsList({ accounts, workspaceId }: { accounts: AccountRow[]
               agenției are acces (inclusiv cele ale clienților, partajate prin Business Portfolio).
             </p>
           </div>
-          <button
-            onClick={handleSync}
-            disabled={syncing}
-            className="shrink-0 rounded-xl bg-signal hover:bg-signal-bright active:scale-[0.98] shadow-floating transition-all duration-150 text-white text-sm font-medium px-4 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
+          <div className="shrink-0 flex flex-wrap justify-end gap-2">
+            <a
+              href="/api/accounts/connect/meta"
+              className="rounded-xl border border-signal/40 bg-ink-800 px-4 py-2.5 text-sm font-medium text-signal-bright hover:border-signal transition-colors"
+            >
+              Reconectează Meta
+            </a>
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="rounded-xl bg-signal hover:bg-signal-bright active:scale-[0.98] shadow-floating transition-all duration-150 text-white text-sm font-medium px-4 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
             {syncing && (
               <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
@@ -87,7 +106,8 @@ export function AccountsList({ accounts, workspaceId }: { accounts: AccountRow[]
               </svg>
             )}
             {syncing ? "Se sincronizează…" : "Sincronizează acum"}
-          </button>
+            </button>
+          </div>
         </div>
         {syncResult && <p className="text-xs text-state-success mt-3">{syncResult}</p>}
         {syncError && <p className="text-xs text-state-error mt-3">{syncError}</p>}

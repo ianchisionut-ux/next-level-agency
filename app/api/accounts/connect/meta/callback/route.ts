@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { exchangeMetaCode, getLongLivedToken, getManagedPages, getInstagramUsername } from "@/lib/oauth/meta";
 import { encrypt } from "@/lib/crypto";
 import { prisma } from "@/lib/prisma";
+import { collectAudienceDemographics, collectInsights, collectPageInsights } from "@/lib/insights-collector";
+
+export const maxDuration = 60;
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -97,7 +100,22 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const [postInsights, pageInsights, demographics] = await Promise.all([
+      collectInsights(workspaceId),
+      collectPageInsights(workspaceId),
+      collectAudienceDemographics(workspaceId),
+    ]);
+
+    const analyticsErrors = [
+      ...postInsights.errors,
+      ...pageInsights.errors,
+      ...demographics.errors,
+    ];
     redirectBase.searchParams.set("connected", String(connectedCount));
+    redirectBase.searchParams.set("analyticsSynced", String(postInsights.saved + pageInsights.saved));
+    if (analyticsErrors.length) {
+      redirectBase.searchParams.set("analyticsWarning", analyticsErrors.slice(0, 3).join(" | "));
+    }
     return NextResponse.redirect(redirectBase);
   } catch (err) {
     redirectBase.searchParams.set(

@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
-import { getManagedPages, getInstagramUsername } from "@/lib/oauth/meta";
+import { getManagedPages, getInstagramUsername, inspectMetaToken } from "@/lib/oauth/meta";
 import { encrypt } from "@/lib/crypto";
+import { collectAudienceDemographics, collectInsights, collectPageInsights } from "@/lib/insights-collector";
+
+export const maxDuration = 60;
 
 /**
  * Sincronizeaza toate paginile de Facebook (si conturile Instagram Business
@@ -31,6 +34,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "META_SYSTEM_USER_TOKEN nu este configurat în variabilele de mediu." },
         { status: 500 }
+      );
+    }
+
+    const tokenDiagnostic = await inspectMetaToken(systemToken);
+    if (!tokenDiagnostic.isValid || !tokenDiagnostic.appIdMatches) {
+      return NextResponse.json(
+        { error: "META_SYSTEM_USER_TOKEN este invalid sau aparține altei aplicații Meta.", tokenDiagnostic },
+        { status: 422 }
       );
     }
 
@@ -93,7 +104,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, connected, results });
+    const [postInsights, pageInsights, demographics] = await Promise.all([
+      collectInsights(workspaceId),
+      collectPageInsights(workspaceId),
+      collectAudienceDemographics(workspaceId),
+    ]);
+
+    return NextResponse.json({
+      success: true,
+      connected,
+      results,
+      tokenDiagnostic,
+      analytics: { postInsights, pageInsights, demographics },
+    });
   } catch (err) {
     console.error("Eroare la sincronizarea din Business Portfolio:", err);
     return NextResponse.json(
