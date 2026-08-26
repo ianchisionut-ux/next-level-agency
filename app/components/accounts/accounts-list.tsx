@@ -92,7 +92,7 @@ export function AccountsList({ accounts, workspaceId }: { accounts: AccountRow[]
               href="/api/accounts/connect/meta"
               className="rounded-xl border border-signal/40 bg-ink-800 px-4 py-2.5 text-sm font-medium text-signal-bright hover:border-signal transition-colors"
             >
-              Reconectează Meta
+              Reconectează pentru publicare
             </a>
             <button
               onClick={handleSync}

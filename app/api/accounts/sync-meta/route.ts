@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
-import { getManagedPages, getInstagramUsername, inspectMetaToken } from "@/lib/oauth/meta";
+import {
+  getManagedPages,
+  getInstagramUsername,
+  inspectMetaToken,
+  META_ANALYTICS_SCOPES,
+} from "@/lib/oauth/meta";
 import { encrypt } from "@/lib/crypto";
 import { collectAudienceDemographics, collectInsights, collectPageInsights } from "@/lib/insights-collector";
 
@@ -41,6 +46,22 @@ export async function POST(req: NextRequest) {
     if (!tokenDiagnostic.isValid || !tokenDiagnostic.appIdMatches) {
       return NextResponse.json(
         { error: "META_SYSTEM_USER_TOKEN este invalid sau aparține altei aplicații Meta.", tokenDiagnostic },
+        { status: 422 }
+      );
+    }
+
+
+    const missingAnalyticsScopes = META_ANALYTICS_SCOPES.filter(
+      (scope) => !tokenDiagnostic.scopes.includes(scope)
+    );
+    if (missingAnalyticsScopes.length) {
+      return NextResponse.json(
+        {
+          error:
+            "System User Token-ul Meta este vechi și nu are permisiunile aprobate pentru Analytics. " +
+            `Lipsesc: ${missingAnalyticsScopes.join(", ")}. Regenerează META_SYSTEM_USER_TOKEN în Meta Business Settings sau folosește „Reconectează Meta”. Conturile existente nu au fost suprascrise.`,
+          tokenDiagnostic,
+        },
         { status: 422 }
       );
     }

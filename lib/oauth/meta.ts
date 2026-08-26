@@ -3,14 +3,17 @@ const GRAPH_VERSION = "v21.0";
 export const META_OAUTH_SCOPES = [
   "pages_manage_posts",
   "pages_read_engagement",
-  "pages_read_user_content",
   "pages_show_list",
-  "read_insights",
   "instagram_basic",
   "instagram_content_publish",
-  "instagram_manage_insights",
   "business_management",
-  "publish_video",
+] as const;
+
+export const META_ANALYTICS_SCOPES = [
+  "pages_read_engagement",
+  "read_insights",
+  "instagram_basic",
+  "instagram_manage_insights",
 ] as const;
 
 type MetaErrorPayload = {
@@ -112,7 +115,8 @@ export async function inspectMetaToken(accessToken: string) {
 
   const data = payload.data ?? {};
   const scopes: string[] = data.scopes ?? [];
-  const missingScopes = META_OAUTH_SCOPES.filter((scope) => !scopes.includes(scope));
+  const expectedScopes = [...new Set([...META_OAUTH_SCOPES, ...META_ANALYTICS_SCOPES])];
+  const missingScopes = expectedScopes.filter((scope) => !scopes.includes(scope));
   return {
     isValid: Boolean(data.is_valid),
     type: data.type ?? null,
