@@ -30,14 +30,14 @@ export default async function AnalyticsPage() {
   // suma tuturor.
   const [insights, previousInsights, postsThisPeriod, postsPrevPeriod, keywords, pageSnapshots] = await Promise.all([
     prisma.platformInsight.findMany({
-      where: { account: { workspaceId: workspace!.id } },
+      where: { account: { workspaceId: workspace!.id, isActive: true } },
       include: { account: true },
       orderBy: { fetchedAt: "asc" },
       take: 500,
     }),
     prisma.platformInsight.findMany({
       where: {
-        account: { workspaceId: workspace!.id },
+        account: { workspaceId: workspace!.id, isActive: true },
         fetchedAt: { gte: previousPeriodStart, lt: periodStart },
       },
     }),
@@ -59,7 +59,7 @@ export default async function AnalyticsPage() {
     // Cel mai recent instantaneu per cont (Vizualizari/Urmariri/Vizite/
     // Interactiuni) - echivalentul "Prezentare generala" din Meta Business Suite.
     prisma.pageInsightSnapshot.findMany({
-      where: { account: { workspaceId: workspace!.id } },
+      where: { account: { workspaceId: workspace!.id, isActive: true } },
       include: { account: true },
       orderBy: { capturedAt: "desc" },
       take: 50,
