@@ -115,8 +115,9 @@ export async function inspectMetaToken(accessToken: string) {
 
   const data = payload.data ?? {};
   const scopes: string[] = data.scopes ?? [];
-  const expectedScopes = [...new Set([...META_OAUTH_SCOPES, ...META_ANALYTICS_SCOPES])];
-  const missingScopes = expectedScopes.filter((scope) => !scopes.includes(scope));
+  // inspectMetaToken este folosit pentru System User Token. Scope-urile de
+  // login ale utilizatorului (ex. pages_show_list) nu sunt obligatorii aici.
+  const missingScopes = META_ANALYTICS_SCOPES.filter((scope) => !scopes.includes(scope));
   return {
     isValid: Boolean(data.is_valid),
     type: data.type ?? null,
