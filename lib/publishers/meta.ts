@@ -629,9 +629,14 @@ async function fetchSingleMetric(
   useTotalValue = false
 ): Promise<{ value: number } | { error: string }> {
   try {
+    const range = period === "day"
+      ? `&since=${Math.floor((Date.now() - 28 * 24 * 60 * 60 * 1000) / 1000)}` +
+        `&until=${Math.floor(Date.now() / 1000)}`
+      : "";
     const url =
       `${GRAPH_BASE}/${objectId}/insights?metric=${metric}&period=${period}` +
       (useTotalValue ? `&metric_type=total_value` : "") +
+      range +
       `&access_token=${accessToken}`;
     const res = await fetch(url);
     const data = await res.json().catch(() => null);
@@ -708,20 +713,27 @@ export async function getInstagramAccountOverviewStats(
   igUserId: string,
   accessToken: string
 ): Promise<PageStatsSnapshot> {
-  const candidates: Record<keyof Omit<PageStatsSnapshot, "failedMetrics">, string> = {
-    views: "views",
-    follows: "follower_count",
-    visits: "reach",
-    interactions: "accounts_engaged",
-    videoViews: "video_views",
-    unfollows: "unfollows",
+  const candidates: Partial<
+    Record<keyof Omit<PageStatsSnapshot, "failedMetrics">, { metric: string; useTotalValue: boolean }>
+  > = {
+    views: { metric: "views", useTotalValue: true },
+    follows: { metric: "follower_count", useTotalValue: false },
+    visits: { metric: "profile_views", useTotalValue: true },
+    interactions: { metric: "total_interactions", useTotalValue: true },
   };
 
-  const entries = Object.entries(candidates) as [keyof Omit<PageStatsSnapshot, "failedMetrics">, string][];
+  const entries = Object.entries(candidates) as [
+    keyof Omit<PageStatsSnapshot, "failedMetrics">,
+    { metric: string; useTotalValue: boolean },
+  ][];
   const results = await Promise.all(
     entries.map(
-      async ([key, metric]) =>
-        [key, metric, await fetchSingleMetric(igUserId, metric, accessToken, "days_28", true)] as const
+      async ([key, config]) =>
+        [
+          key,
+          config.metric,
+          await fetchSingleMetric(igUserId, config.metric, accessToken, "day", config.useTotalValue),
+        ] as const
     )
   );
 
