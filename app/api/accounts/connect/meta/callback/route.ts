@@ -110,7 +110,6 @@ export async function GET(req: NextRequest) {
     ]);
 
     const analyticsErrors = [
-      ...postInsights.errors,
       ...pageInsights.errors,
       ...demographics.errors,
     ];

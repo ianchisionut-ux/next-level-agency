@@ -45,7 +45,6 @@ export function AccountsList({ accounts, workspaceId }: { accounts: AccountRow[]
       if (!res.ok) throw new Error(data.error || "Eroare la sincronizare");
       const saved = (data.analytics?.postInsights?.saved ?? 0) + (data.analytics?.pageInsights?.saved ?? 0);
       const errors = [
-        ...(data.analytics?.postInsights?.errors ?? []),
         ...(data.analytics?.pageInsights?.errors ?? []),
         ...(data.analytics?.demographics?.errors ?? []),
       ];
