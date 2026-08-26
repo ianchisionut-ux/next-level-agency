@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
-import { getActiveWorkspace } from "@/lib/session";
+import { ensureInternalCalendarSchema } from "@/lib/internal-calendar-schema";
+import { getActiveWorkspace, getCurrentUser } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/app/components/ui/page-header";
 import { CalendarView, CalendarViewMode } from "@/app/components/calendar/calendar-view";
 import { PlatformKey } from "@/lib/platform-meta";
+import { InternalTeamCalendar } from "@/app/components/calendar/internal-team-calendar";
 
 export const dynamic = "force-dynamic";
 
@@ -36,8 +38,8 @@ export default async function CalendarPage({
   searchParams: Promise<{ view?: string; date?: string; month?: string }>;
 }) {
   const { view, date, month } = await searchParams;
-  const workspace = await getActiveWorkspace();
-  if (!workspace) redirect("/login");
+  const [workspace, user] = await Promise.all([getActiveWorkspace(), getCurrentUser()]);
+  if (!workspace || !user) redirect("/login");
 
   const viewMode: CalendarViewMode = view === "week" || view === "day" ? view : "month";
 
@@ -82,6 +84,19 @@ export default async function CalendarPage({
     orderBy: { scheduledAt: "asc" },
   });
 
+  await ensureInternalCalendarSchema();
+  const [internalItems, memberships] = await Promise.all([
+    prisma.internalCalendarItem.findMany({
+      where: { workspaceId: workspace.id, startAt: { gte: rangeStart, lte: rangeEnd } },
+      include: { author: { select: { id: true, name: true } }, assignee: { select: { id: true, name: true } } },
+      orderBy: [{ startAt: "asc" }, { createdAt: "asc" }],
+    }),
+    prisma.workspaceMember.findMany({
+      where: { workspaceId: workspace.id },
+      include: { user: { select: { id: true, name: true } } },
+      orderBy: { joinedAt: "asc" },
+    }),
+  ]);
   const calendarPosts = posts
     .filter((p) => p.scheduledAt)
     .map((p) => ({
@@ -94,7 +109,17 @@ export default async function CalendarPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Calendar" description={VIEW_DESCRIPTIONS[viewMode]} />
+      <PageHeader title="Calendar intern & editorial" description="Planificarea echipei și calendarul de conținut pentru clienți, în același loc." />
+      <InternalTeamCalendar
+        initialItems={internalItems.map((item) => ({ ...item, startAt: item.startAt.toISOString(), endAt: item.endAt?.toISOString() ?? null, createdAt: undefined, updatedAt: undefined }))}
+        members={memberships.map((membership) => membership.user)}
+        currentUserId={user.userId}
+        anchorDate={anchor.toISOString()}
+      />
+      <div className="border-t border-ink-700 pt-6">
+        <h2 className="font-display text-lg font-semibold">Calendar editorial clienți</h2>
+        <p className="mt-1 text-sm text-mist-500">{VIEW_DESCRIPTIONS[viewMode]}</p>
+      </div>
       <CalendarView viewMode={viewMode} anchorDate={anchor.toISOString()} posts={calendarPosts} />
     </div>
   );

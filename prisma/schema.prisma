@@ -55,6 +55,8 @@ model User {
 
   memberships WorkspaceMember[]
   passwordResetTokens PasswordResetToken[]
+  calendarItemsAuthored InternalCalendarItem[] @relation("CalendarAuthor")
+  calendarItemsAssigned InternalCalendarItem[] @relation("CalendarAssignee")
 }
 
 model WorkspaceMember {
@@ -113,6 +115,7 @@ model Workspace {
   posts             Post[]
   campaigns         Campaign[]
   keywordSnapshots  KeywordSnapshot[]
+  internalCalendarItems InternalCalendarItem[]
 }
 
 model ConnectedAccount {
@@ -390,4 +393,29 @@ model RegistryEntry {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([orderNumber])
+}
+
+// ==================== CALENDAR INTERN ====================
+model InternalCalendarItem {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User      @relation("CalendarAuthor", fields: [authorId], references: [id])
+  assigneeId  String?
+  assignee    User?     @relation("CalendarAssignee", fields: [assigneeId], references: [id])
+
+  title       String
+  notes       String?   @db.Text
+  type        String    @default("NOTE")
+  priority    String    @default("MEDIUM")
+  status      String    @default("TODO")
+  startAt     DateTime
+  endAt       DateTime?
+  allDay      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([workspaceId, startAt])
+  @@index([assigneeId, status])
 }

@@ -5,18 +5,22 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { WorkspaceSwitcher, WorkspaceOption } from "@/app/components/ui/workspace-switcher";
 
-const NAV_ITEMS = [
-  { href: "/dashboard", label: "Timeline", icon: TimelineIcon },
-  { href: "/dashboard/calendar", label: "Calendar", icon: CalendarIcon },
-  { href: "/dashboard/compose", label: "Postare nouă", icon: ComposeIcon },
-  { href: "/dashboard/campaigns", label: "Campanii", icon: CampaignIcon },
-  { href: "/dashboard/oferte-web", label: "Oferte Web", icon: InboxIcon, superAdminOnly: true },
-  { href: "/dashboard/contabilitate", label: "Facturare", icon: InvoiceIcon, superAdminOnly: true },
-  { href: "/dashboard/registru", label: "Registru intern", icon: RegistryIcon },
-  { href: "/dashboard/analytics", label: "Analiză", icon: ChartIcon },
-  { href: "/dashboard/accounts", label: "Conturi conectate", icon: LinkIcon },
-  { href: "/dashboard/settings/members", label: "Membri", icon: UsersIcon },
-  { href: "/dashboard/settings/workspace", label: "Spații de lucru", icon: SettingsIcon },
+const NAV_GROUPS = [
+  { label: "Clienți & lucru", items: [
+    { href: "/dashboard", label: "Timeline", icon: TimelineIcon },
+    { href: "/dashboard/compose", label: "Postare nouă", icon: ComposeIcon },
+    { href: "/dashboard/campaigns", label: "Campanii", icon: CampaignIcon },
+    { href: "/dashboard/analytics", label: "Analiză", icon: ChartIcon },
+    { href: "/dashboard/accounts", label: "Conturi conectate", icon: LinkIcon },
+    { href: "/dashboard/oferte-web", label: "Oferte Web", icon: InboxIcon, superAdminOnly: true },
+  ]},
+  { label: "Intern", items: [
+    { href: "/dashboard/calendar", label: "Calendar intern", icon: CalendarIcon },
+    { href: "/dashboard/registru", label: "Registru intern", icon: RegistryIcon },
+    { href: "/dashboard/contabilitate", label: "Facturare", icon: InvoiceIcon, superAdminOnly: true },
+    { href: "/dashboard/settings/members", label: "Membri", icon: UsersIcon },
+    { href: "/dashboard/settings/workspace", label: "Spații de lucru", icon: SettingsIcon },
+  ]},
 ];
 
 export function Sidebar({
@@ -33,7 +37,10 @@ export function Sidebar({
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const visibleNavItems = NAV_ITEMS.filter((item) => !item.superAdminOnly || isSuperAdmin);
+  const visibleNavGroups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => !item.superAdminOnly || isSuperAdmin),
+  }));
 
   // Inchide automat drawer-ul de mobil la orice navigare intre pagini.
   useEffect(() => {
@@ -100,26 +107,19 @@ export function Sidebar({
           <WorkspaceSwitcher workspaces={workspaces} activeId={activeWorkspaceId} />
         </div>
 
-      <nav className="flex-1 px-3 space-y-1">
-        {visibleNavItems.map((item) => {
-          const active =
-            item.href === "/dashboard" ? pathname === item.href : pathname.startsWith(item.href);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${
-                active
-                  ? "bg-signal-soft text-signal-bright font-medium"
-                  : "text-nav-text-muted hover:bg-nav-bg-hover hover:text-nav-text"
-              }`}
-            >
-              <Icon active={active} />
-              {item.label}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 overflow-y-auto px-3">
+        {visibleNavGroups.map((group) => (
+          <div key={group.label} className="mb-5">
+            <div className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-[0.14em] text-nav-text-muted/60">{group.label}</div>
+            <div className="space-y-1">
+              {group.items.map((item) => {
+                const active = item.href === "/dashboard" ? pathname === item.href : pathname.startsWith(item.href);
+                const Icon = item.icon;
+                return <Link key={item.href} href={item.href} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${active ? "bg-signal-soft text-signal-bright font-medium" : "text-nav-text-muted hover:bg-nav-bg-hover hover:text-nav-text"}`}><Icon active={active}/>{item.label}</Link>;
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       <div className="px-5 py-5 border-t border-nav-border space-y-3">
