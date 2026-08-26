@@ -111,6 +111,7 @@ export function RegistryTable({ initialEntries }: { initialEntries: RegistryEntr
       {adding && (
         <form onSubmit={handleAdd} className="flex flex-wrap items-center gap-2 border-b border-ink-700 bg-ink-900/40 px-5 py-3.5">
           <input
+            data-registry-sensitive
             autoFocus
             value={projectName}
             onChange={(e) => setProjectName(e.target.value)}
@@ -118,6 +119,7 @@ export function RegistryTable({ initialEntries }: { initialEntries: RegistryEntr
             className="min-w-[200px] flex-1 rounded-lg border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-mist-100 outline-none focus:border-signal"
           />
           <input
+            data-registry-sensitive
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="Sumă (lei)"
@@ -166,8 +168,8 @@ export function RegistryTable({ initialEntries }: { initialEntries: RegistryEntr
             {entries.map((entry) => (
               <tr key={entry.id} className="border-b border-ink-700 last:border-0 hover:bg-ink-900/40">
                 <td className="px-5 py-3 font-mono text-mist-500">{entry.orderNumber}</td>
-                <td className="px-5 py-3 text-mist-100 font-medium">{entry.projectName}</td>
-                <td className="px-5 py-3 font-mono text-mist-100">{formatAmount(entry.amount)} lei</td>
+                <td data-registry-sensitive className="px-5 py-3 text-mist-100 font-medium">{entry.projectName}</td>
+                <td data-registry-sensitive className="px-5 py-3 font-mono text-mist-100">{formatAmount(entry.amount)} lei</td>
                 <td className="px-5 py-3">
                   <button
                     onClick={() => togglePaid(entry)}

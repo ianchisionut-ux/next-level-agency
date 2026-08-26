@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/session";
 import { PageHeader } from "@/app/components/ui/page-header";
 import { RegistryTable } from "@/app/components/registry/registry-table";
 import { PaidStatusDonut, MonthlyTotalsBarChart, MonthlyTotal } from "@/app/components/registry/registry-charts";
+import { RegistryPrivacy } from "@/app/components/registry/registry-privacy";
 
 export const dynamic = "force-dynamic";
 
@@ -39,18 +40,18 @@ export default async function RegistryPage() {
     });
 
   return (
-    <div className="space-y-6">
+    <RegistryPrivacy>
       <PageHeader
         title="Registru intern"
         description="Evidența proiectelor și plăților agenției — număr de ordine, denumire, sumă, status. Editabil de toată echipa."
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
+        <div data-registry-sensitive className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
           <h2 className="font-display font-semibold text-base mb-4">Achitat vs. neachitat</h2>
           <PaidStatusDonut paid={totalPaid} unpaid={totalUnpaid} />
         </div>
-        <div className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
+        <div data-registry-sensitive className="rounded-2xl border border-ink-700 bg-ink-800 shadow-card p-5">
           <h2 className="font-display font-semibold text-base mb-4">Sumă totală pe lună</h2>
           <MonthlyTotalsBarChart data={monthlyTotals} />
         </div>
@@ -63,13 +64,13 @@ export default async function RegistryPage() {
         </div>
         <div className="rounded-xl border border-state-success/30 bg-state-success/10 px-4 py-3">
           <p className="text-xs text-mist-500">Total achitat</p>
-          <p className="mt-0.5 font-mono text-lg font-semibold text-state-success">
+          <p data-registry-sensitive className="mt-0.5 font-mono text-lg font-semibold text-state-success">
             {totalPaid.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} lei
           </p>
         </div>
         <div className="rounded-xl border border-state-warning/30 bg-state-warning/10 px-4 py-3">
           <p className="text-xs text-mist-500">Total neachitat</p>
-          <p className="mt-0.5 font-mono text-lg font-semibold text-state-warning">
+          <p data-registry-sensitive className="mt-0.5 font-mono text-lg font-semibold text-state-warning">
             {totalUnpaid.toLocaleString("ro-RO", { minimumFractionDigits: 2 })} lei
           </p>
         </div>
@@ -85,6 +86,6 @@ export default async function RegistryPage() {
           createdAt: e.createdAt.toISOString(),
         }))}
       />
-    </div>
+    </RegistryPrivacy>
   );
 }

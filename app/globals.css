@@ -202,3 +202,13 @@ body {
 }
 .input-on-dark::placeholder { color: var(--color-nav-text-muted); }
 .input-on-dark:focus { border-color: var(--color-signal); }
+
+.registry-privacy [data-registry-sensitive] {
+  transition: filter 0.18s ease, opacity 0.18s ease;
+}
+.registry-privacy[data-private="true"] [data-registry-sensitive] {
+  filter: blur(9px);
+  opacity: 0.42;
+  pointer-events: none;
+  user-select: none;
+}
