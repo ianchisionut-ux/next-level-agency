@@ -700,6 +700,7 @@ export async function getFacebookPageOverviewStats(
     if ("value" in result) snapshot[key] = result.value;
     else snapshot.failedMetrics.push(`${metric}: ${result.error}`);
   }
+
   return snapshot;
 }
 
@@ -750,5 +751,10 @@ export async function getInstagramAccountOverviewStats(
     if ("value" in result) snapshot[key] = result.value;
     else snapshot.failedMetrics.push(`${metric}: ${result.error}`);
   }
+
+  // follower_count din /insights poate intoarce values gol pentru intervale
+  // fara schimbari. Câmpul direct al contului este totalul curent corect.
+  const overview = await getInstagramAccountOverview(igUserId, accessToken);
+  if (overview?.followersCount != null) snapshot.follows = overview.followersCount;
   return snapshot;
 }
