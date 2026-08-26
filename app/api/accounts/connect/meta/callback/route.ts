@@ -29,7 +29,10 @@ export async function GET(req: NextRequest) {
     // 1. schimba code -> short-lived token -> long-lived token
     const shortLived = await exchangeMetaCode(code);
     const longLived = await getLongLivedToken(shortLived.access_token);
-    const expiresAt = new Date(Date.now() + longLived.expires_in * 1000);
+    const expiresAt =
+      typeof longLived.expires_in === "number" && Number.isFinite(longLived.expires_in)
+        ? new Date(Date.now() + longLived.expires_in * 1000)
+        : null;
 
     // 2. preia paginile de Facebook gestionate (fiecare are propriul access_token, care mosteneste durata)
     const pages = await getManagedPages(longLived.access_token);

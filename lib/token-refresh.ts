@@ -36,7 +36,10 @@ export async function ensureFreshToken(account: ConnectedAccount): Promise<strin
       // token-urile Meta long-lived se pot re-extinde cat timp sunt inca valide
       try {
         const extended = await getLongLivedToken(currentToken);
-        const expiresAt = new Date(Date.now() + extended.expires_in * 1000);
+        const expiresAt =
+          typeof extended.expires_in === "number" && Number.isFinite(extended.expires_in)
+            ? new Date(Date.now() + extended.expires_in * 1000)
+            : null;
         await prisma.connectedAccount.update({
           where: { id: account.id },
           data: { accessToken: encrypt(extended.access_token), tokenExpiresAt: expiresAt },

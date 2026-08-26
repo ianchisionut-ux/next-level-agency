@@ -74,7 +74,7 @@ export async function getLongLivedToken(shortLivedToken: string) {
   const res = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/oauth/access_token?${params}`);
   const data = await res.json();
   if (!res.ok) throw metaError("Extinderea token-ului Meta a eșuat", res.status, data);
-  return data as { access_token: string; expires_in: number };
+  return data as { access_token: string; expires_in?: number };
 }
 
 interface FacebookPage {
