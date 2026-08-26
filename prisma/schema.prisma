@@ -337,7 +337,7 @@ model WebsiteBrief {
   offerSentAt           DateTime?
   offerEmailSentAt      DateTime?
   offerWhatsappSentAt   DateTime?
-  updatedAt             DateTime @updatedAt
+  updatedAt             DateTime @default(now()) @updatedAt
 
   // 1. Afacerea ta & brand
   companyName    String
