@@ -63,3 +63,22 @@ export async function sendPasswordResetEmail(params: { to: string; resetUrl: str
     `,
   });
 }
+
+
+export async function sendWebsiteOfferEmail(params: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+}) {
+  const resend = getResend();
+  const result = await resend.emails.send({
+    from: process.env.OFFER_EMAIL_FROM || FROM,
+    to: params.to,
+    subject: params.subject,
+    html: params.html,
+    text: params.text,
+  });
+  if (result.error) throw new Error(result.error.message);
+  return result.data;
+}

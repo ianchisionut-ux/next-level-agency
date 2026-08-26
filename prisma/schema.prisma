@@ -330,7 +330,14 @@ model PostSentiment {
 
 model WebsiteBrief {
   id     String @id @default(cuid())
-  status String @default("NEW") // "NEW" | "CONTACTED" | "ARCHIVED"
+  status String @default("NEW") // "NEW" | "CONTACTED" | "QUOTED" | "ACCEPTED" | "REJECTED" | "ARCHIVED"
+
+  offerData             Json?
+  estimatedValue        Decimal? @db.Decimal(12, 2)
+  offerSentAt           DateTime?
+  offerEmailSentAt      DateTime?
+  offerWhatsappSentAt   DateTime?
+  updatedAt             DateTime @updatedAt
 
   // 1. Afacerea ta & brand
   companyName    String

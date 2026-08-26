@@ -45,7 +45,7 @@ export default async function OferteWebPage() {
               <tr className="border-b border-ink-700 text-xs uppercase tracking-wide text-mist-500">
                 <th className="px-5 py-3.5 font-semibold">Firmă</th>
                 <th className="px-5 py-3.5 font-semibold">Contact</th>
-                <th className="px-5 py-3.5 font-semibold">Estimare preț</th>
+                <th className="px-5 py-3.5 font-semibold">Estimare / ofertă</th>
                 <th className="px-5 py-3.5 font-semibold">Buget client</th>
                 <th className="px-5 py-3.5 font-semibold">Primit</th>
                 <th className="px-5 py-3.5 font-semibold">Status</th>
@@ -67,8 +67,8 @@ export default async function OferteWebPage() {
                       <div className="text-xs">{b.contactPhone || b.contactEmail}</div>
                     </td>
                     <td className="px-5 py-4">
-                      <div className="font-semibold text-mist-100">{formatPriceRange(est.priceMin, est.priceMax)}</div>
-                      <div className="text-xs text-mist-500">{est.tier}</div>
+                      <div className="font-semibold text-mist-100">{b.estimatedValue ? new Intl.NumberFormat("ro-RO").format(Number(b.estimatedValue)) + " lei + TVA" : formatPriceRange(est.priceMin, est.priceMax)}</div>
+                      <div className="text-xs text-mist-500">{b.offerData ? "Ofertă salvată" : est.tier}</div>
                     </td>
                     <td className="px-5 py-4 text-mist-500">{b.budget || "—"}</td>
                     <td className="px-5 py-4 text-mist-500">{formatDate(b.createdAt)}</td>

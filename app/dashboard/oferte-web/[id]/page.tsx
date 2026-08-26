@@ -5,6 +5,8 @@ import { getCurrentUser, isSuperAdmin } from "@/lib/session";
 import { PageHeader } from "@/app/components/ui/page-header";
 import { BriefActions } from "./BriefActions";
 import { estimateWebsiteBrief, formatPriceRange } from "@/lib/pricing";
+import type { WebOfferData } from "@/lib/web-offer";
+import "./web-offer.css";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +62,28 @@ export default async function OfertaWebDetailPage({ params }: { params: Promise<
         <PageHeader
           title={b.companyName}
           description={`Chestionar primit pe ${formatDate(b.createdAt)}`}
-          actions={<BriefActions id={b.id} status={b.status} />}
+          actions={
+            <BriefActions
+              id={b.id}
+              status={b.status}
+              estimate={{ priceMin: est.priceMin, tier: est.tier }}
+              brief={{
+                id: b.id,
+                companyName: b.companyName,
+                contactName: b.contactName,
+                contactPhone: b.contactPhone,
+                contactEmail: b.contactEmail,
+                activity: b.activity,
+                pages: b.pages,
+                pagesOther: b.pagesOther,
+                visualStyle: b.visualStyle,
+                launchDate: b.launchDate,
+                budget: b.budget,
+                createdAt: b.createdAt.toISOString(),
+                offerData: b.offerData as WebOfferData | null,
+              }}
+            />
+          }
         />
       </div>
 

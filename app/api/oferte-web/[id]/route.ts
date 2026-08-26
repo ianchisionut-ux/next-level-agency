@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, isSuperAdmin } from "@/lib/session";
 
-const VALID_STATUSES = ["NEW", "CONTACTED", "ARCHIVED"];
+const VALID_STATUSES = ["NEW", "CONTACTED", "QUOTED", "ACCEPTED", "REJECTED", "ARCHIVED"];
 
 async function requireSuperAdmin() {
   const user = await getCurrentUser();
