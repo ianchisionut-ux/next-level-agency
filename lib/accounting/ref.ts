@@ -25,6 +25,9 @@ export type RefTransaction = {
   invoiceId: number | null;
   paymentId: number | null;
   source: "MANUAL" | "AUTO_PAYMENT";
+  partnerName: string;
+  partnerCif: string;
+  partnerCountryCode: string;
   notes: string;
   createdAt: string;
 };
@@ -48,6 +51,9 @@ export type RefTransactionInput = {
   fiscalCategory: RefFiscalCategory;
   deductibilityPercent?: number;
   notes?: string;
+  partnerName?: string;
+  partnerCif?: string;
+  partnerCountryCode?: string;
 };
 
 function round2(value: number) {
@@ -102,6 +108,7 @@ function validateInput(input: RefTransactionInput) {
   if (!Number.isFinite(input.grossAmount) || input.grossAmount <= 0) throw new Error("Suma brută trebuie să fie pozitivă.");
   const vat = Number(input.vatAmount || 0);
   if (!Number.isFinite(vat) || vat < 0 || vat > input.grossAmount) throw new Error("Valoarea TVA este invalidă.");
+  if (input.partnerCountryCode && !/^[A-Za-z]{2}$/.test(input.partnerCountryCode.trim())) throw new Error("Codul țării partenerului trebuie să aibă două litere.");
   const incomeCategories = ["TAXABLE_INCOME", "NON_TAXABLE_INCOME"];
   const expenseCategories = ["DEDUCTIBLE_EXPENSE", "PARTIAL_EXPENSE", "NON_DEDUCTIBLE_EXPENSE"];
   if (input.type === "INCOME" && !incomeCategories.includes(input.fiscalCategory)) throw new Error("Categoria fiscală nu corespunde unui venit.");
@@ -129,10 +136,11 @@ export async function createRefTransaction(input: RefTransactionInput): Promise<
   const { rows } = await pool.query(
     `INSERT INTO ref_transactions
       (type, date, "documentType", "documentNumber", explanation, "grossAmount", "vatAmount", "netAmount",
-       "fiscalCategory", "deductibilityPercent", "fiscalAmount", source, notes)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'MANUAL',$12) RETURNING id`,
+       "fiscalCategory", "deductibilityPercent", "fiscalAmount", source, notes, "partnerName", "partnerCif", "partnerCountryCode")
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'MANUAL',$12,$13,$14,$15) RETURNING id`,
     [input.type, input.date, input.documentType.trim(), input.documentNumber?.trim() || "", input.explanation.trim(),
-      gross, vat, net, input.fiscalCategory, percent, fiscalAmount, input.notes?.trim() || ""]
+      gross, vat, net, input.fiscalCategory, percent, fiscalAmount, input.notes?.trim() || "",
+      input.partnerName?.trim() || "", input.partnerCif?.trim().toUpperCase() || "", input.partnerCountryCode?.trim().toUpperCase() || "RO"]
   );
   return Number(rows[0].id);
 }

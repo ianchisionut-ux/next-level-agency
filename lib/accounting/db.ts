@@ -1,6 +1,6 @@
 import { Pool } from "pg";
 
-const ACCOUNTING_SCHEMA_VERSION = 5;
+const ACCOUNTING_SCHEMA_VERSION = 6;
 
 declare global {
   // eslint-disable-next-line no-var
@@ -278,6 +278,25 @@ async function ensureSchema(pool: Pool) {
     CREATE UNIQUE INDEX IF NOT EXISTS "efactura_one_active_submission_per_invoice"
       ON efactura_submissions ("invoiceId")
       WHERE status IN ('UPLOADING','PROCESSING');
+  `);
+  await pool.query(`ALTER TABLE ref_transactions ADD COLUMN IF NOT EXISTS "partnerName" TEXT NOT NULL DEFAULT '';`);
+  await pool.query(`ALTER TABLE ref_transactions ADD COLUMN IF NOT EXISTS "partnerCif" TEXT NOT NULL DEFAULT '';`);
+  await pool.query(`ALTER TABLE ref_transactions ADD COLUMN IF NOT EXISTS "partnerCountryCode" TEXT NOT NULL DEFAULT 'RO';`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tax_declaration_periods (
+      id SERIAL PRIMARY KEY,
+      year INTEGER NOT NULL CHECK (year BETWEEN 2000 AND 2100),
+      month INTEGER NOT NULL CHECK (month BETWEEN 1 AND 12),
+      status TEXT NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT','REVIEW','APPROVED','FILED')),
+      notes TEXT NOT NULL DEFAULT '',
+      "receiptNumber" TEXT NOT NULL DEFAULT '',
+      "snapshot" JSONB NOT NULL DEFAULT '{}'::jsonb,
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE(year, month)
+    );
+    CREATE INDEX IF NOT EXISTS "tax_declaration_periods_period_idx"
+      ON tax_declaration_periods (year DESC, month DESC);
   `);
   // Populam idempotent registrul cu incasarile deja existente in Facturare.
   await pool.query(`
