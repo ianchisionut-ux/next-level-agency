@@ -17,10 +17,27 @@ type InvoiceRow = {
   status: string;
   invoiceType: "STANDARD" | "STORNO";
   originalInvoiceId: number | null;
+  eFacturaStatus: string | null;
+  eFacturaMessage: string | null;
 };
 
 function fmt(n: number) {
   return n.toLocaleString("ro-RO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function AnafStatus({ status, message }: { status: string | null; message: string | null }) {
+  const normalized = status || "PENDING";
+  const palette = normalized === "VALIDATED"
+    ? { color: "#16a34a", label: "Validată ANAF" }
+    : ["REJECTED", "ERROR"].includes(normalized)
+      ? { color: "#dc2626", label: normalized === "REJECTED" ? "Respinsă ANAF" : "Eroare trimitere" }
+      : { color: "#eab308", label: normalized === "PENDING" ? "Netrimisă încă" : "În procesare ANAF" };
+  return (
+    <span title={message || palette.label} className="inline-flex items-center gap-2 text-xs font-semibold whitespace-nowrap">
+      <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: "50%", background: palette.color, boxShadow: `0 0 0 3px ${palette.color}22` }} />
+      {palette.label}
+    </span>
+  );
 }
 
 export default function InvoicesPage() {
@@ -96,13 +113,14 @@ export default function InvoicesPage() {
               <th className="text-right">Total</th>
               <th className="text-right">Rest de plata</th>
               <th>Status</th>
+              <th>e-Factura ANAF</th>
               <th className="text-right">Acțiuni</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={8} className="empty-row">
+                <td colSpan={9} className="empty-row">
                   Nicio factura in aceasta categorie.
                 </td>
               </tr>
@@ -122,6 +140,7 @@ export default function InvoicesPage() {
                 <td>
                   <StatusBadge status={inv.status} />
                 </td>
+                <td><AnafStatus status={inv.eFacturaStatus} message={inv.eFacturaMessage} /></td>
                 <td className="text-right">
                   <button type="button" onClick={() => removeInvoice(inv)} className="link-danger" title="Șterge factura">
                     <Trash2 size={15}/>

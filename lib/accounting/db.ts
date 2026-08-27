@@ -1,6 +1,6 @@
 import { Pool } from "pg";
 
-const ACCOUNTING_SCHEMA_VERSION = 4;
+const ACCOUNTING_SCHEMA_VERSION = 5;
 
 declare global {
   // eslint-disable-next-line no-var
@@ -192,6 +192,10 @@ async function ensureSchema(pool: Pool) {
   await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "buyerReference" TEXT NOT NULL DEFAULT '';`);
   await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "sellerSnapshot" JSONB NOT NULL DEFAULT '{}'::jsonb;`);
   await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "clientSnapshot" JSONB NOT NULL DEFAULT '{}'::jsonb;`);
+  // Default 0 is intentional: invoices that existed before this migration must
+  // never be picked up by the automatic sender. Only newly issued invoices are
+  // explicitly opted in inside createInvoice().
+  await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "autoEfactura" INTEGER NOT NULL DEFAULT 0;`);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS "invoices_one_storno_per_original" ON invoices ("originalInvoiceId") WHERE "invoiceType"='STORNO';`);
 
   await pool.query(`
@@ -252,6 +256,28 @@ async function ensureSchema(pool: Pool) {
       "downloadId" TEXT NOT NULL DEFAULT '',
       "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+  `);
+  await pool.query(`ALTER TABLE efactura_submissions ADD COLUMN IF NOT EXISTS retryable INTEGER NOT NULL DEFAULT 0;`);
+  await pool.query(`ALTER TABLE efactura_submissions ADD COLUMN IF NOT EXISTS "attemptNumber" INTEGER NOT NULL DEFAULT 1;`);
+  // Clean up only locally-active duplicates from older code before enforcing
+  // the invariant. Validated/rejected history remains untouched.
+  await pool.query(`
+    UPDATE efactura_submissions older
+       SET status='ERROR', retryable=0,
+           message=CASE WHEN older.message='' THEN 'Înlocuită de o trimitere mai nouă.' ELSE older.message END,
+           "checkedAt"=now()
+     WHERE older.status IN ('UPLOADING','PROCESSING')
+       AND EXISTS (
+         SELECT 1 FROM efactura_submissions newer
+          WHERE newer."invoiceId"=older."invoiceId"
+            AND newer.status IN ('UPLOADING','PROCESSING')
+            AND newer.id>older.id
+       );
+  `);
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS "efactura_one_active_submission_per_invoice"
+      ON efactura_submissions ("invoiceId")
+      WHERE status IN ('UPLOADING','PROCESSING');
   `);
   // Populam idempotent registrul cu incasarile deja existente in Facturare.
   await pool.query(`

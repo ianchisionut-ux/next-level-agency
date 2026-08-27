@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, type NextRequest, NextResponse } from "next/server";
 import { accountingApi } from "@/lib/accounting/access";
 import { createStornoInvoice } from "@/lib/accounting/repo";
+import { getAnafConnectionStatus, sendInvoiceToAnaf } from "@/lib/accounting/efactura";
 
 async function POSTHandler(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -14,7 +15,15 @@ async function POSTHandler(req: NextRequest, { params }: { params: Promise<{ id:
       issueDate: String(data.issueDate || new Date().toISOString().slice(0, 10)),
       reason,
     });
-    return NextResponse.json({ id: stornoId });
+    after(async () => {
+      try {
+        const connection = await getAnafConnectionStatus();
+        if (connection.configured && connection.connected) await sendInvoiceToAnaf(stornoId);
+      } catch (error) {
+        console.error(`Trimiterea automată e-Factura pentru storno ${stornoId} a eșuat:`, error);
+      }
+    });
+    return NextResponse.json({ id: stornoId, eFactura: { status: "PENDING" } });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Factura nu a putut fi stornată." }, { status: 400 });
   }

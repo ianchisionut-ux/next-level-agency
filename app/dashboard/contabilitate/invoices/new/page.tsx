@@ -53,6 +53,7 @@ export default function NewInvoicePage() {
   const [dueDate, setDueDate] = useState("");
   const [taxPointDate, setTaxPointDate] = useState("");
   const [paymentMeansCode, setPaymentMeansCode] = useState("30");
+  const [paidOnSpot, setPaidOnSpot] = useState(false);
   const [paymentTerms, setPaymentTerms] = useState("");
   const [buyerReference, setBuyerReference] = useState("");
   const [discountPercent, setDiscountPercent] = useState(0);
@@ -218,6 +219,10 @@ export default function NewInvoicePage() {
       alert("Numărul facturii trebuie să fie un număr întreg pozitiv.");
       return;
     }
+    if (paidOnSpot && currency !== "RON") {
+      alert("Factura achitată pe loc și chitanța pot fi emise doar în RON.");
+      return;
+    }
     setSaving(true);
     const res = await fetch("/api/accounting/invoices", {
       method: "POST",
@@ -231,7 +236,9 @@ export default function NewInvoicePage() {
         dueDate: dueDate || undefined,
         invoiceTypeCode: "380",
         taxPointDate,
-        paymentMeansCode,
+        paymentMeansCode: paidOnSpot ? "10" : paymentMeansCode,
+        paidOnSpot,
+        cashier: delegateName,
         paymentTerms,
         buyerReference,
         discountPercent,
@@ -353,11 +360,24 @@ export default function NewInvoicePage() {
       <div className="card mb-4">
         <div className="section-label mb-3">Date pentru RO e-Factura</div>
         <div className="grid grid-cols-4 gap-4">
-          <div><label className="field-label">Modalitate de plată</label><select className="input" value={paymentMeansCode} onChange={(e)=>setPaymentMeansCode(e.target.value)}><option value="30">30 · transfer bancar</option><option value="10">10 · numerar</option><option value="48">48 · card bancar</option><option value="42">42 · plată în cont bancar</option><option value="ZZZ">ZZZ · stabilită de comun acord</option></select></div>
+          <div><label className="field-label">Modalitate de plată</label><select className="input" value={paidOnSpot ? "10" : paymentMeansCode} disabled={paidOnSpot} onChange={(e)=>setPaymentMeansCode(e.target.value)}><option value="30">30 · transfer bancar</option><option value="10">10 · numerar</option><option value="48">48 · card bancar</option><option value="42">42 · plată în cont bancar</option><option value="ZZZ">ZZZ · stabilită de comun acord</option></select></div>
           <div><label className="field-label">Data exigibilității TVA</label><input type="date" className="input" value={taxPointDate} onChange={(e)=>setTaxPointDate(e.target.value)}/></div>
           <div><label className="field-label">Referință cumpărător / contract</label><input className="input" value={buyerReference} onChange={(e)=>setBuyerReference(e.target.value)} placeholder="Opțional"/></div>
           <div><label className="field-label">Condiții de plată</label><input className="input" value={paymentTerms} onChange={(e)=>setPaymentTerms(e.target.value)} placeholder="Ex.: 15 zile"/></div>
         </div>
+        <label className={`mt-4 flex items-start gap-3 rounded-xl border px-4 py-3 ${currency === "RON" ? "cursor-pointer border-emerald-200 bg-emerald-50" : "cursor-not-allowed border-slate-200 bg-slate-50 opacity-60"}`}>
+          <input
+            type="checkbox"
+            checked={paidOnSpot}
+            disabled={currency !== "RON"}
+            onChange={(event) => setPaidOnSpot(event.target.checked)}
+            className="mt-1"
+          />
+          <span>
+            <span className="block font-semibold text-sm">Achitată pe loc în numerar</span>
+            <span className="block text-xs mt-1" style={{ color: "var(--text-dim)" }}>Emite atomic factura, plata integrală și chitanța. Disponibil exclusiv pentru RON.</span>
+          </span>
+        </label>
         <p className="text-xs mt-3" style={{color:"var(--text-faint)"}}>Factura normală va folosi codul UBL 380; factura storno folosește automat codul 381.</p>
       </div>
 
@@ -538,4 +558,3 @@ export default function NewInvoicePage() {
     </div>
   );
 }
-
