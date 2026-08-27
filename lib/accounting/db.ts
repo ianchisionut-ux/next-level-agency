@@ -1,6 +1,6 @@
 import { Pool } from "pg";
 
-const ACCOUNTING_SCHEMA_VERSION = 6;
+const ACCOUNTING_SCHEMA_VERSION = 7;
 
 declare global {
   // eslint-disable-next-line no-var
@@ -297,6 +297,26 @@ async function ensureSchema(pool: Pool) {
     );
     CREATE INDEX IF NOT EXISTS "tax_declaration_periods_period_idx"
       ON tax_declaration_periods (year DESC, month DESC);
+    CREATE TABLE IF NOT EXISTS tax_declaration_settings (
+      id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id=1),
+      "declarantLastName" TEXT NOT NULL DEFAULT '',
+      "declarantFirstName" TEXT NOT NULL DEFAULT '',
+      "declarantFunction" TEXT NOT NULL DEFAULT '',
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    INSERT INTO tax_declaration_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+    CREATE TABLE IF NOT EXISTS tax_declaration_classifications (
+      id SERIAL PRIMARY KEY,
+      year INTEGER NOT NULL CHECK (year BETWEEN 2000 AND 2100),
+      month INTEGER NOT NULL CHECK (month BETWEEN 1 AND 12),
+      "declarationType" TEXT NOT NULL CHECK ("declarationType" IN ('D300','D394','D390')),
+      "sourceKey" TEXT NOT NULL,
+      "operationCode" TEXT NOT NULL DEFAULT '',
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE(year,month,"declarationType","sourceKey")
+    );
+    CREATE INDEX IF NOT EXISTS "tax_declaration_classifications_period_idx"
+      ON tax_declaration_classifications (year DESC,month DESC,"declarationType");
   `);
   // Populam idempotent registrul cu incasarile deja existente in Facturare.
   await pool.query(`
