@@ -169,5 +169,6 @@
 .declaration-values span { display:flex; align-items:center; justify-content:space-between; gap:12px; color:var(--text-dim); font-size:12px; }
 .declaration-values strong { color:var(--text); font-family:var(--font-mono); }
 .declaration-card-foot { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:auto; padding-top:12px; border-top:1px solid var(--border-soft); color:var(--text-faint); font-size:10px; }
+.declaration-downloads { display:flex; gap:5px; }.declaration-downloads .btn-secondary { padding:7px 9px; font-size:10px; }
 .declaration-bottom { margin-bottom:0; }.declaration-notes { display:flex; flex-direction:column; gap:9px; }.declaration-notes textarea { resize:vertical; }
 @media (max-width:1050px){.declaration-grid{grid-template-columns:1fr}.declaration-workflow{align-items:stretch;flex-direction:column}.declaration-steps{overflow-x:auto}.declaration-period{flex-wrap:wrap}}

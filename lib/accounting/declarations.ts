@@ -176,3 +176,5 @@ export async function exportDeclarationWorkingPaper(type: DeclarationType, year:
   }
   return `\uFEFF${rows.map((row) => row.map(csvCell).join(";")).join("\r\n")}`;
 }
+
+export type DeclarationReport = Awaited<ReturnType<typeof getDeclarationPeriod>>;
