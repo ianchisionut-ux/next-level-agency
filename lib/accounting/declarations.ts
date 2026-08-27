@@ -1,4 +1,5 @@
 import { ready } from "./db";
+import { getOfficialAnafForms } from "./anaf-official-forms";
 
 export type DeclarationStatus = "DRAFT" | "REVIEW" | "APPROVED" | "FILED";
 export type DeclarationType = "D300" | "D394" | "D390";
@@ -122,6 +123,7 @@ export async function getDeclarationPeriod(year: number, month: number) {
   const saved = savedResult.rows[0];
   return {
     period: { year, month, start, endExclusive: next },
+    officialForms: getOfficialAnafForms(year, month),
     workflow: {
       status: (saved?.status || "DRAFT") as DeclarationStatus,
       notes: String(saved?.notes || ""), receiptNumber: String(saved?.receiptNumber || ""), updatedAt: saved?.updatedAt || null,
