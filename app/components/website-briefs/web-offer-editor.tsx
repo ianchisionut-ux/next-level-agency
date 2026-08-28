@@ -72,19 +72,33 @@ export function WebOfferEditor({ brief, estimate, onClose, onSaved }: EditorProp
   }
 
   function printOffer() {
-    document.getElementById("web-offer-page-style")?.remove();
-    const style = document.createElement("style");
-    style.id = "web-offer-page-style";
-    style.textContent = "@page { size: A4; margin: 0; }";
-    document.head.appendChild(style);
-    document.body.classList.add("web-offer-printing");
-    const cleanup = () => {
-      document.body.classList.remove("web-offer-printing");
-      document.getElementById("web-offer-page-style")?.remove();
+    setError("");
+    const paper = document.querySelector<HTMLElement>(".web-offer-paper");
+    const printWindow = window.open("", "nla-web-offer-print", "width=980,height=900");
+    if (!paper || !printWindow) {
+      setError("Fereastra de tipărire a fost blocată. Permite ferestrele pop-up pentru acest site și încearcă din nou.");
+      return;
+    }
+
+    const styles = Array.from(document.head.querySelectorAll("style, link[rel='stylesheet']"))
+      .map((node) => node.outerHTML)
+      .join("\n");
+    printWindow.document.open();
+    printWindow.document.write(`<!doctype html><html lang="ro"><head><meta charset="utf-8"><base href="${window.location.origin}/"><title>Oferta ${data.offerNumber}</title>${styles}<style>@page{size:A4;margin:0}html,body{margin:0!important;padding:0!important;background:#fff!important}.web-offer-paper{display:block!important;position:static!important;width:210mm!important;max-width:none!important;min-height:297mm!important;margin:0!important;padding:13mm 14mm!important;box-shadow:none!important}</style></head><body>${paper.outerHTML}</body></html>`);
+    printWindow.document.close();
+    printWindow.opener = null;
+
+    const printWhenReady = async () => {
+      const images = Array.from(printWindow.document.images);
+      await Promise.all(images.map((image) => image.complete ? Promise.resolve() : new Promise<void>((resolve) => {
+        image.addEventListener("load", () => resolve(), { once: true });
+        image.addEventListener("error", () => resolve(), { once: true });
+      })));
+      await printWindow.document.fonts?.ready;
+      printWindow.focus();
+      printWindow.print();
     };
-    window.addEventListener("afterprint", cleanup, { once: true });
-    window.print();
-    window.setTimeout(cleanup, 3000);
+    window.setTimeout(printWhenReady, 250);
   }
 
   async function downloadContract() {
