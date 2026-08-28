@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, FileDown, Loader2, Mail, MessageCircle, Plus, Save, Trash2, X } from "lucide-react";
+import { Check, FileDown, FileSignature, Loader2, Mail, MessageCircle, Plus, Save, Trash2, X } from "lucide-react";
 import { defaultWebOffer, formatLei, webOfferTotals, type WebOfferData, type WebsiteBriefOfferSource } from "@/lib/web-offer";
 
 type EditorProps = {
@@ -12,8 +12,8 @@ type EditorProps = {
 };
 
 export function WebOfferEditor({ brief, estimate, onClose, onSaved }: EditorProps) {
-  const [data, setData] = useState<WebOfferData>(() => brief.offerData || defaultWebOffer(brief, estimate));
-  const [busy, setBusy] = useState<"save" | "email" | "whatsapp" | null>(null);
+  const [data, setData] = useState<WebOfferData>(() => ({ ...defaultWebOffer(brief, estimate), ...(brief.offerData || {}) }));
+  const [busy, setBusy] = useState<"save" | "contract" | "email" | "whatsapp" | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const totals = useMemo(() => webOfferTotals(data), [data]);
@@ -87,6 +87,38 @@ export function WebOfferEditor({ brief, estimate, onClose, onSaved }: EditorProp
     window.setTimeout(cleanup, 3000);
   }
 
+  async function downloadContract() {
+    setBusy("contract");
+    setNotice("");
+    setError("");
+    try {
+      const response = await fetch(`/api/oferte-web/${brief.id}/contract-pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || "Contractul nu a putut fi generat.");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Contract_${data.contractNumber || data.offerNumber}.pdf`.replace(/[^a-zA-Z0-9_.-]/g, "_");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setNotice("Contractul a fost salvat și descărcat în format PDF.");
+      onSaved?.();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Contractul nu a putut fi generat.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div className="web-offer-overlay" role="dialog" aria-modal="true" aria-label="Editor ofertă web">
       <div className="web-offer-shell">
@@ -98,6 +130,7 @@ export function WebOfferEditor({ brief, estimate, onClose, onSaved }: EditorProp
           <div className="web-offer-toolbar-actions">
             <button className="web-offer-button secondary" onClick={() => call("sheet")} disabled={!!busy}>{busy === "save" ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />} Salvează</button>
             <button className="web-offer-button secondary" onClick={printOffer}><FileDown size={16} /> Print / PDF</button>
+            <button className="web-offer-button contract" onClick={downloadContract} disabled={!!busy}>{busy === "contract" ? <Loader2 className="animate-spin" size={16} /> : <FileSignature size={16} />} Contract PDF</button>
             <button className="web-offer-button whatsapp" onClick={() => call("send-whatsapp")} disabled={!!busy}>{busy === "whatsapp" ? <Loader2 className="animate-spin" size={16} /> : <MessageCircle size={16} />} WhatsApp</button>
             <button className="web-offer-button primary" onClick={() => call("send-email")} disabled={!!busy}>{busy === "email" ? <Loader2 className="animate-spin" size={16} /> : <Mail size={16} />} Trimite e-mail</button>
             <button className="web-offer-close" onClick={onClose} aria-label="Închide"><X size={18} /></button>
@@ -146,6 +179,16 @@ export function WebOfferEditor({ brief, estimate, onClose, onSaved }: EditorProp
             <Field label="Termen de livrare" value={data.deliveryTerm} onChange={(value) => update("deliveryTerm", value)} />
             <Field label="Condiții de plată" value={data.paymentTerms} onChange={(value) => update("paymentTerms", value)} />
 
+            <h3>Date contract</h3>
+            <div className="web-offer-form-grid">
+              <Field label="Număr contract" value={data.contractNumber} onChange={(value) => update("contractNumber", value)} />
+              <Field label="Data contractului" type="date" value={data.contractDate} onChange={(value) => update("contractDate", value)} />
+              <Field label="CUI beneficiar" value={data.customerCui} onChange={(value) => update("customerCui", value)} />
+              <Field label="Nr. Registrul Comerțului" value={data.customerRegCom} onChange={(value) => update("customerRegCom", value)} />
+            </div>
+            <Field label="Sediu beneficiar" value={data.customerAddress} onChange={(value) => update("customerAddress", value)} />
+            <Field label="Reprezentant beneficiar" value={data.customerRepresentative} onChange={(value) => update("customerRepresentative", value)} />
+
             <h3>Incluse și observații</h3>
             {data.included.map((item, index) => <Field key={index} label={`Beneficiu ${index + 1}`} value={item} onChange={(value) => updateIncluded(index, value)} />)}
             <Area label="Observații" value={data.notes} onChange={(value) => update("notes", value)} />
@@ -186,4 +229,3 @@ function NumberField({ label, value, onChange, step = "50" }: { label: string; v
 function Area({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return <label className="web-offer-field">{label}<textarea value={value} onChange={(event) => onChange(event.target.value)} /></label>;
 }
-

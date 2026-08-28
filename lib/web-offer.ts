@@ -23,6 +23,12 @@ export type WebOfferData = {
   projectSummary: string;
   included: string[];
   notes: string;
+  contractNumber: string;
+  contractDate: string;
+  customerCui: string;
+  customerRegCom: string;
+  customerAddress: string;
+  customerRepresentative: string;
 };
 
 export type WebsiteBriefOfferSource = {
@@ -94,6 +100,12 @@ export function defaultWebOffer(
       "Testare, publicare și instruire la predare",
     ],
     notes: brief.visualStyle ? `Direcție vizuală solicitată: ${brief.visualStyle}.` : "",
+    contractNumber: makeWebOfferNumber(brief).replace(/^NLA-/, "CTR-"),
+    contractDate: date.toISOString().slice(0, 10),
+    customerCui: "",
+    customerRegCom: "",
+    customerAddress: "",
+    customerRepresentative: brief.contactName,
   };
 }
 
@@ -140,6 +152,12 @@ export function normalizeWebOffer(
     projectSummary: asText(input.projectSummary, defaults.projectSummary),
     included,
     notes: asText(input.notes),
+    contractNumber: asText(input.contractNumber, defaults.contractNumber),
+    contractDate: asText(input.contractDate, defaults.contractDate),
+    customerCui: asText(input.customerCui),
+    customerRegCom: asText(input.customerRegCom),
+    customerAddress: asText(input.customerAddress),
+    customerRepresentative: asText(input.customerRepresentative, defaults.customerRepresentative),
   };
 }
 
@@ -152,4 +170,3 @@ export function webOfferTotals(data: WebOfferData) {
 export function formatLei(value: number) {
   return new Intl.NumberFormat("ro-RO", { style: "currency", currency: "RON", minimumFractionDigits: 2 }).format(value);
 }
-
