@@ -61,7 +61,7 @@ export async function getDeclarationPeriod(year: number, month: number) {
   const { start, next } = periodBounds(year, month);
   const pool = await ready();
   const [companyResult, vatRowsResult, salesPartnersResult, d390SalesDocsResult, expensesResult, incomeResult, efResult, savedResult, settingsResult, classificationsResult] = await Promise.all([
-    pool.query(`SELECT name,cif,address,phone,email,"vatPayer", "vatIncasare" FROM company WHERE id=1`),
+    pool.query(`SELECT name,cif,address,phone,email,bank,iban,"vatPayer", "vatIncasare" FROM company WHERE id=1`),
     pool.query(
       `SELECT ii."vatRate" as "vatRate", COUNT(DISTINCT i.id)::int as "documentCount",
               COALESCE(SUM(ii.valoare * i."exchangeRate"),0) as "taxableBase",
@@ -98,7 +98,7 @@ export async function getDeclarationPeriod(year: number, month: number) {
     pool.query(
       `SELECT id, "partnerName", "partnerCif", UPPER("partnerCountryCode") as "partnerCountryCode",
               "documentType", "documentNumber", "grossAmount", "netAmount", "vatAmount",
-              "deductibilityPercent", "fiscalCategory"
+              "deductibilityPercent", "fiscalCategory", "vatRate"
          FROM ref_transactions
         WHERE type='EXPENSE' AND date >= $1::date AND date < $2::date ORDER BY date,id`,
       [start, next]
@@ -134,6 +134,7 @@ export async function getDeclarationPeriod(year: number, month: number) {
     id: Number(row.id), partnerName: String(row.partnerName || ""), partnerCif: String(row.partnerCif || ""),
     countryCode: String(row.partnerCountryCode || "RO"), documentType: String(row.documentType), documentNumber: String(row.documentNumber || ""),
     gross: round2(Number(row.grossAmount)), net: round2(Number(row.netAmount)), vat: round2(Number(row.vatAmount)),
+    vatRate: row.vatRate == null ? null : Number(row.vatRate),
     deductibleVat: row.fiscalCategory === "NON_DEDUCTIBLE_EXPENSE" ? 0 : round2(Number(row.vatAmount) * Number(row.deductibilityPercent) / 100),
   }));
   const domesticSales = salesPartners.filter((row) => row.countryCode === "RO");
@@ -171,6 +172,22 @@ export async function getDeclarationPeriod(year: number, month: number) {
   const companyCui = String(company.cif || "").toUpperCase().replace(/^RO/, "").replace(/\D/g, "");
   const invalidD390Company = !/^[1-9]\d{1,9}$/.test(companyCui) || !String(company.name || "").trim() || !String(company.address || "").trim();
   const invalidD390Operations = d390Operations.filter((row) => !row.partnerName.trim() || Math.round(row.taxableBase) <= 0 || (row.direction === "SALE" && !vatNumberWithoutCountry(row.partnerCif, row.countryCode))).length;
+  const d300Blockers: string[] = [];
+  if (year < 2026) d300Blockers.push("XML D300 este implementat pe structura ANAF v12 numai pentru perioade din 2026.");
+  if (!Number(company.vatPayer || 0)) d300Blockers.push("Firma nu este configurată ca plătitoare de TVA.");
+  if (vatOnCashAccounting) d300Blockers.push("TVA la încasare necesită jurnalul de exigibilitate pe cote; XML-ul este blocat până la reconcilierea contabilă.");
+  if (!String(settings.profileConfirmedAt || "")) d300Blockers.push("Profilul fiscal D300/D394 nu a fost confirmat.");
+  if (!/^\d{4}$/.test(String(settings.caen || ""))) d300Blockers.push("Codul CAEN de 4 cifre lipsește.");
+  const periodType=String(settings.fiscalPeriodType||"L");
+  if((periodType==="T"&&![2,3,5,6,8,9,11,12].includes(month))||(periodType==="S"&&![6,12].includes(month))||(periodType==="A"&&month!==12)) d300Blockers.push("Luna selectată nu este final de perioadă pentru tipul de decont configurat.");
+  if(Number(settings.proRata??100)!==100) d300Blockers.push("Pro-rata diferită de 100% necesită calculul contabil al ajustărilor înainte de generare.");
+  if(Number(settings.priorVatPayable||0)>0&&Number(settings.priorVatRefundable||0)>0) d300Blockers.push("Soldurile precedente de plată și negativ nu pot fi ambele pozitive.");
+  if (!String(company.bank || "").trim() || !String(company.iban || "").trim()) d300Blockers.push("Banca și contul IBAN sunt obligatorii.");
+  if (missingDeclarant) d300Blockers.push("Datele declarantului sunt incomplete.");
+  const unsupportedSales = salesPartners.filter((row) => row.countryCode !== "RO").length + vatRows.filter((row) => ![11,21].includes(row.vatRate)).reduce((sum,row)=>sum+row.documentCount,0);
+  if (unsupportedSales) d300Blockers.push(`${unsupportedSales} facturi de vânzare necesită clasificare D300 (extern, scutit, taxare inversă sau cotă tranzitorie).`);
+  const unsupportedPurchases = expenses.filter((row) => row.countryCode !== "RO" || row.documentType !== "FACTURA" || row.vat <= 0 || ![11,21].includes(Number(row.vatRate))).length;
+  if (unsupportedPurchases) d300Blockers.push(`${unsupportedPurchases} achiziții necesită cotă TVA și clasificare D300 completă.`);
   if (unclassifiedD390) warnings.push(`${unclassifiedD390} operațiuni intracomunitare trebuie clasificate înainte de generarea XML D390.`);
   if (d390Operations.length && missingDeclarant) warnings.push("Datele persoanei care întocmește declarația sunt incomplete.");
   if (d390Operations.length && invalidD390Company) warnings.push("Denumirea, adresa sau CUI-ul firmei nu sunt valide pentru XML D390.");
@@ -185,6 +202,14 @@ export async function getDeclarationPeriod(year: number, month: number) {
       declarantLastName: String(settings.declarantLastName || ""),
       declarantFirstName: String(settings.declarantFirstName || ""),
       declarantFunction: String(settings.declarantFunction || ""),
+      caen: String(settings.caen || ""), fiscalPeriodType: String(settings.fiscalPeriodType || "L"), proRata: Number(settings.proRata ?? 100),
+      preparerType: Number(settings.preparerType || 0), preparerName: String(settings.preparerName || ""), preparerCif: String(settings.preparerCif || ""), preparerCapacity: String(settings.preparerCapacity || ""),
+      consultOption: Number(settings.consultOption || 0), affiliatedTransactions: Number(settings.affiliatedTransactions || 0),
+      priorVatPayable: Number(settings.priorVatPayable || 0), priorVatRefundable: Number(settings.priorVatRefundable || 0),
+      inspectionVatPayable: Number(settings.inspectionVatPayable || 0), inspectionVatRefundable: Number(settings.inspectionVatRefundable || 0),
+      deductibleAdjustments: Number(settings.deductibleAdjustments || 0), refundedForeignVat: Number(settings.refundedForeignVat || 0),
+      requestRefund: Number(settings.requestRefund || 0), profileConfirmedAt: settings.profileConfirmedAt || null,
+      invoiceSeries: String(settings.invoiceSeries || ""), allocatedInvoiceFrom: Number(settings.allocatedInvoiceFrom || 0), allocatedInvoiceTo: Number(settings.allocatedInvoiceTo || 0),
     },
     workflow: {
       status: (saved?.status || "DRAFT") as DeclarationStatus,
@@ -194,7 +219,8 @@ export async function getDeclarationPeriod(year: number, month: number) {
     d300: {
       dueDate: indicativeDueDate(year, month, 25), outputVat, invoicedOutputVat, inputVat,
       vatPayable: Math.max(0, round2(outputVat - inputVat)), vatRefundable: Math.max(0, round2(inputVat - outputVat)), vatRows,
-      ready: Boolean(Number(companyResult.rows[0]?.vatPayer || 0)),
+      ready: d300Blockers.length === 0,
+      blockers: d300Blockers,
     },
     d394: {
       dueDate: indicativeDueDate(year, month, 30), sales: domesticSales, purchases: domesticPurchases,
@@ -217,17 +243,41 @@ export async function getDeclarationPeriod(year: number, month: number) {
   };
 }
 
-export async function updateDeclarationSettings(input: { declarantLastName?: string; declarantFirstName?: string; declarantFunction?: string }) {
+type DeclarationSettingsInput = {
+  declarantLastName?:string; declarantFirstName?:string; declarantFunction?:string; caen?:string; fiscalPeriodType?:string; proRata?:number;
+  preparerType?:number; preparerName?:string; preparerCif?:string; preparerCapacity?:string; consultOption?:number; affiliatedTransactions?:number;
+  priorVatPayable?:number; priorVatRefundable?:number; inspectionVatPayable?:number; inspectionVatRefundable?:number;
+  deductibleAdjustments?:number; refundedForeignVat?:number; requestRefund?:number;
+  invoiceSeries?:string; allocatedInvoiceFrom?:number; allocatedInvoiceTo?:number;
+};
+
+export async function updateDeclarationSettings(input: DeclarationSettingsInput) {
   const values = [input.declarantLastName, input.declarantFirstName, input.declarantFunction].map((value) => String(value || "").trim());
+  if (!values[0] || !values[1] || !values[2]) throw new Error("Numele, prenumele și funcția declarantului sunt obligatorii.");
   if (values[0].length > 75 || values[1].length > 75 || values[2].length > 50) throw new Error("Datele declarantului depășesc lungimea acceptată de ANAF.");
+  const caen=String(input.caen||"").trim();
+  const fiscalPeriodType=String(input.fiscalPeriodType||"L").trim().toUpperCase();
+  const preparerName=String(input.preparerName||"").trim(), preparerCif=String(input.preparerCif||"").replace(/\D/g,""), preparerCapacity=String(input.preparerCapacity||"").trim();
+  if (!/^\d{4}$/.test(caen)) throw new Error("Codul CAEN trebuie să conțină exact 4 cifre.");
+  if (!["L","T","S","A"].includes(fiscalPeriodType)) throw new Error("Perioada fiscală este invalidă.");
+  if (!preparerName || !/^\d{2,13}$/.test(preparerCif) || !preparerCapacity) throw new Error("Datele persoanei/organizației care întocmește D394 sunt incomplete.");
+  const numeric=(value:unknown,min=0,max=99999999999999)=>{const number=Number(value??0);if(!Number.isFinite(number)||number<min||number>max)throw new Error("O valoare din profilul fiscal este invalidă.");return round2(number);};
+  const proRata=numeric(input.proRata,0,100);
+  const moneyValues=[input.priorVatPayable,input.priorVatRefundable,input.inspectionVatPayable,input.inspectionVatRefundable,input.deductibleAdjustments,input.refundedForeignVat].map(value=>numeric(value));
+  const preparerType=Number(input.preparerType||0), consultOption=Number(input.consultOption||0), affiliatedTransactions=Number(input.affiliatedTransactions||0), requestRefund=Number(input.requestRefund||0);
+  if (![0,1].includes(preparerType)||![0,1].includes(consultOption)||![0,1].includes(affiliatedTransactions)||![0,1].includes(requestRefund)) throw new Error("O opțiune fiscală are o valoare invalidă.");
+  const invoiceSeries=String(input.invoiceSeries||"").trim().toUpperCase(), allocatedInvoiceFrom=Math.trunc(Number(input.allocatedInvoiceFrom||0)), allocatedInvoiceTo=Math.trunc(Number(input.allocatedInvoiceTo||0));
+  if(invoiceSeries && (!/^[A-Z0-9._/-]{1,20}$/.test(invoiceSeries)||allocatedInvoiceFrom<1||allocatedInvoiceTo<allocatedInvoiceFrom)) throw new Error("Plaja anuală de facturi pentru D394 este invalidă.");
   const pool = await ready();
   await pool.query(
-    `INSERT INTO tax_declaration_settings (id,"declarantLastName","declarantFirstName","declarantFunction","updatedAt")
-     VALUES (1,$1,$2,$3,now()) ON CONFLICT (id) DO UPDATE SET "declarantLastName"=EXCLUDED."declarantLastName",
-     "declarantFirstName"=EXCLUDED."declarantFirstName","declarantFunction"=EXCLUDED."declarantFunction","updatedAt"=now()`,
-    values
+    `UPDATE tax_declaration_settings SET "declarantLastName"=$1,"declarantFirstName"=$2,"declarantFunction"=$3,caen=$4,
+      "fiscalPeriodType"=$5,"proRata"=$6,"preparerType"=$7,"preparerName"=$8,"preparerCif"=$9,"preparerCapacity"=$10,
+      "consultOption"=$11,"affiliatedTransactions"=$12,"priorVatPayable"=$13,"priorVatRefundable"=$14,
+      "inspectionVatPayable"=$15,"inspectionVatRefundable"=$16,"deductibleAdjustments"=$17,"refundedForeignVat"=$18,
+      "requestRefund"=$19,"invoiceSeries"=$20,"allocatedInvoiceFrom"=$21,"allocatedInvoiceTo"=$22,"profileConfirmedAt"=now(),"updatedAt"=now() WHERE id=1`,
+    [...values,caen,fiscalPeriodType,proRata,preparerType,preparerName,preparerCif,preparerCapacity,consultOption,affiliatedTransactions,...moneyValues,requestRefund,invoiceSeries,allocatedInvoiceFrom,allocatedInvoiceTo]
   );
-  return { declarantLastName: values[0], declarantFirstName: values[1], declarantFunction: values[2] };
+  return getDeclarationPeriod(new Date().getUTCFullYear(),new Date().getUTCMonth()+1);
 }
 
 export async function updateD390Classification(year: number, month: number, input: { sourceKey?: string; operationCode?: string }) {
@@ -299,6 +349,58 @@ export async function generateOfficialD390Xml(year: number, month: number, recti
   ].join(" ");
   const operationXml = operations.map((row) => `  <operatie tip="${row.operationCode}" tara="${row.countryCode}"${row.codO ? ` codO="${xmlEscape(row.codO)}"` : ""} denO="${xmlEscape(row.partnerName)}" baza="${row.baza}"/>`).join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>\n<declaratie390 xmlns="mfp:anaf:dgti:d390:declaratie:v3" ${attrs}>\n  <rezumat nr_pag="${Math.max(1,Math.ceil(operations.length/20))}" nrOPI="${operations.length}" bazaL="${bases.L}" bazaT="${bases.T}" bazaA="${bases.A}" bazaP="${bases.P}" bazaS="${bases.S}" bazaR="${bases.R}" total_baza="${totalBase}"/>\n${operationXml}\n</declaratie390>\n`;
+}
+
+function d300EvidenceNumber(year:number,month:number,periodType:string) {
+  const code=periodType==="L"?"301":periodType==="T"?"302":periodType==="S"?"303":"304";
+  const dueYear=month===12?year+1:year, dueMonth=month===12?1:month+1;
+  const base=`10${code}01${String(month).padStart(2,"0")}${String(year).slice(-2)}25${String(dueMonth).padStart(2,"0")}${String(dueYear).slice(-2)}0000`;
+  const checksum=String([...base].reduce((sum,digit)=>sum+Number(digit),0)%100).padStart(2,"0");
+  return `${base}${checksum}`;
+}
+
+export async function generateOfficialD300Xml(year:number,month:number) {
+  const report=await getDeclarationPeriod(year,month);
+  if(!report.d300.ready) throw new Error(`XML D300 blocat: ${report.d300.blockers.join(" ")}`);
+  const pool=await ready();
+  const companyResult=await pool.query(`SELECT name,cif,address,phone,email,bank,iban FROM company WHERE id=1`);
+  const company=companyResult.rows[0]||{}, settings=report.declarationSettings;
+  const cui=String(company.cif||"").toUpperCase().replace(/^RO/,"").replace(/\D/g,"");
+  if(!/^[1-9]\d{1,9}$/.test(cui)) throw new Error("CUI-ul firmei nu este valid pentru D300.");
+  const sales=new Map(report.d300.vatRows.map(row=>[Number(row.vatRate),{base:Math.round(row.taxableBase),vat:Math.round(row.vat),count:row.documentCount}]));
+  const purchases=report.d394.purchases as Array<{net:number;vat:number;vatRate:number|null;deductibleVat:number}>;
+  const purchaseRate=(rate:number)=>purchases.filter(row=>Number(row.vatRate)===rate).reduce((acc,row)=>({base:acc.base+Math.round(row.net),vat:acc.vat+Math.round(row.vat),deductible:acc.deductible+Math.round(row.deductibleVat)}),{base:0,vat:0,deductible:0});
+  const p21=purchaseRate(21),p11=purchaseRate(11);
+  const s21=sales.get(21)||{base:0,vat:0,count:0},s11=sales.get(11)||{base:0,vat:0,count:0};
+  const collectedBase=s21.base+s11.base, collectedVat=s21.vat+s11.vat;
+  const purchaseBase=p21.base+p11.base, deductibleVat=p21.vat+p11.vat;
+  const taxDeducted=p21.deductible+p11.deductible;
+  const adjustedDeducted=taxDeducted+Math.round(settings.refundedForeignVat)+Math.round(settings.deductibleAdjustments);
+  const negativePeriod=Math.max(adjustedDeducted-collectedVat,0), payablePeriod=Math.max(collectedVat-adjustedDeducted,0);
+  const payableCumulative=payablePeriod+Math.round(settings.priorVatPayable)+Math.round(settings.inspectionVatPayable);
+  const negativeCumulative=negativePeriod+Math.round(settings.priorVatRefundable)+Math.round(settings.inspectionVatRefundable);
+  const finalPayable=Math.max(payableCumulative-negativeCumulative,0), finalRefundable=Math.max(negativeCumulative-payableCumulative,0);
+  const fields:Record<string,number>={
+    R9_1:s21.base,R9_2:s21.vat,R10_1:s11.base,R10_2:s11.vat,R17_1:collectedBase,R17_2:collectedVat,
+    R22_1:p21.base,R22_2:p21.vat,R23_1:p11.base,R23_2:p11.vat,
+    R27_1:purchaseBase,R27_2:deductibleVat,R28_2:taxDeducted,R29_2:Math.round(settings.refundedForeignVat),R31_2:Math.round(settings.deductibleAdjustments),R32_2:adjustedDeducted,
+    R33_2:negativePeriod,R34_2:payablePeriod,R35_2:Math.round(settings.priorVatPayable),R36_2:Math.round(settings.inspectionVatPayable),R37_2:payableCumulative,
+    R38_2:Math.round(settings.priorVatRefundable),R39_2:Math.round(settings.inspectionVatRefundable),R40_2:negativeCumulative,R41_2:finalPayable,R42_2:finalRefundable,
+    nr_facturi:report.d300.vatRows.reduce((sum,row)=>sum+row.documentCount,0),baza:collectedBase,tva:collectedVat,nr_facturi_primite:purchases.length,baza_primite:purchaseBase,tva_primite:deductibleVat,
+  };
+  const numericAttrs=Object.entries(fields).filter(([,value])=>value!==0).map(([key,value])=>`${key}="${value}"`);
+  const totalControl=Object.entries(fields).filter(([key])=>!["baza_primite","tva_primite"].includes(key)).reduce((sum,[,value])=>sum+value,0);
+  const attrs=[
+    `xmlns="mfp:anaf:dgti:d300:declaratie:v12"`,`xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"`,`xsi:schemaLocation="mfp:anaf:dgti:d300:declaratie:v12 D300.xsd"`,
+    `luna="${month}"`,`an="${year}"`,`depusReprezentant="0"`,`bifa_interne="0"`,`temei="0"`,
+    `nume_declar="${xmlEscape(settings.declarantLastName)}"`,`prenume_declar="${xmlEscape(settings.declarantFirstName)}"`,`functie_declar="${xmlEscape(settings.declarantFunction)}"`,
+    `cui="${cui}"`,`den="${xmlEscape(company.name)}"`,`adresa="${xmlEscape(company.address)}"`,
+    ...(company.phone?[`telefon="${xmlEscape(String(company.phone).slice(0,15))}"`]:[]),...(company.email?[`mail="${xmlEscape(company.email)}"`]:[]),
+    `banca="${xmlEscape(company.bank)}"`,`cont="${xmlEscape(company.iban)}"`,`caen="${settings.caen}"`,`tip_decont="${settings.fiscalPeriodType}"`,`pro_rata="${settings.proRata}"`,
+    `bifa_cereale="N"`,`bifa_mob="N"`,`bifa_disp="N"`,`bifa_cons="N"`,`solicit_ramb="${settings.requestRefund?"D":"N"}"`,
+    `nr_evid="${d300EvidenceNumber(year,month,settings.fiscalPeriodType)}"`,`totalPlata_A="${totalControl}"`,...numericAttrs,
+  ];
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<declaratie300 ${attrs.join(" ")}/>\n`;
 }
 
 export async function updateDeclarationPeriod(year: number, month: number, input: { status: DeclarationStatus; notes?: string; receiptNumber?: string }) {

@@ -1,6 +1,6 @@
 import { Pool } from "pg";
 
-const ACCOUNTING_SCHEMA_VERSION = 7;
+const ACCOUNTING_SCHEMA_VERSION = 8;
 
 declare global {
   // eslint-disable-next-line no-var
@@ -282,6 +282,8 @@ async function ensureSchema(pool: Pool) {
   await pool.query(`ALTER TABLE ref_transactions ADD COLUMN IF NOT EXISTS "partnerName" TEXT NOT NULL DEFAULT '';`);
   await pool.query(`ALTER TABLE ref_transactions ADD COLUMN IF NOT EXISTS "partnerCif" TEXT NOT NULL DEFAULT '';`);
   await pool.query(`ALTER TABLE ref_transactions ADD COLUMN IF NOT EXISTS "partnerCountryCode" TEXT NOT NULL DEFAULT 'RO';`);
+  await pool.query(`ALTER TABLE ref_transactions ADD COLUMN IF NOT EXISTS "vatRate" NUMERIC(5,2);`);
+  await pool.query(`ALTER TABLE ref_transactions ADD COLUMN IF NOT EXISTS "partnerVatPayer" INTEGER NOT NULL DEFAULT -1;`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS tax_declaration_periods (
       id SERIAL PRIMARY KEY,
@@ -318,6 +320,26 @@ async function ensureSchema(pool: Pool) {
     CREATE INDEX IF NOT EXISTS "tax_declaration_classifications_period_idx"
       ON tax_declaration_classifications (year DESC,month DESC,"declarationType");
   `);
+  await pool.query(`ALTER TABLE tax_declaration_settings ADD COLUMN IF NOT EXISTS caen TEXT NOT NULL DEFAULT '';`);
+  await pool.query(`ALTER TABLE tax_declaration_settings ADD COLUMN IF NOT EXISTS "fiscalPeriodType" TEXT NOT NULL DEFAULT 'L';`);
+  await pool.query(`ALTER TABLE tax_declaration_settings ADD COLUMN IF NOT EXISTS "proRata" NUMERIC(5,2) NOT NULL DEFAULT 100;`);
+  await pool.query(`ALTER TABLE tax_declaration_settings ADD COLUMN IF NOT EXISTS "preparerType" INTEGER NOT NULL DEFAULT 0;`);
+  await pool.query(`ALTER TABLE tax_declaration_settings ADD COLUMN IF NOT EXISTS "preparerName" TEXT NOT NULL DEFAULT '';`);
+  await pool.query(`ALTER TABLE tax_declaration_settings ADD COLUMN IF NOT EXISTS "preparerCif" TEXT NOT NULL DEFAULT '';`);
+  await pool.query(`ALTER TABLE tax_declaration_settings ADD COLUMN IF NOT EXISTS "preparerCapacity" TEXT NOT NULL DEFAULT '';`);
+  await pool.query(`ALTER TABLE tax_declaration_settings ADD COLUMN IF NOT EXISTS "consultOption" INTEGER NOT NULL DEFAULT 0;`);
+  await pool.query(`ALTER TABLE tax_declaration_settings ADD COLUMN IF NOT EXISTS "affiliatedTransactions" INTEGER NOT NULL DEFAULT 0;`);
+  await pool.query(`ALTER TABLE tax_declaration_settings ADD COLUMN IF NOT EXISTS "priorVatPayable" NUMERIC(14,2) NOT NULL DEFAULT 0;`);
+  await pool.query(`ALTER TABLE tax_declaration_settings ADD COLUMN IF NOT EXISTS "priorVatRefundable" NUMERIC(14,2) NOT NULL DEFAULT 0;`);
+  await pool.query(`ALTER TABLE tax_declaration_settings ADD COLUMN IF NOT EXISTS "inspectionVatPayable" NUMERIC(14,2) NOT NULL DEFAULT 0;`);
+  await pool.query(`ALTER TABLE tax_declaration_settings ADD COLUMN IF NOT EXISTS "inspectionVatRefundable" NUMERIC(14,2) NOT NULL DEFAULT 0;`);
+  await pool.query(`ALTER TABLE tax_declaration_settings ADD COLUMN IF NOT EXISTS "deductibleAdjustments" NUMERIC(14,2) NOT NULL DEFAULT 0;`);
+  await pool.query(`ALTER TABLE tax_declaration_settings ADD COLUMN IF NOT EXISTS "refundedForeignVat" NUMERIC(14,2) NOT NULL DEFAULT 0;`);
+  await pool.query(`ALTER TABLE tax_declaration_settings ADD COLUMN IF NOT EXISTS "requestRefund" INTEGER NOT NULL DEFAULT 0;`);
+  await pool.query(`ALTER TABLE tax_declaration_settings ADD COLUMN IF NOT EXISTS "profileConfirmedAt" TIMESTAMPTZ;`);
+  await pool.query(`ALTER TABLE tax_declaration_settings ADD COLUMN IF NOT EXISTS "invoiceSeries" TEXT NOT NULL DEFAULT '';`);
+  await pool.query(`ALTER TABLE tax_declaration_settings ADD COLUMN IF NOT EXISTS "allocatedInvoiceFrom" INTEGER NOT NULL DEFAULT 0;`);
+  await pool.query(`ALTER TABLE tax_declaration_settings ADD COLUMN IF NOT EXISTS "allocatedInvoiceTo" INTEGER NOT NULL DEFAULT 0;`);
   // Populam idempotent registrul cu incasarile deja existente in Facturare.
   await pool.query(`
     INSERT INTO ref_transactions
