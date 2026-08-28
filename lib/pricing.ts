@@ -4,11 +4,7 @@
 // Punctajul reflectă dificultatea de implementare (integrări, conținut,
 // design custom, multi-limbă etc.), nu doar numărul de pagini. Intervalele
 // de preț sunt calibrate pe piața din România, 2026:
-//   - site de prezentare simplu / landing:      2.500 - 4.500 lei
-//   - site de prezentare standard (5-10 pagini): 4.500 - 8.000 lei
-//   - site avansat (custom, integrări multiple): 8.000 - 14.000 lei
-//   - proiect complex / multi-funcțional:       14.000 - 22.000 lei
-//   - magazin online / proiect custom mare:      22.000 - 45.000 lei
+// Grila de bază este calibrată comercial cu -40% înainte de afișare și ofertare.
 //
 // Aceste cifre sunt orientative - punctul de pornire pentru discuția cu
 // clientul, nu o ofertă fermă.
@@ -30,6 +26,10 @@ export type BriefEstimate = {
   isEcommerce: boolean;
   factors: ScoreFactor[];
 };
+
+// Calibrare comercială Next Level: estimările afișate reprezintă 60% din
+// grila inițială (reducere de 40%), fără a schimba încadrarea proiectului.
+const ESTIMATE_CALIBRATION = 0.6;
 
 // Subset minimal de câmpuri necesare pentru scoring (compatibil cu modelul Prisma WebsiteBrief).
 export type ScorableBrief = {
@@ -53,6 +53,10 @@ export type ScorableBrief = {
 
 function fmtLei(n: number) {
   return new Intl.NumberFormat("ro-RO").format(Math.round(n / 50) * 50);
+}
+
+function calibratedMoney(value: number) {
+  return Math.round((value * ESTIMATE_CALIBRATION) / 50) * 50;
 }
 
 export function formatPriceRange(min: number, max: number) {
@@ -168,14 +172,17 @@ export function estimateWebsiteBrief(b: ScorableBrief): BriefEstimate {
   }
 
   return {
-    score,
+    score: Number((score * ESTIMATE_CALIBRATION).toFixed(1)),
     tier,
     tierDescription,
-    priceMin,
-    priceMax,
-    recurringMin,
-    recurringMax,
+    priceMin: calibratedMoney(priceMin),
+    priceMax: calibratedMoney(priceMax),
+    recurringMin: calibratedMoney(recurringMin),
+    recurringMax: calibratedMoney(recurringMax),
     isEcommerce,
-    factors,
+    factors: factors.map((factor) => ({
+      ...factor,
+      points: Number((factor.points * ESTIMATE_CALIBRATION).toFixed(1)),
+    })),
   };
 }
