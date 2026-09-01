@@ -67,6 +67,7 @@ async function publishVariant(variantId: string) {
       content: variant.content,
       mediaUrls: variant.mediaUrls,
       publishFormat: variant.publishFormat as "POST" | "STORY" | "REEL",
+      platformSettings: variant.platformSettings as Record<string, unknown> | null,
     });
   } catch (err) {
     result = { success: false, error: err instanceof Error ? err.message : "Eroare necunoscuta" };
@@ -118,7 +119,7 @@ export async function publishVariantNow(variantId: string) {
 
 async function dispatchToPlatform(
   platform: Platform,
-  params: { accessToken: string; externalId: string; content: string; mediaUrls: string[]; publishFormat?: "POST" | "STORY" | "REEL" }
+  params: { accessToken: string; externalId: string; content: string; mediaUrls: string[]; publishFormat?: "POST" | "STORY" | "REEL"; platformSettings?: Record<string, unknown> | null }
 ) {
   switch (platform) {
     case "FACEBOOK":
@@ -147,6 +148,7 @@ async function dispatchToPlatform(
         accessToken: params.accessToken,
         videoUrl: params.mediaUrls[0],
         caption: params.content,
+        settings: params.platformSettings ?? undefined,
       });
 
     case "GOOGLE_BUSINESS":

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PLATFORM_META, PLATFORM_ORDER, PlatformKey } from "@/lib/platform-meta";
 import { PlatformIcon } from "@/app/components/ui/platform-icon";
@@ -24,6 +24,23 @@ function isVideoUrl(url: string): boolean {
 }
 
 type PublishFormat = "POST" | "STORY" | "REEL";
+
+interface TikTokCreatorInfo {
+  privacy_level_options: string[];
+  comment_disabled: boolean;
+  duet_disabled: boolean;
+  stitch_disabled: boolean;
+}
+
+interface TikTokSettings {
+  privacyLevel: string;
+  disableComment: boolean;
+  disableDuet: boolean;
+  disableStitch: boolean;
+  brandContentToggle: boolean;
+  brandOrganicToggle: boolean;
+  isAigc: boolean;
+}
 
 /**
  * Selector explicit Postare / Poveste / Reel, exact ca in Meta Business Suite.
@@ -103,6 +120,39 @@ export function Composer({
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tiktokCreator, setTikTokCreator] = useState<TikTokCreatorInfo | null>(null);
+  const [tiktokLoading, setTikTokLoading] = useState(false);
+  const [tiktokSettings, setTikTokSettings] = useState<TikTokSettings>({
+    privacyLevel: "",
+    disableComment: false,
+    disableDuet: false,
+    disableStitch: false,
+    brandContentToggle: false,
+    brandOrganicToggle: false,
+    isAigc: false,
+  });
+
+  const tiktokAccount = accounts.find((a) => a.platform === "TIKTOK");
+  useEffect(() => {
+    if (!tiktokAccount) return;
+    setTikTokLoading(true);
+    fetch(`/api/accounts/${tiktokAccount.id}/tiktok-creator-info`)
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Nu am putut citi opțiunile TikTok");
+        const creator = data.creator as TikTokCreatorInfo;
+        setTikTokCreator(creator);
+        setTikTokSettings((prev) => ({
+          ...prev,
+          privacyLevel: creator.privacy_level_options?.includes(prev.privacyLevel) ? prev.privacyLevel : "",
+          disableComment: creator.comment_disabled || prev.disableComment,
+          disableDuet: creator.duet_disabled || prev.disableDuet,
+          disableStitch: creator.stitch_disabled || prev.disableStitch,
+        }));
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "Eroare TikTok"))
+      .finally(() => setTikTokLoading(false));
+  }, [tiktokAccount?.id]);
 
   const activePlatforms = availablePlatforms.filter((p) => selected.has(p));
 
@@ -171,6 +221,17 @@ export function Composer({
       setError("Alege cel puțin o platformă.");
       return;
     }
+    if (selected.has("TIKTOK") && !tiktokSettings.privacyLevel) {
+      setError("Așteaptă încărcarea opțiunilor TikTok și alege vizibilitatea postării.");
+      return;
+    }
+    if (selected.has("TIKTOK")) {
+      const tiktokMedia = useSameContent ? sharedMedia : getVariant("TIKTOK").mediaUrls;
+      if (!tiktokMedia.some(isVideoUrl)) {
+        setError("TikTok Direct Post necesită un videoclip MP4 sau MOV.");
+        return;
+      }
+    }
 
     const variants = activePlatforms.map((p) => {
       const account = accounts.find((a) => a.platform === p)!;
@@ -191,6 +252,7 @@ export function Composer({
         // apoi a sters video-ul (sau il aplica unei platforme fara video),
         // coboram la "Postare" normala in loc sa trimitem o combinatie invalida.
         publishFormat: publishFormat === "REEL" && !mediaUrls.some(isVideoUrl) ? "POST" : publishFormat,
+        platformSettings: p === "TIKTOK" ? tiktokSettings : undefined,
         // new Date(...) interpretează string-ul "datetime-local" ca oră locală
         // a browser-ului (corect - user-ul a ales ora din perspectiva lui),
         // iar .toISOString() îl convertește la UTC, fără ambiguitate pe server.
@@ -277,6 +339,69 @@ export function Composer({
             })}
           </div>
         </div>
+
+        {selected.has("TIKTOK") && (
+          <div className="glass-card rounded-2xl p-5 space-y-4">
+            <div>
+              <p className="text-sm font-medium">Setări TikTok Direct Post</p>
+              <p className="text-xs text-mist-500 mt-0.5">
+                Opțiunile sunt citite direct din contul TikTok conectat și sunt confirmate înainte de publicare.
+              </p>
+            </div>
+            {tiktokLoading ? (
+              <p className="text-xs text-mist-500">Se încarcă opțiunile creatorului…</p>
+            ) : tiktokCreator ? (
+              <>
+                <label className="block text-xs text-mist-400">
+                  Vizibilitate
+                  <select
+                    value={tiktokSettings.privacyLevel}
+                    onChange={(e) => setTikTokSettings((prev) => ({ ...prev, privacyLevel: e.target.value }))}
+                    className="mt-1 w-full bg-ink-900 border border-ink-600 rounded-lg px-3 py-2 text-sm text-mist-100"
+                  >
+                    <option value="" disabled>Alege vizibilitatea…</option>
+                    {tiktokCreator.privacy_level_options.map((option) => (
+                      <option key={option} value={option}>{option.replaceAll("_", " ")}</option>
+                    ))}
+                  </select>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {([
+                    ["disableComment", "Dezactivează comentariile", tiktokCreator.comment_disabled],
+                    ["disableDuet", "Dezactivează Duet", tiktokCreator.duet_disabled],
+                    ["disableStitch", "Dezactivează Stitch", tiktokCreator.stitch_disabled],
+                  ] as const).map(([key, label, forced]) => (
+                    <label key={key} className="flex items-center gap-2 text-xs text-mist-300">
+                      <input
+                        type="checkbox"
+                        checked={forced || tiktokSettings[key]}
+                        disabled={forced}
+                        onChange={(e) => setTikTokSettings((prev) => ({ ...prev, [key]: e.target.checked }))}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+                <div className="space-y-2 border-t border-ink-700 pt-3">
+                  <label className="flex items-center gap-2 text-xs text-mist-300">
+                    <input type="checkbox" checked={tiktokSettings.brandOrganicToggle} onChange={(e) => setTikTokSettings((p) => ({ ...p, brandOrganicToggle: e.target.checked }))} />
+                    Promovează propria afacere
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-mist-300">
+                    <input type="checkbox" checked={tiktokSettings.brandContentToggle} onChange={(e) => setTikTokSettings((p) => ({ ...p, brandContentToggle: e.target.checked }))} />
+                    Conținut de brand / parteneriat plătit
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-mist-300">
+                    <input type="checkbox" checked={tiktokSettings.isAigc} onChange={(e) => setTikTokSettings((p) => ({ ...p, isAigc: e.target.checked }))} />
+                    Conținut generat cu AI
+                  </label>
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-state-error">Reconectează contul TikTok pentru a încărca opțiunile Direct Post.</p>
+            )}
+          </div>
+        )}
 
         {/* Toggle continut identic */}
         <div className="glass-card rounded-2xl p-5 flex items-center justify-between">

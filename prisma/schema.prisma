@@ -209,6 +209,9 @@ model PostVariant {
   // Inlocuieste vechiul boolean postAsReel - acum sunt 3 optiuni, nu 2.
   publishFormat String @default("POST")
 
+  // Setările alese explicit de creator pentru TikTok Direct Post.
+  platformSettings Json?
+
   status         VariantStatus @default(PENDING)
   externalPostId String?
   publishedAt    DateTime?

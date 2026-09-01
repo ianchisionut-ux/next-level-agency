@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { processScheduledVariants } from "@/lib/publish-orchestrator";
+import type { Prisma } from "@prisma/client";
 
 // Publicarea imediata ("Publică acum") face apeluri reale catre Meta/TikTok/Google
 // in cadrul acestei cereri - le dam timp suficient sa raspunda.
@@ -52,6 +53,7 @@ interface CreatePostBody {
     contentTags?: string[];
     scheduledAt?: string;
     publishFormat?: "POST" | "STORY" | "REEL";
+    platformSettings?: Prisma.InputJsonObject;
   }>;
 }
 
@@ -109,6 +111,7 @@ export async function POST(req: NextRequest) {
             contentTags: v.contentTags ?? [],
             scheduledAt: v.scheduledAt ? new Date(v.scheduledAt) : null,
             publishFormat: v.publishFormat ?? "POST",
+            platformSettings: v.platformSettings,
           })),
         },
       },
