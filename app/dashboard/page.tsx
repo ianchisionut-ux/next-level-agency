@@ -36,7 +36,7 @@ export default async function DashboardPage() {
         post: { workspaceId },
         OR: [{ scheduledAt: { not: null } }, { post: { scheduledAt: { not: null } } }],
       },
-      include: { post: { select: { scheduledAt: true } } },
+      include: { post: { select: { id: true, status: true, scheduledAt: true } } },
       orderBy: { scheduledAt: "asc" },
       take: 200,
     }),
@@ -62,6 +62,8 @@ export default async function DashboardPage() {
 
   const timelineData: TimelineVariant[] = variants.map((v) => ({
     id: v.id,
+    postId: v.post.id,
+    postStatus: v.post.status,
     platform: v.platform as PlatformKey,
     status: v.status,
     scheduledAt: effectiveScheduledAt(v)?.toISOString() ?? null,

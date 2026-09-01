@@ -16,6 +16,7 @@ export default async function DashboardPage() {
   const [variants, recentPosts, accountsCount] = await Promise.all([
     prisma.postVariant.findMany({
       where: { scheduledAt: { not: null }, post: { workspaceId } },
+      include: { post: { select: { id: true, status: true } } },
       orderBy: { scheduledAt: "asc" },
       take: 200,
     }),
@@ -30,6 +31,8 @@ export default async function DashboardPage() {
 
   const timelineData: TimelineVariant[] = variants.map((v) => ({
     id: v.id,
+    postId: v.post.id,
+    postStatus: v.post.status,
     platform: v.platform as PlatformKey,
     status: v.status,
     scheduledAt: v.scheduledAt?.toISOString() ?? null,

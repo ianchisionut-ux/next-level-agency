@@ -1,11 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { PlatformIcon } from "@/app/components/ui/platform-icon";
 import { PLATFORM_META, PlatformKey } from "@/lib/platform-meta";
+import { useToast } from "@/app/components/ui/toast";
 
 export interface TimelineVariant {
   id: string;
+  postId: string;
+  postStatus: string;
   platform: PlatformKey;
   status: string;
   scheduledAt: string | null; // ISO
@@ -21,7 +25,28 @@ const HOUR_START = 6;
 const HOUR_END = 23;
 
 export function BroadcastTimeline({ variants }: Props) {
+  const router = useRouter();
+  const toast = useToast();
   const [hovered, setHovered] = useState<string | null>(null);
+  const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
+
+  async function deletePost(postId: string) {
+    if (!confirm("Sigur vrei să ștergi această postare din Timeline? Acțiunea nu poate fi anulată.")) return;
+
+    setDeletingPostId(postId);
+    try {
+      const response = await fetch(`/api/posts/${postId}`, { method: "DELETE" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Postarea nu a putut fi ștearsă");
+      setHovered(null);
+      toast.success("Postarea a fost ștearsă din Timeline.");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Postarea nu a putut fi ștearsă");
+    } finally {
+      setDeletingPostId(null);
+    }
+  }
 
   const days = useMemo(() => {
     const today = new Date();
@@ -117,6 +142,16 @@ export function BroadcastTimeline({ variants }: Props) {
                               </span>
                             </div>
                             <p className="text-xs text-mist-300 line-clamp-3">{item.content}</p>
+                            {item.postStatus !== "PUBLISHED" && item.postStatus !== "PUBLISHING" && (
+                              <button
+                                type="button"
+                                disabled={deletingPostId === item.postId}
+                                onClick={() => deletePost(item.postId)}
+                                className="mt-2.5 w-full rounded-lg border border-state-error/30 px-2.5 py-1.5 text-xs font-medium text-state-error transition hover:bg-state-error/10 disabled:cursor-wait disabled:opacity-50"
+                              >
+                                {deletingPostId === item.postId ? "Se șterge…" : "Șterge postarea"}
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
