@@ -3,6 +3,8 @@ import { exchangeTikTokCode, getTikTokUserInfo } from "@/lib/oauth/tiktok";
 import { encrypt } from "@/lib/crypto";
 import { prisma } from "@/lib/prisma";
 
+export const runtime = "nodejs";
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
@@ -56,6 +58,7 @@ export async function GET(req: NextRequest) {
     redirectBase.searchParams.set("connected", "1");
     return NextResponse.redirect(redirectBase);
   } catch (err) {
+    console.error("TikTok OAuth callback failed", err);
     redirectBase.searchParams.set(
       "error",
       err instanceof Error

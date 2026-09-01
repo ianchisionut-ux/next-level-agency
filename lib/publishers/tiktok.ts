@@ -1,5 +1,6 @@
+import { createTikTokPullUrl } from "@/lib/tiktok-media-url";
+
 const TIKTOK_API_BASE = "https://open.tiktokapis.com/v2";
-const MAX_SERVER_UPLOAD_BYTES = 128 * 1024 * 1024;
 
 export interface TikTokCreatorInfo {
   creator_username?: string;
@@ -50,15 +51,6 @@ export async function publishToTikTok(params: {
       throw new Error("Nivelul de vizibilitate TikTok nu mai este disponibil. Reîncarcă editorul.");
     }
 
-    const mediaRes = await fetch(videoUrl);
-    if (!mediaRes.ok) throw new Error("Videoclipul nu a putut fi descărcat pentru TikTok");
-    const video = await mediaRes.arrayBuffer();
-    const videoSize = video.byteLength;
-    if (!videoSize) throw new Error("Videoclipul este gol");
-    if (videoSize > MAX_SERVER_UPLOAD_BYTES) {
-      throw new Error("Videoclipul depășește limita de 128 MB pentru publicarea TikTok din Signal");
-    }
-
     const initRes = await fetch(`${TIKTOK_API_BASE}/post/publish/video/init/`, {
       method: "POST",
       headers: {
@@ -69,37 +61,21 @@ export async function publishToTikTok(params: {
         post_info: {
           title: caption,
           privacy_level: privacyLevel,
-          disable_duet: creator.duet_disabled || Boolean(settings.disableDuet),
-          disable_comment: creator.comment_disabled || Boolean(settings.disableComment),
-          disable_stitch: creator.stitch_disabled || Boolean(settings.disableStitch),
+          disable_duet: creator.duet_disabled || !Boolean(settings.allowDuet),
+          disable_comment: creator.comment_disabled || !Boolean(settings.allowComment),
+          disable_stitch: creator.stitch_disabled || !Boolean(settings.allowStitch),
           brand_content_toggle: Boolean(settings.brandContentToggle),
           brand_organic_toggle: Boolean(settings.brandOrganicToggle),
           is_aigc: Boolean(settings.isAigc),
         },
         source_info: {
-          source: "FILE_UPLOAD",
-          video_size: videoSize,
-          chunk_size: videoSize,
-          total_chunk_count: 1,
+          source: "PULL_FROM_URL",
+          video_url: createTikTokPullUrl(videoUrl),
         },
       }),
     });
 
     const initData = await parseTikTokResponse(initRes);
-    const uploadUrl = initData.data?.upload_url;
-    if (!uploadUrl) throw new Error("TikTok nu a returnat URL-ul de upload");
-
-    const uploadRes = await fetch(uploadUrl, {
-      method: "PUT",
-      headers: {
-        "Content-Type": mediaRes.headers.get("content-type")?.split(";")[0] || "video/mp4",
-        "Content-Length": String(videoSize),
-        "Content-Range": `bytes 0-${videoSize - 1}/${videoSize}`,
-      },
-      body: video,
-    });
-    if (!uploadRes.ok) throw new Error(`TikTok a refuzat transferul videoclipului (${uploadRes.status})`);
-
     // TikTok procesează asincron; verificăm statusul real înainte să marcăm
     // varianta drept publicată și propagăm eventualul motiv de eșec.
     for (let attempt = 0; attempt < 6; attempt += 1) {
