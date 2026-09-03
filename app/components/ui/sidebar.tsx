@@ -17,6 +17,7 @@ const NAV_GROUPS = [
   { label: "Intern", items: [
     { href: "/dashboard/calendar", label: "Calendar intern", icon: CalendarIcon },
     { href: "/dashboard/registru", label: "Registru intern", icon: RegistryIcon },
+    { href: "/dashboard/registru-acte", label: "Registru acte", icon: RegistryIcon, superAdminOnly: true },
     { href: "/dashboard/contabilitate", label: "Facturare", icon: InvoiceIcon, superAdminOnly: true },
     { href: "/dashboard/settings/members", label: "Membri", icon: UsersIcon },
     { href: "/dashboard/settings/workspace", label: "Spații de lucru", icon: SettingsIcon },
