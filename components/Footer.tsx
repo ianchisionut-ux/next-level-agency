@@ -49,6 +49,20 @@ export default function Footer() {
                 </span>
               )}
             </div>
+
+            <div className="mt-7">
+              <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">
+                Partener tehnologic
+              </p>
+              <div className="inline-flex rounded-2xl bg-white p-1.5 shadow-[0_10px_35px_rgba(0,0,0,0.25)] ring-1 ring-white/15">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/brand/meta-tech-provider.png"
+                  alt="Next Level este Meta Tech Provider"
+                  className="h-auto w-56 rounded-xl"
+                />
+              </div>
+            </div>
           </div>
 
           <div>
@@ -126,7 +140,14 @@ export default function Footer() {
         </div>
 
         <div className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/40 sm:flex-row">
-          <p>© {new Date().getFullYear()} {siteConfig.legalName} · CUI {siteConfig.cui} · {siteConfig.tradeRegistryNumber}</p>
+          <div className="text-center sm:text-left">
+            <p>
+              Copyright © {new Date().getFullYear()} {siteConfig.legalName}. Toate drepturile rezervate.
+            </p>
+            <p className="mt-1 text-white/30">
+              CUI {siteConfig.cui} · {siteConfig.tradeRegistryNumber}
+            </p>
+          </div>
           <div className="flex flex-wrap justify-center gap-5">
             <Link href="/termeni-si-conditii" className="hover:text-white/70">Termeni și Condiții</Link>
             <Link href="/politica-de-confidentialitate" className="hover:text-white/70">Politica de Confidențialitate</Link>
