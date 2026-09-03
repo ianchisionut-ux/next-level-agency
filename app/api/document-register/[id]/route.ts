@@ -99,3 +99,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
+
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const check = await requireSuperAdmin();
+  if (check.error) return check.error;
+  const { id } = await params;
+
+  try {
+    await prisma.companyDocument.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json({ error: "Înregistrarea nu există sau nu a putut fi ștearsă." }, { status: 404 });
+  }
+}

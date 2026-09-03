@@ -114,7 +114,7 @@ export function Sidebar({
             <div className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-[0.14em] text-nav-text-muted/60">{group.label}</div>
             <div className="space-y-1">
               {group.items.map((item) => {
-                const active = item.href === "/dashboard" ? pathname === item.href : pathname.startsWith(item.href);
+                const active = pathname === item.href || pathname.startsWith(item.href + "/");
                 const Icon = item.icon;
                 return <Link key={item.href} href={item.href} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${active ? "bg-signal-soft text-signal-bright font-medium" : "text-nav-text-muted hover:bg-nav-bg-hover hover:text-nav-text"}`}><Icon active={active}/>{item.label}</Link>;
               })}

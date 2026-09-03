@@ -171,6 +171,26 @@ export function DocumentRegisterManager({ initialDocuments, company }: {
     }
   }
 
+  async function deleteItem(item: CompanyDocumentData) {
+    const confirmed = window.confirm(
+      "Ștergerea este definitivă. Numărul " + registerNumber(item) + " nu va fi realocat. Continui?"
+    );
+    if (!confirmed) return;
+
+    setBusyId(item.id);
+    try {
+      const response = await fetch("/api/document-register/" + item.id, { method: "DELETE" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Nu am putut șterge înregistrarea.");
+      setItems((current) => current.filter((entry) => entry.id !== item.id));
+      if (editingId === item.id) close();
+      toast.success("Înregistrarea " + registerNumber(item) + " a fost ștearsă.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Nu am putut șterge înregistrarea.");
+    } finally {
+      setBusyId(null);
+    }
+  }
   const active = items.filter((item) => !item.isCancelled).length;
   const thisYear = items.filter((item) => !item.isCancelled && new Date(item.registrationDate).getUTCFullYear() === new Date().getFullYear()).length;
 
@@ -234,17 +254,17 @@ export function DocumentRegisterManager({ initialDocuments, company }: {
         <Stat label="Anulate" value={items.length - active} />
       </div>
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-ink-700 bg-ink-800 p-4 sm:flex-row print:hidden">
-        <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Caută după număr, partener, tip sau obiect…" className="input flex-1" />
-        <select value={direction} onChange={(e) => setDirection(e.target.value as "ALL" | Direction)} className="input sm:w-40"><option value="ALL">Toate sensurile</option><option value="INCOMING">Intrări</option><option value="OUTGOING">Ieșiri</option><option value="INTERNAL">Interne</option></select>
-        <select value={year} onChange={(e) => setYear(e.target.value)} className="input sm:w-32"><option value="ALL">Toți anii</option>{years.map((entry) => <option key={entry}>{entry}</option>)}</select>
+      <div className="grid grid-cols-1 gap-3 rounded-2xl border border-ink-700 bg-ink-800 p-4 sm:grid-cols-[minmax(0,1fr)_10rem_8rem] print:hidden">
+        <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Caută după număr, partener, tip sau obiect…" className="input min-w-0" />
+        <select value={direction} onChange={(e) => setDirection(e.target.value as "ALL" | Direction)} className="input"><option value="ALL">Toate sensurile</option><option value="INCOMING">Intrări</option><option value="OUTGOING">Ieșiri</option><option value="INTERNAL">Interne</option></select>
+        <select value={year} onChange={(e) => setYear(e.target.value)} className="input"><option value="ALL">Toți anii</option>{years.map((entry) => <option key={entry}>{entry}</option>)}</select>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-ink-700 bg-ink-800 shadow-card print:rounded-none print:border-0 print:bg-white print:shadow-none">
         <div className="overflow-x-auto print:overflow-visible">
           <table className="w-full min-w-[1100px] text-left text-sm print:min-w-0 print:table-fixed print:text-[9px] print:text-black">
             <thead><tr className="border-b border-ink-700 text-xs uppercase text-mist-500 print:border-black print:text-[8px] print:text-black">
-              <Th cls="w-24 print:w-[9%]">Nr. înreg.</Th><Th cls="w-24 print:w-[8%]">Data</Th><Th cls="w-24 print:w-[7%]">Sens</Th><Th cls="print:w-[11%]">Tip act</Th><Th cls="print:w-[12%]">Nr./data act</Th><Th cls="print:w-[18%]">Expeditor / Destinatar</Th><Th cls="print:w-[25%]">Obiect</Th><Th cls="print:w-[10%]">Observații</Th><Th cls="w-28 print:hidden">Acțiuni</Th>
+              <Th cls="w-24 print:w-[9%]">Nr. înreg.</Th><Th cls="w-24 print:w-[8%]">Data</Th><Th cls="w-24 print:w-[7%]">Sens</Th><Th cls="print:w-[11%]">Tip act</Th><Th cls="print:w-[12%]">Nr./data act</Th><Th cls="print:w-[18%]">Expeditor / Destinatar</Th><Th cls="print:w-[25%]">Obiect</Th><Th cls="print:w-[10%]">Observații</Th><Th cls="w-44 print:hidden">Acțiuni</Th>
             </tr></thead>
             <tbody>{visible.map((item) => (
               <tr key={item.id} className={"border-b border-ink-700 last:border-0 print:border-slate-400 " + (item.isCancelled ? "opacity-55 line-through" : "hover:bg-ink-900/40")}>
@@ -257,8 +277,9 @@ export function DocumentRegisterManager({ initialDocuments, company }: {
                 <Td cls="text-mist-100 print:text-black">{item.subject}</Td>
                 <Td cls="text-xs print:text-[8px]">{item.notes || "—"}</Td>
                 <td className="px-3 py-3 print:hidden"><div className="flex justify-end gap-1">
-                  <button onClick={() => edit(item)} className="rounded-lg px-2 py-1.5 text-xs font-semibold text-signal hover:bg-signal-soft">Editează</button>
-                  <button disabled={busyId === item.id} onClick={() => toggleCancelled(item)} className="rounded-lg px-2 py-1.5 text-xs font-semibold text-mist-500 hover:bg-ink-700 hover:text-state-error disabled:opacity-50">{item.isCancelled ? "Reactivează" : "Anulează"}</button>
+                  <button type="button" onClick={() => edit(item)} className="rounded-lg px-2 py-1.5 text-xs font-semibold text-signal hover:bg-signal-soft">Editează</button>
+                  <button type="button" disabled={busyId === item.id} onClick={() => toggleCancelled(item)} className="rounded-lg px-2 py-1.5 text-xs font-semibold text-mist-500 hover:bg-ink-700 hover:text-state-error disabled:opacity-50">{item.isCancelled ? "Reactivează" : "Anulează"}</button>
+                  <button type="button" disabled={busyId === item.id} onClick={() => deleteItem(item)} className="rounded-lg px-2 py-1.5 text-xs font-semibold text-state-error hover:bg-state-error/10 disabled:opacity-50">Șterge</button>
                 </div></td>
               </tr>
             ))}</tbody>
