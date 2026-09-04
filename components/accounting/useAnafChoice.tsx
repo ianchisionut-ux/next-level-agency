@@ -21,7 +21,7 @@ export function useAnafChoice() {
     <div className="bg-white rounded-xl p-6 max-w-lg shadow-xl">
       <h2 id="anaf-choice-title" className="font-bold text-lg">Trimiți factura acum în ANAF/SPV?</h2>
       <p className="my-3">Mediu: <strong>{environment === 'production' ? 'PRODUCȚIE — transmitere reală' : 'TEST — fără transmitere fiscală în Producție'}</strong></p>
-      <p className="text-sm mb-4">Dacă amâni, factura devine eligibilă mâine la 09:00 vara / 08:00 iarna. Coada este verificată la fiecare 15 minute; erorile de validare blochează transmiterea.</p>
+      <p className="text-sm mb-4">Dacă amâni, factura devine eligibilă mâine la 09:00 vara / 08:00 iarna. Planul Vercel actual permite o rulare zilnică; un volum mare sau indisponibilitatea ANAF poate întârzia procesarea. Erorile de validare blochează transmiterea.</p>
       <div className="flex flex-wrap gap-2">
         <button type="button" className="btn-primary" onClick={() => finish(true)}>Emite și trimite acum</button>
         <button type="button" className="btn-secondary" onClick={() => finish(false)}>Emite, verific până mâine</button>

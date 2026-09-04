@@ -52,6 +52,6 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/accounting/efactura.t
   const abandoned=queries.find(q=>q.sql.includes("WHERE status='UPLOADING'"));
   assert.ok(abandoned.sql.includes("status='UNCERTAIN', retryable=0"));
   const cron=JSON.parse(fs.readFileSync('vercel.json','utf8')).crons.find(c=>c.path==='/api/cron/efactura');
-  assert.equal(cron.schedule,'*/15 * * * *');
+  assert.equal(cron.schedule,'0 6 * * *');
   console.log('ANAF workflow tests passed: immutable XML, duplicate/uncertain guards, environment isolation, deferred eligibility, recurring queue. No network or real DB access.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
