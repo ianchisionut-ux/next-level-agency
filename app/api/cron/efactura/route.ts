@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { processAutomaticEFactura } from "@/lib/accounting/efactura";
+import { processAutomaticEFactura, recordAutomationFailure } from "@/lib/accounting/efactura";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -12,6 +12,7 @@ export async function GET(request: Request) {
   try {
     return NextResponse.json(await processAutomaticEFactura(30));
   } catch (error) {
+    try { await recordAutomationFailure(error); } catch {}
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Procesarea automată e-Factura a eșuat." },
       { status: 500 }

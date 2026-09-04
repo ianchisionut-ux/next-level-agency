@@ -37,7 +37,7 @@ async function requestAnafToken(body: URLSearchParams) {
 }
 export async function exchangeAnafCode(code: string) { const c = config(); const body = new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: c.redirectUri }); const response = await requestAnafToken(body); const data = await response.json().catch(() => ({})); if (!response.ok || !data.access_token) throw new Error(data.error_description || data.error || "ANAF nu a emis tokenul OAuth."); await saveTokens(data); }
 async function refreshAccessToken(refreshToken: string) { const body = new URLSearchParams({ grant_type: "refresh_token", refresh_token: refreshToken }); const response = await requestAnafToken(body); const data = await response.json().catch(() => ({})); if (!response.ok || !data.access_token) throw new Error(data.error_description || data.error || "Sesiunea ANAF a expirat. Reconectează certificatul în SPV."); await saveTokens({ ...data, refresh_token: data.refresh_token || refreshToken }); return data.access_token as string; }
-export async function getAnafConnectionStatus() { const pool = await ready(); const { rows } = await pool.query(`SELECT "expiresAt","connectedAt","updatedAt",scope FROM anaf_connections WHERE id=1`); return { ...getAnafPublicConfig(), connected: Boolean(rows[0]), connection: rows[0] || null }; }
+export async function getAnafConnectionStatus() { const pool = await ready(); const [connectionResult,automationResult] = await Promise.all([pool.query(`SELECT "expiresAt","connectedAt","updatedAt",scope FROM anaf_connections WHERE id=1`),pool.query(`SELECT status,checked,sent,failed,message,"lastRunAt","lastSuccessAt" FROM efactura_automation_state WHERE id=1`)]); return { ...getAnafPublicConfig(), connected: Boolean(connectionResult.rows[0]), connection: connectionResult.rows[0] || null, automation: automationResult.rows[0] || null }; }
 export async function disconnectAnaf() { await (await ready()).query(`DELETE FROM anaf_connections WHERE id=1`); }
 async function accessToken() { const pool = await ready(); const { rows } = await pool.query(`SELECT * FROM anaf_connections WHERE id=1`); if (!rows[0]) throw new Error("Conectează mai întâi contul ANAF/SPV."); const token = decrypt(rows[0].accessToken); if (new Date(rows[0].expiresAt).getTime() > Date.now() + 60_000) return token; if (!rows[0].refreshToken) throw new Error("Sesiunea ANAF a expirat. Reconectează contul."); return refreshAccessToken(decrypt(rows[0].refreshToken)); }
 async function anafFetch(path: string, init: RequestInit = {}) { const response = await fetch(`${config().apiBase}${path}`, { ...init, headers: { Authorization: `Bearer ${await accessToken()}`, ...(init.headers || {}) }, cache: "no-store" }); if (response.status === 401) throw new Error("Autorizarea ANAF a expirat. Reconectează SPV."); return response; }
@@ -203,12 +203,31 @@ export async function latestSubmission(invoiceId: number) {
   return rows[0] || null;
 }
 
+async function saveAutomationState(status: string, counts: { checked: number; sent: number; failed: number }, message = "") {
+  const pool = await ready();
+  await pool.query(
+    `INSERT INTO efactura_automation_state (id,status,checked,sent,failed,message,"lastRunAt","lastSuccessAt")
+     VALUES (1,$1,$2,$3,$4,$5,now(),CASE WHEN $1='SUCCESS' THEN now() ELSE NULL END)
+     ON CONFLICT (id) DO UPDATE SET status=$1,checked=$2,sent=$3,failed=$4,message=$5,
+       "lastRunAt"=now(),"lastSuccessAt"=CASE WHEN $1='SUCCESS' THEN now() ELSE efactura_automation_state."lastSuccessAt" END,
+       "updatedAt"=now()`,
+    [status, counts.checked, counts.sent, counts.failed, message]
+  );
+}
+
+export async function recordAutomationFailure(error: unknown) {
+  await saveAutomationState("ERROR", { checked: 0, sent: 0, failed: 1 }, error instanceof Error ? error.message : String(error));
+}
+
 export async function processAutomaticEFactura(limit = 20) {
   const pool = await ready();
+  await saveAutomationState("RUNNING", { checked: 0, sent: 0, failed: 0 });
   const publicConfig = getAnafPublicConfig();
   const connected = Number((await pool.query(`SELECT COUNT(*) AS count FROM anaf_connections WHERE id=1`)).rows[0].count) > 0;
   if (!publicConfig.configured || !connected) {
-    return { skipped: true, reason: "Conexiunea ANAF/SPV nu este configurată.", checked: 0, sent: 0, failed: 0 };
+    const result = { skipped: true, reason: "Conexiunea ANAF/SPV nu este configurată.", checked: 0, sent: 0, failed: 0 };
+    await saveAutomationState("SKIPPED", result, result.reason);
+    return result;
   }
 
   let checked = 0;
@@ -256,7 +275,9 @@ export async function processAutomaticEFactura(limit = 20) {
       failed += 1;
     }
   }
-  return { skipped: false, checked, sent, failed };
+  const result = { skipped: false, checked, sent, failed };
+  await saveAutomationState(failed > 0 ? "WARNING" : "SUCCESS", result, failed > 0 ? `${failed} operațiuni necesită reverificare.` : "");
+  return result;
 }
 export async function syncAnafMessages(cif: string, days=60) {
   const pool = await ready();

@@ -140,14 +140,39 @@
 .ef-flow { display:flex; align-items:flex-start; gap:12px; padding:14px; border-radius:12px; background:#eef6ff; color:var(--cyan-strong); font-size:13px; line-height:1.55; }
 .ef-flow svg { flex:0 0 auto; }
 .ef-callback { margin-top:12px; color:var(--text-faint); font-family:var(--font-mono); font-size:10px; overflow-wrap:anywhere; }
+.ef-automation-summary { margin-top:9px; padding:9px 10px; border-radius:9px; background:#f5f8fc; color:var(--text-dim); font-size:10px; line-height:1.45; }
 .ef-invoice-panel { margin-bottom:18px; }
 .ef-validation { display:flex; align-items:center; gap:7px; color:var(--text-dim); font-size:13px; }
 .ef-errors { margin:12px 0; padding:10px 12px 10px 30px; border:1px solid #f4c7cb; border-radius:10px; background:#fff7f8; color:var(--red); font-size:12px; list-style:disc; }
+.ef-status-badge { --ef-color:#eab308; display:inline-flex; align-items:center; gap:8px; padding:7px 10px; border:1px solid color-mix(in srgb,var(--ef-color) 28%,white); border-radius:999px; background:color-mix(in srgb,var(--ef-color) 9%,white); color:var(--ef-color); font-size:11px; font-weight:850; white-space:nowrap; }
+.ef-status-badge > span { width:9px; height:9px; border-radius:50%; background:var(--ef-color); box-shadow:0 0 0 3px color-mix(in srgb,var(--ef-color) 16%,transparent); }
+.ef-safety-warning,.ef-safety-line { display:flex; align-items:flex-start; gap:9px; margin-top:14px; padding:11px 13px; border-radius:11px; font-size:12px; line-height:1.5; }
+.ef-safety-warning { border:1px solid #f3d89f; background:#fff9eb; color:#8a5b0a; }
+.ef-safety-line { border:1px solid #bfe8d5; background:#effbf5; color:#08784a; }
+.ef-safety-warning svg,.ef-safety-line svg { flex:0 0 auto; margin-top:1px; }
+.ef-meta-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-top:14px; }
+.ef-meta-grid > div { min-width:0; padding:10px; border:1px solid var(--border-soft); border-radius:10px; background:#f8fbff; }
+.ef-meta-grid span { display:block; margin-bottom:4px; color:var(--text-faint); font-size:9px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; }
+.ef-meta-grid strong { display:block; overflow-wrap:anywhere; color:var(--text); font-family:var(--font-mono); font-size:11px; }
+.ef-response-details { margin-top:10px; border:1px solid var(--border-soft); border-radius:10px; background:#fbfdff; }
+.ef-response-details summary { cursor:pointer; padding:9px 11px; color:var(--text-dim); font-size:11px; font-weight:800; }
+.ef-response-details pre { max-height:180px; overflow:auto; margin:0; padding:10px 11px; border-top:1px solid var(--border-soft); color:var(--text-dim); font-family:var(--font-mono); font-size:10px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.ef-list-id { display:block; margin-top:2px; color:var(--text-faint); font-family:var(--font-mono); font-size:9px; font-weight:600; }
+.ef-stat-button { cursor:pointer; text-align:left; transition:.15s ease; }
+.ef-stat-button:hover { transform:translateY(-1px); border-color:#bfd3ec; box-shadow:0 7px 18px rgba(0,26,61,.07); }
+.ef-filter-separator { width:1px; align-self:stretch; margin:2px 2px; background:var(--border); }
+.ef-row-actions { display:inline-flex; align-items:center; justify-content:flex-end; gap:10px; }
+.ef-row-actions a,.ef-row-actions button { display:inline-flex; cursor:pointer; }
+.ef-delete-lock { display:inline-flex; align-items:center; padding:8px 11px; border:1px solid #bfe8d5; border-radius:10px; background:#effbf5; color:#08784a; font-size:11px; font-weight:800; }
+.ef-dashboard-alert { display:flex; align-items:flex-start; gap:9px; }
+.ef-dashboard-alert svg { flex:0 0 auto; margin-top:1px; }
 .ef-success { display:flex; align-items:center; gap:8px; margin-bottom:14px; padding:10px 13px; border:1px solid #bfe8d5; border-radius:10px; background:#effbf5; color:#08784a; font-size:12px; font-weight:700; }
 .ef-success svg { flex:0 0 auto; }
 .ef-spin { animation:ef-spin .8s linear infinite; }
 @keyframes ef-spin { to { transform:rotate(360deg); } }
+@media (max-width: 1000px) { .ef-meta-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width: 800px) { .ef-status-grid { grid-template-columns:1fr; } }
+@media (max-width: 560px) { .ef-meta-grid { grid-template-columns:1fr; } .ef-status-badge { white-space:normal; } }
 
 /* Declaratii fiscale */
 .declaration-period { display:flex; gap:7px; }

@@ -256,6 +256,17 @@ async function ensureSchema(pool: Pool) {
       "downloadId" TEXT NOT NULL DEFAULT '',
       "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+    CREATE TABLE IF NOT EXISTS efactura_automation_state (
+      id INTEGER PRIMARY KEY,
+      status TEXT NOT NULL DEFAULT 'NEVER',
+      checked INTEGER NOT NULL DEFAULT 0,
+      sent INTEGER NOT NULL DEFAULT 0,
+      failed INTEGER NOT NULL DEFAULT 0,
+      message TEXT NOT NULL DEFAULT '',
+      "lastRunAt" TIMESTAMPTZ,
+      "lastSuccessAt" TIMESTAMPTZ,
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
   `);
   await pool.query(`ALTER TABLE efactura_submissions ADD COLUMN IF NOT EXISTS retryable INTEGER NOT NULL DEFAULT 0;`);
   await pool.query(`ALTER TABLE efactura_submissions ADD COLUMN IF NOT EXISTS "attemptNumber" INTEGER NOT NULL DEFAULT 1;`);

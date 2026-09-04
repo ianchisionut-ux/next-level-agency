@@ -577,21 +577,42 @@ export async function createStornoInvoice(input: {
   await pool.query(`UPDATE invoices SET status='stornoed' WHERE id=$1`, [original.invoice.id]);
   return id;
 }
-export async function listInvoices(): Promise<(Invoice & { clientName: string; userName: string | null; eFacturaStatus: string | null; eFacturaMessage: string | null })[]> {
+export async function listInvoices(): Promise<(Invoice & {
+  clientName: string;
+  userName: string | null;
+  eFacturaStatus: string | null;
+  eFacturaMessage: string | null;
+  eFacturaSubmissionId: number | null;
+  eFacturaUploadId: string | null;
+  eFacturaDownloadId: string | null;
+  eFacturaSubmittedAt: string | null;
+  eFacturaCheckedAt: string | null;
+  eFacturaAttemptNumber: number | null;
+  eFacturaRetryable: number | null;
+})[]> {
   const pool = await ready();
   const { rows } = await pool.query(
     `SELECT i.*, c.name as "clientName", u.name as "userName",
-       ef.status as "eFacturaStatus", ef.message as "eFacturaMessage"
+       ef.status as "eFacturaStatus", ef.message as "eFacturaMessage",
+       ef.id as "eFacturaSubmissionId", ef."uploadId" as "eFacturaUploadId",
+       ef."downloadId" as "eFacturaDownloadId", ef."submittedAt" as "eFacturaSubmittedAt",
+       ef."checkedAt" as "eFacturaCheckedAt", ef."attemptNumber" as "eFacturaAttemptNumber",
+       ef.retryable as "eFacturaRetryable"
      FROM invoices i
      JOIN clients c ON c.id = i."clientId"
      LEFT JOIN users u ON u.id = i."userId"
      LEFT JOIN LATERAL (
-       SELECT status, message FROM efactura_submissions
+        SELECT id, status, message, "uploadId", "downloadId", "submittedAt", "checkedAt", "attemptNumber", retryable
        WHERE "invoiceId"=i.id ORDER BY id DESC LIMIT 1
      ) ef ON true
      ORDER BY i."issueDate" DESC, i.id DESC`
   );
-  return rows as (Invoice & { clientName: string; userName: string | null; eFacturaStatus: string | null; eFacturaMessage: string | null })[];
+  return rows as (Invoice & {
+    clientName: string; userName: string | null; eFacturaStatus: string | null; eFacturaMessage: string | null;
+    eFacturaSubmissionId: number | null; eFacturaUploadId: string | null; eFacturaDownloadId: string | null;
+    eFacturaSubmittedAt: string | null; eFacturaCheckedAt: string | null; eFacturaAttemptNumber: number | null;
+    eFacturaRetryable: number | null;
+  })[];
 }
 
 export async function getInvoice(id: number): Promise<Invoice | undefined> {
@@ -636,8 +657,18 @@ export async function deleteInvoice(id: number) {
       `SELECT id, status, "invoiceType", "originalInvoiceId", total, "paidAmount" FROM invoices WHERE id=$1 FOR UPDATE`,
       [id]
     );
-    const invoice = rows[0] as Invoice | undefined;
-    if (!invoice) throw new Error("Factura nu există.");
+      const invoice = rows[0] as Invoice | undefined;
+      if (!invoice) throw new Error("Factura nu există.");
+      const transmitted = (await connection.query(
+        `SELECT id,status,"uploadId" FROM efactura_submissions
+          WHERE ("invoiceId"=$1 OR "invoiceId" IN (SELECT id FROM invoices WHERE "originalInvoiceId"=$1))
+            AND ("uploadId"<>'' OR status IN ('UPLOADING','PROCESSING','VALIDATED','REJECTED'))
+          LIMIT 1`,
+        [id]
+      )).rows[0];
+      if (transmitted) {
+        throw new Error("Factura a fost transmisă către ANAF și nu mai poate fi ștearsă. Folosește factura storno pentru corecție.");
+      }
 
     if (invoice.invoiceType === "STORNO") {
       await connection.query(`DELETE FROM receipts WHERE "invoiceId"=$1`, [id]);

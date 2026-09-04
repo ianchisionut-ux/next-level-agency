@@ -28,6 +28,7 @@ type FullInvoice = {
   user: { id: number; name: string; role: string } | null;
   receipts: { id: number; series: string; number: number; issueDate: string; amount: number }[];
   payments: { id: number; amount: number; date: string; method: string }[];
+  eFacturaSubmission: null | { status: string; uploadId: string };
 };
 
 function fmt(n: number) {
@@ -89,6 +90,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const rest = invoice.total - invoice.paidAmount;
   const financialLocked = invoice.invoiceType === "STORNO" || ["storno", "stornoed", "canceled"].includes(invoice.status);
   const canStorno = invoice.invoiceType !== "STORNO" && !financialLocked;
+  const anafLocked = Boolean(data.eFacturaSubmission && (data.eFacturaSubmission.uploadId || ["UPLOADING", "PROCESSING", "VALIDATED", "REJECTED"].includes(data.eFacturaSubmission.status)));
 
   return (
     <div>
@@ -118,9 +120,10 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
         {canStorno && <a href={`/dashboard/contabilitate/invoices/storno?invoice=${id}`} className="btn-secondary">
           <RotateCcw size={14} /> Stornează factura
         </a>}
-        <button onClick={removeInvoice} className="btn-danger">
+        {!anafLocked && <button onClick={removeInvoice} className="btn-danger">
           <Trash2 size={14} /> Sterge factura
-        </button>
+        </button>}
+        {anafLocked && <span className="ef-delete-lock">Protejată ANAF · corecțiile se fac prin storno</span>}
       </div>
 
       <EFacturaPanel invoiceId={Number(id)} />
