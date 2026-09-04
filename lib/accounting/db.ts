@@ -1,6 +1,6 @@
 import { Pool } from "pg";
 
-const ACCOUNTING_SCHEMA_VERSION = 8;
+const ACCOUNTING_SCHEMA_VERSION = 9;
 
 declare global {
   // eslint-disable-next-line no-var

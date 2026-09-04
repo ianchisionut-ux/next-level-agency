@@ -34,7 +34,7 @@ function statusMeta(status?: string) {
 
 function formatDate(value?: string | null) {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("ro-RO", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
+  return new Intl.DateTimeFormat("ro-RO", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Bucharest" }).format(new Date(value));
 }
 
 export function EFacturaPanel({ invoiceId }: { invoiceId: number }) {
