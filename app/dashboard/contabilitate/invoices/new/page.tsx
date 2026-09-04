@@ -83,7 +83,6 @@ export default function NewInvoicePage() {
 
   useEffect(() => {
     fetch("/api/accounting/clients").then((r) => r.json()).then(setClients);
-    fetch("/api/accounting/offer-invoice-data").then((r) => r.json()).then(setOffers);
     fetch("/api/accounting/products").then((r) => r.json()).then(setProducts);
     fetch("/api/accounting/company").then((r) => r.json()).then((company: Company) => {
       const vatPayer = Boolean(company.vatPayer);

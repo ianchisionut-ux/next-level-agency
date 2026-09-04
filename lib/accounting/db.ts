@@ -1,6 +1,6 @@
 import { Pool } from "pg";
 
-const ACCOUNTING_SCHEMA_VERSION = 10;
+const ACCOUNTING_SCHEMA_VERSION = 11;
 
 declare global {
   // eslint-disable-next-line no-var
@@ -389,6 +389,13 @@ async function ensureSchemaVersion(pool: Pool) {
   try {
     const { rows } = await pool.query(`SELECT version FROM accounting_schema_meta WHERE id=1`);
     if (Number(rows[0]?.version || 0) >= ACCOUNTING_SCHEMA_VERSION) return;
+    if (Number(rows[0]?.version) === 10) {
+      // Additive upgrade only: do not rerun historical financial backfills.
+      await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "anafSendAfter" TIMESTAMPTZ;`);
+      await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "anafApprovedEnvironment" TEXT;`);
+      await pool.query(`UPDATE accounting_schema_meta SET version=$1 WHERE id=1 AND version=10`, [ACCOUNTING_SCHEMA_VERSION]);
+      return;
+    }
   } catch (error) {
     if ((error as { code?: string }).code !== "42P01") throw error;
   }
