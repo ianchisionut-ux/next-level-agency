@@ -3,7 +3,9 @@ import { ready } from "@/lib/accounting/db";
 import { getInvoiceFull, type Company, type Client, type Invoice, type InvoiceItem } from "@/lib/accounting/repo";
 
 const AUTH_BASE = "https://logincert.anaf.ro/anaf-oauth2/v1";
-const API_BASES = { test: "https://webserviceapl.anaf.ro/test/FCTEL/rest", production: "https://webserviceapl.anaf.ro/prod/FCTEL/rest" } as const;
+// ANAF exposes two transports: webserviceapl.anaf.ro requires a client certificate
+// on every request, while api.anaf.ro accepts the OAuth bearer token used here.
+const API_BASES = { test: "https://api.anaf.ro/test/FCTEL/rest", production: "https://api.anaf.ro/prod/FCTEL/rest" } as const;
 export type AnafEnvironment = keyof typeof API_BASES;
 export type EFacturaStatus = "DRAFT" | "UPLOADING" | "PROCESSING" | "VALIDATED" | "REJECTED" | "ERROR";
 
@@ -18,8 +20,23 @@ async function saveTokens(data: { access_token: string; refresh_token?: string; 
   const pool = await ready(); const expiresAt = new Date(Date.now() + Math.max(60, Number(data.expires_in || 3600)) * 1000);
   await pool.query(`INSERT INTO anaf_connections (id,"accessToken","refreshToken","expiresAt",scope) VALUES (1,$1,$2,$3,$4) ON CONFLICT (id) DO UPDATE SET "accessToken"=$1,"refreshToken"=$2,"expiresAt"=$3,scope=$4,"updatedAt"=now()`, [encrypt(data.access_token), data.refresh_token ? encrypt(data.refresh_token) : "", expiresAt, data.scope || ""]);
 }
-export async function exchangeAnafCode(code: string) { const c = config(); if (!c.clientId || !c.clientSecret) throw new Error("Acreditările OAuth ANAF nu sunt configurate."); const body = new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: c.redirectUri, client_id: c.clientId, client_secret: c.clientSecret }); const response = await fetch(`${AUTH_BASE}/token`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body, cache: "no-store" }); const data = await response.json().catch(() => ({})); if (!response.ok || !data.access_token) throw new Error(data.error_description || data.error || "ANAF nu a emis tokenul OAuth."); await saveTokens(data); }
-async function refreshAccessToken(refreshToken: string) { const c = config(); const body = new URLSearchParams({ grant_type: "refresh_token", refresh_token: refreshToken, client_id: c.clientId, client_secret: c.clientSecret }); const response = await fetch(`${AUTH_BASE}/token`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body, cache: "no-store" }); const data = await response.json().catch(() => ({})); if (!response.ok || !data.access_token) throw new Error("Sesiunea ANAF a expirat. Reconectează certificatul în SPV."); await saveTokens({ ...data, refresh_token: data.refresh_token || refreshToken }); return data.access_token as string; }
+async function requestAnafToken(body: URLSearchParams) {
+  const c = config();
+  if (!c.clientId || !c.clientSecret) throw new Error("Acreditările OAuth ANAF nu sunt configurate.");
+  body.set("token_content_type", "jwt");
+  const credentials = Buffer.from(`${c.clientId}:${c.clientSecret}`, "utf8").toString("base64");
+  return fetch(`${AUTH_BASE}/token`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${credentials}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body,
+    cache: "no-store",
+  });
+}
+export async function exchangeAnafCode(code: string) { const c = config(); const body = new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: c.redirectUri }); const response = await requestAnafToken(body); const data = await response.json().catch(() => ({})); if (!response.ok || !data.access_token) throw new Error(data.error_description || data.error || "ANAF nu a emis tokenul OAuth."); await saveTokens(data); }
+async function refreshAccessToken(refreshToken: string) { const body = new URLSearchParams({ grant_type: "refresh_token", refresh_token: refreshToken }); const response = await requestAnafToken(body); const data = await response.json().catch(() => ({})); if (!response.ok || !data.access_token) throw new Error(data.error_description || data.error || "Sesiunea ANAF a expirat. Reconectează certificatul în SPV."); await saveTokens({ ...data, refresh_token: data.refresh_token || refreshToken }); return data.access_token as string; }
 export async function getAnafConnectionStatus() { const pool = await ready(); const { rows } = await pool.query(`SELECT "expiresAt","connectedAt","updatedAt",scope FROM anaf_connections WHERE id=1`); return { ...getAnafPublicConfig(), connected: Boolean(rows[0]), connection: rows[0] || null }; }
 export async function disconnectAnaf() { await (await ready()).query(`DELETE FROM anaf_connections WHERE id=1`); }
 async function accessToken() { const pool = await ready(); const { rows } = await pool.query(`SELECT * FROM anaf_connections WHERE id=1`); if (!rows[0]) throw new Error("Conectează mai întâi contul ANAF/SPV."); const token = decrypt(rows[0].accessToken); if (new Date(rows[0].expiresAt).getTime() > Date.now() + 60_000) return token; if (!rows[0].refreshToken) throw new Error("Sesiunea ANAF a expirat. Reconectează contul."); return refreshAccessToken(decrypt(rows[0].refreshToken)); }
@@ -35,6 +52,8 @@ function parseId(text: string, names: string[]) {
   for (const name of names) {
     const json = new RegExp(`"${name}"\\s*:\\s*"?([^",}]+)`, "i").exec(text)?.[1];
     if (json) return json.trim();
+    const attribute = new RegExp(`\\b${name}\\s*=\\s*["']([^"']+)["']`, "i").exec(text)?.[1];
+    if (attribute) return attribute.trim();
     const xml = new RegExp(`<${name}[^>]*>([^<]+)`, "i").exec(text)?.[1];
     if (xml) return xml.trim();
   }
@@ -239,6 +258,27 @@ export async function processAutomaticEFactura(limit = 20) {
   }
   return { skipped: false, checked, sent, failed };
 }
-export async function syncAnafMessages(cif: string, days=60) { const pool=await ready(); let count=0; for(const [filter,direction] of [["P","RECEIVED"],["T","SENT"]] as const){ const response=await anafFetch(`/listaMesajeFactura?zile=${days}&cif=${encodeURIComponent(cif.replace(/^RO/i,""))}&filtru=${filter}`); const text=await response.text(); const messages=[...text.matchAll(/<mesaj\b([^>]*)\/?>(?:<\/mesaj>)?/gi)]; for(const match of messages){ const attrs=Object.fromEntries([...match[1].matchAll(/([\w_]+)="([^"]*)"/g)].map(x=>[x[1],x[2]])); const messageId=attrs.id||attrs.id_solicitare||attrs.id_descarcare; if(!messageId) continue; await pool.query(`INSERT INTO efactura_messages ("messageId",direction,cif,details,"documentDate","downloadId") VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT ("messageId") DO UPDATE SET details=$4,"downloadId"=$6`,[messageId,direction,attrs.cif||"",attrs.detalii||attrs.tip||"",attrs.data_creare||"",attrs.id_descarcare||messageId]); count++; } } return count; }
+export async function syncAnafMessages(cif: string, days=60) {
+  const pool = await ready();
+  let count = 0;
+  const safeDays = Math.min(60, Math.max(1, days));
+  for (const [filter, direction] of [["P", "RECEIVED"], ["T", "SENT"]] as const) {
+    const response = await anafFetch(`/listaMesajeFactura?zile=${safeDays}&cif=${encodeURIComponent(cif.replace(/^RO/i, ""))}&filtru=${filter}`);
+    const text = await response.text();
+    if (!response.ok) throw new Error(text.slice(0, 500) || `ANAF a răspuns cu HTTP ${response.status}.`);
+    const payload = JSON.parse(text) as { mesaje?: Array<Record<string, unknown>>; eroare?: string };
+    if (payload.eroare && !/nu exista mesaje/i.test(payload.eroare)) throw new Error(payload.eroare);
+    for (const item of payload.mesaje || []) {
+      const messageId = String(item.id || item.id_solicitare || "");
+      if (!messageId) continue;
+      await pool.query(
+        `INSERT INTO efactura_messages ("messageId",direction,cif,details,"documentDate","downloadId") VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT ("messageId") DO UPDATE SET details=$4,"downloadId"=$6`,
+        [messageId, direction, String(item.cif || ""), String(item.detalii || item.tip || ""), String(item.data_creare || ""), String(item.id || messageId)]
+      );
+      count++;
+    }
+  }
+  return count;
+}
 export async function listAnafMessages() { const { rows }=await (await ready()).query(`SELECT * FROM efactura_messages ORDER BY "createdAt" DESC LIMIT 500`); return rows; }
 export async function downloadAnafMessage(downloadId: string) { const response=await anafFetch(`/descarcare?id=${encodeURIComponent(downloadId)}`); if(!response.ok) throw new Error(await response.text()); return { buffer:Buffer.from(await response.arrayBuffer()), contentType:response.headers.get("content-type")||"application/zip" }; }
