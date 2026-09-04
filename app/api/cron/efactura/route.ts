@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Neautorizat." }, { status: 401 });
   }
   try {
-    return NextResponse.json(await processAutomaticEFactura(30));
+    return NextResponse.json(await processAutomaticEFactura(50));
   } catch (error) {
     try { await recordAutomationFailure(error); } catch {}
     return NextResponse.json(

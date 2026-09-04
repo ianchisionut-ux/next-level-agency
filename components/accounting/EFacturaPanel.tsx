@@ -42,6 +42,7 @@ export function EFacturaPanel({ invoiceId }: { invoiceId: number }) {
   const [data, setData] = useState<Validation | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   async function load() {
     try {
@@ -59,6 +60,7 @@ export function EFacturaPanel({ invoiceId }: { invoiceId: number }) {
   async function runAction(url: string, fallback: string) {
     setBusy(true);
     setError("");
+    setNotice("");
     try {
       const response = await fetch(url, { method: "POST", headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ anafEnvironment: data?.environment }) });
       const result = await response.json();
@@ -79,6 +81,23 @@ export function EFacturaPanel({ invoiceId }: { invoiceId: number }) {
   async function check() {
     if (!data?.submission) return;
     await runAction(`/api/accounting/efactura/submissions/${data.submission.id}/status`, "Verificarea a eșuat.");
+  }
+
+  async function reconcile() {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch("/api/accounting/efactura/sync", { method: "POST" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Sincronizarea SPV a eșuat.");
+      await load();
+      setNotice("Mesajele SPV au fost sincronizate. Compară factura cu registrul ANAF înainte de orice retrimitere.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Sincronizarea SPV a eșuat.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   const submission = data?.submission;
@@ -117,6 +136,7 @@ export function EFacturaPanel({ invoiceId }: { invoiceId: number }) {
 
       {data && data.errors.length > 0 && <ul className="ef-errors">{data.errors.map((item) => <li key={item}>{item}</li>)}</ul>}
       {error && <div className="ref-error">{error}</div>}
+      {notice && <div className="ef-success">{notice}</div>}
 
       {submission && (
         <div className="ef-meta-grid">
@@ -144,6 +164,7 @@ export function EFacturaPanel({ invoiceId }: { invoiceId: number }) {
         <a className="btn-secondary" href={`/api/accounting/efactura/invoices/${invoiceId}/xml`}><Code2 size={14}/>Descarcă XML</a>
         {canSend && <button className="btn-primary" onClick={send} disabled={!data?.valid || busy}><CloudUpload size={14}/>{busy ? "Se procesează…" : submission ? "Retrimite manual" : "Trimite acum în SPV"}</button>}
         {canCheck && <button className="btn-secondary" onClick={check} disabled={busy}><RefreshCw className={busy ? "ef-spin" : ""} size={14}/>Reverifică statusul ANAF</button>}
+        {submission?.status === "UNCERTAIN" && <button className="btn-secondary" onClick={reconcile} disabled={busy}><RefreshCw className={busy ? "ef-spin" : ""} size={14}/>{busy ? "Se sincronizează…" : "Sincronizează registrul SPV"}</button>}
         {submission?.downloadId && <a className="btn-secondary" href={`/api/accounting/efactura/messages/${submission.downloadId}/download`}><Download size={14}/>Descarcă răspunsul ANAF</a>}
       </div>
     </div>
