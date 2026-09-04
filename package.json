@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && prisma db execute --file prisma/website-brief-offers.sql --schema prisma/schema.prisma && prisma db execute --file prisma/document-register.sql --schema prisma/schema.prisma && next build",
+    "test:accounting-xml": "node scripts/test-accounting-xml.cjs",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",

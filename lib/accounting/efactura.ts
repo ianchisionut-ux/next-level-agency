@@ -92,6 +92,7 @@ async function requestAnafToken(body: URLSearchParams) {
     },
     body,
     cache: "no-store",
+    signal: AbortSignal.timeout(25_000),
   });
 }
 export async function exchangeAnafCode(code: string) {
@@ -174,6 +175,7 @@ async function anafFetch(path: string, init: RequestInit = {}) {
       ...(init.headers || {}),
     },
     cache: "no-store",
+    signal: init.signal || AbortSignal.timeout(25_000),
   });
   if (response.status === 401)
     throw new Error("Autorizarea ANAF a expirat. Reconectează SPV.");
@@ -191,18 +193,53 @@ function x(value: unknown) {
 function money(n: number) {
   return Number(n || 0).toFixed(2);
 }
-function country(companyOrClient: { countryCode?: string }) {
-  return companyOrClient.countryCode || "RO";
+function price(n: number) {
+  return Number(n || 0).toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
 }
-function vatId(cif: string, vatPayer: number) {
-  const clean = cif.replace(/^RO/i, "").replace(/\s/g, "");
-  return vatPayer ? `RO${clean}` : clean;
+function country(companyOrClient: { countryCode?: string }) {
+  return String(companyOrClient.countryCode || "RO").trim().toUpperCase();
+}
+function cleanFiscalId(value: string) {
+  return String(value || "").replace(/^RO/i, "").replace(/\s/g, "");
+}
+const ROMANIA_COUNTIES: Record<string, string> = {
+  alba: "AB", arad: "AR", arges: "AG", bacau: "BC", bihor: "BH",
+  "bistrita-nasaud": "BN", bistrita: "BN", botosani: "BT", brasov: "BV",
+  braila: "BR", bucuresti: "B", buzau: "BZ", "caras-severin": "CS",
+  calarasi: "CL", cluj: "CJ", constanta: "CT", covasna: "CV",
+  dambovita: "DB", dolj: "DJ", galati: "GL", giurgiu: "GR", gorj: "GJ",
+  harghita: "HR", hunedoara: "HD", ialomita: "IL", iasi: "IS", ilfov: "IF",
+  maramures: "MM", mehedinti: "MH", mures: "MS", neamt: "NT", olt: "OT",
+  prahova: "PH", "satu-mare": "SM", salaj: "SJ", sibiu: "SB", suceava: "SV",
+  teleorman: "TR", timis: "TM", tulcea: "TL", vaslui: "VS", valcea: "VL", vrancea: "VN",
+};
+function plain(value: string) {
+  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+function subdivision(value: string, countryCode: string) {
+  const raw = String(value || "").trim();
+  if (countryCode !== "RO") return raw;
+  const withoutPrefix = raw.toUpperCase().replace(/^RO-/, "");
+  if (/^(AB|AR|AG|BC|BH|BN|BT|BV|BR|B|BZ|CS|CL|CJ|CT|CV|DB|DJ|GL|GR|GJ|HR|HD|IL|IS|IF|MM|MH|MS|NT|OT|PH|SM|SJ|SB|SV|TR|TM|TL|VS|VL|VN)$/.test(withoutPrefix))
+    return `RO-${withoutPrefix}`;
+  const key = plain(raw).replace(/\s+/g, "-");
+  return ROMANIA_COUNTIES[key] ? `RO-${ROMANIA_COUNTIES[key]}` : raw;
+}
+function xmlCity(value: string, subdivisionCode: string) {
+  const raw = String(value || "").trim();
+  if (subdivisionCode !== "RO-B") return raw;
+  const sector = /^sector\s*([1-6])$/i.exec(raw)?.[1];
+  return sector ? `SECTOR${sector}` : raw;
+}
+function optionalElement(name: string, value: unknown) {
+  return String(value || "").trim() ? `<cbc:${name}>${x(value)}</cbc:${name}>` : "";
 }
 export function validateEFactura(full: {
   invoice: Invoice;
   items: InvoiceItem[];
   client?: Client;
   company: Company;
+  originalInvoice?: Invoice;
 }) {
   const errors: string[] = [];
   const { invoice, items, client, company } = full;
@@ -210,6 +247,11 @@ export function validateEFactura(full: {
   if (!company.cif) errors.push("Completează CIF-ul firmei emitente.");
   if (!company.address || !company.city || !company.county)
     errors.push("Completează adresa, localitatea și județul emitentului.");
+  const companySubdivision = subdivision(company.county, country(company));
+  if (country(company) === "RO" && !/^RO-(AB|AR|AG|BC|BH|BN|BT|BV|BR|B|BZ|CS|CL|CJ|CT|CV|DB|DJ|GL|GR|GJ|HR|HD|IL|IS|IF|MM|MH|MS|NT|OT|PH|SM|SJ|SB|SV|TR|TM|TL|VS|VL|VN)$/.test(companySubdivision))
+    errors.push("Județul emitentului nu poate fi transformat într-un cod ISO valid (ex.: Sălaj / SJ).");
+  if (companySubdivision === "RO-B" && !/^SECTOR[1-6]$/.test(xmlCity(company.city, companySubdivision)))
+    errors.push("Pentru București, localitatea emitentului trebuie să fie Sector 1–6.");
   if (!client) errors.push("Clientul facturii nu există.");
   else {
     if (!client.name) errors.push("Completează denumirea clientului.");
@@ -217,10 +259,17 @@ export function validateEFactura(full: {
       errors.push("Completează CIF-ul clientului.");
     if (!client.address || !client.city || !client.judet)
       errors.push("Completează adresa, localitatea și județul clientului.");
+    const clientSubdivision = subdivision(client.judet, country(client));
+    if (country(client) === "RO" && !/^RO-(AB|AR|AG|BC|BH|BN|BT|BV|BR|B|BZ|CS|CL|CJ|CT|CV|DB|DJ|GL|GR|GJ|HR|HD|IL|IS|IF|MM|MH|MS|NT|OT|PH|SM|SJ|SB|SV|TR|TM|TL|VS|VL|VN)$/.test(clientSubdivision))
+      errors.push("Județul clientului nu poate fi transformat într-un cod ISO valid.");
+    if (clientSubdivision === "RO-B" && !/^SECTOR[1-6]$/.test(xmlCity(client.city, clientSubdivision)))
+      errors.push("Pentru un client din București, localitatea trebuie să fie Sector 1–6.");
   }
   if (!invoice.series || !invoice.number)
     errors.push("Seria și numărul facturii sunt obligatorii.");
   if (!invoice.issueDate) errors.push("Data emiterii este obligatorie.");
+  if ((invoice.invoiceType === "STORNO" || invoice.invoiceTypeCode === "381") && !full.originalInvoice)
+    errors.push("Factura storno nu are referința completă către factura inițială.");
   if (!items.length)
     errors.push("Factura trebuie să conțină cel puțin o poziție.");
   items.forEach((item, index) => {
@@ -228,6 +277,16 @@ export function validateEFactura(full: {
     if (!item.unitCode) errors.push(`Poziția ${index + 1}: cod unitate lipsă.`);
     if (!item.vatCategoryCode)
       errors.push(`Poziția ${index + 1}: categorie TVA lipsă.`);
+    if (!Number.isFinite(Number(item.qty)) || Number(item.qty) <= 0)
+      errors.push(`Poziția ${index + 1}: cantitatea trebuie să fie pozitivă.`);
+    if (!Number.isFinite(Number(item.unitPrice)))
+      errors.push(`Poziția ${index + 1}: preț invalid.`);
+    if (!Number.isFinite(Number(item.vatRate)) || Number(item.vatRate) < 0)
+      errors.push(`Poziția ${index + 1}: cotă TVA invalidă.`);
+    if (["E", "AE", "K", "G", "O"].includes(String(item.vatCategoryCode || "")) && !String(item.taxExemptionReasonCode || item.taxExemptionReason || "").trim())
+      errors.push(`Poziția ${index + 1}: motivul sau codul scutirii de TVA este obligatoriu.`);
+    if (!company.vatPayer && (Number(item.vatRate) !== 0 || item.vatCategoryCode !== "O"))
+      errors.push(`Poziția ${index + 1}: firma este setată neplătitoare de TVA; folosește cota 0%, categoria O și motivul legal.`);
   });
   return errors;
 }
@@ -236,45 +295,85 @@ export function generateEFacturaXml({
   items,
   client,
   company,
+  originalInvoice,
 }: {
   invoice: Invoice;
   items: InvoiceItem[];
   client: Client;
   company: Company;
+  originalInvoice?: Invoice;
 }) {
-  const errors = validateEFactura({ invoice, items, client, company });
+  const errors = validateEFactura({ invoice, items, client, company, originalInvoice });
   if (errors.length) throw new Error(errors.join("\n"));
   const currency = invoice.currency || "RON";
+  const isCreditNote = invoice.invoiceType === "STORNO" || invoice.invoiceTypeCode === "381";
   const taxGroups = new Map<
     string,
-    { rate: number; category: string; taxable: number; tax: number }
+    { rate: number; category: string; taxable: number; tax: number; reasonCode: string; reason: string }
   >();
-  items.forEach((i) => {
-    const key = `${i.vatCategoryCode}|${i.vatRate}`;
-    const g = taxGroups.get(key) || {
-      rate: Number(i.vatRate),
-      category: i.vatCategoryCode || "S",
+  items.forEach((item) => {
+    const reasonCode = String(item.taxExemptionReasonCode || "").trim();
+    const reason = String(item.taxExemptionReason || "").trim();
+    const key = `${item.vatCategoryCode}|${item.vatRate}|${reasonCode}|${reason}`;
+    const group = taxGroups.get(key) || {
+      rate: Number(item.vatRate),
+      category: item.vatCategoryCode || "S",
       taxable: 0,
       tax: 0,
+      reasonCode,
+      reason,
     };
-    g.taxable += Number(i.valoare);
-    g.tax += Number(i.vatValue);
-    taxGroups.set(key, g);
+    group.taxable += Math.abs(Number(item.valoare));
+    group.tax += Math.abs(Number(item.vatValue));
+    taxGroups.set(key, group);
   });
-  const taxSubtotals = [...taxGroups.values()]
-    .map(
-      (g) =>
-        `<cac:TaxSubtotal><cbc:TaxableAmount currencyID="${x(currency)}">${money(g.taxable)}</cbc:TaxableAmount><cbc:TaxAmount currencyID="${x(currency)}">${money(g.tax)}</cbc:TaxAmount><cac:TaxCategory><cbc:ID>${x(g.category)}</cbc:ID><cbc:Percent>${money(g.rate)}</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:TaxCategory></cac:TaxSubtotal>`,
-    )
-    .join("");
-  const lines = items
-    .map(
-      (i, index) =>
-        `<cac:InvoiceLine><cbc:ID>${index + 1}</cbc:ID><cbc:InvoicedQuantity unitCode="${x(i.unitCode || "H87")}">${i.qty}</cbc:InvoicedQuantity><cbc:LineExtensionAmount currencyID="${x(currency)}">${money(i.valoare)}</cbc:LineExtensionAmount><cac:Item><cbc:Name>${x(i.description)}</cbc:Name><cac:ClassifiedTaxCategory><cbc:ID>${x(i.vatCategoryCode || "S")}</cbc:ID><cbc:Percent>${money(i.vatRate)}</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:ClassifiedTaxCategory></cac:Item><cac:Price><cbc:PriceAmount currencyID="${x(currency)}">${money(i.unitPrice)}</cbc:PriceAmount><cbc:BaseQuantity unitCode="${x(i.unitCode || "H87")}">1</cbc:BaseQuantity></cac:Price></cac:InvoiceLine>`,
-    )
-    .join("");
-  return `<?xml version="1.0" encoding="UTF-8"?><Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"><cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:efactura.mfinante.ro:CIUS-RO:1.0.1</cbc:CustomizationID><cbc:ID>${x(invoice.series)}-${invoice.number}</cbc:ID><cbc:IssueDate>${x(invoice.issueDate)}</cbc:IssueDate>${invoice.dueDate ? `<cbc:DueDate>${x(invoice.dueDate)}</cbc:DueDate>` : ""}<cbc:InvoiceTypeCode>${x(invoice.invoiceTypeCode || "380")}</cbc:InvoiceTypeCode><cbc:DocumentCurrencyCode>${x(currency)}</cbc:DocumentCurrencyCode><cbc:TaxPointDate>${x(invoice.taxPointDate || invoice.issueDate)}</cbc:TaxPointDate><cac:AccountingSupplierParty><cac:Party><cac:PostalAddress><cbc:StreetName>${x(company.address)}</cbc:StreetName><cbc:CityName>${x(company.city)}</cbc:CityName><cbc:PostalZone>${x(company.postalCode)}</cbc:PostalZone><cbc:CountrySubentity>${x(company.county)}</cbc:CountrySubentity><cac:Country><cbc:IdentificationCode>${x(country(company))}</cbc:IdentificationCode></cac:Country></cac:PostalAddress><cac:PartyTaxScheme><cbc:CompanyID>${x(vatId(company.cif, company.vatPayer))}</cbc:CompanyID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme><cac:PartyLegalEntity><cbc:RegistrationName>${x(company.name)}</cbc:RegistrationName><cbc:CompanyID>${x(company.cif)}</cbc:CompanyID></cac:PartyLegalEntity></cac:Party></cac:AccountingSupplierParty><cac:AccountingCustomerParty><cac:Party><cac:PostalAddress><cbc:StreetName>${x(client.address)}</cbc:StreetName><cbc:CityName>${x(client.city)}</cbc:CityName><cbc:PostalZone>${x(client.postalCode)}</cbc:PostalZone><cbc:CountrySubentity>${x(client.judet)}</cbc:CountrySubentity><cac:Country><cbc:IdentificationCode>${x(country(client))}</cbc:IdentificationCode></cac:Country></cac:PostalAddress><cac:PartyTaxScheme><cbc:CompanyID>${x(vatId(client.clientType === "PF" ? client.cnp : client.cif, client.vatPayer))}</cbc:CompanyID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme><cac:PartyLegalEntity><cbc:RegistrationName>${x(client.name)}</cbc:RegistrationName><cbc:CompanyID>${x(client.clientType === "PF" ? client.cnp : client.cif)}</cbc:CompanyID></cac:PartyLegalEntity></cac:Party></cac:AccountingCustomerParty><cac:PaymentMeans><cbc:PaymentMeansCode>${x(invoice.paymentMeansCode || "30")}</cbc:PaymentMeansCode>${company.iban ? `<cac:PayeeFinancialAccount><cbc:ID>${x(company.iban)}</cbc:ID></cac:PayeeFinancialAccount>` : ""}</cac:PaymentMeans><cac:TaxTotal><cbc:TaxAmount currencyID="${x(currency)}">${money(invoice.vatTotal)}</cbc:TaxAmount>${taxSubtotals}</cac:TaxTotal><cac:LegalMonetaryTotal><cbc:LineExtensionAmount currencyID="${x(currency)}">${money(invoice.subtotal)}</cbc:LineExtensionAmount><cbc:TaxExclusiveAmount currencyID="${x(currency)}">${money(invoice.subtotal)}</cbc:TaxExclusiveAmount><cbc:TaxInclusiveAmount currencyID="${x(currency)}">${money(invoice.total)}</cbc:TaxInclusiveAmount><cbc:PayableAmount currencyID="${x(currency)}">${money(invoice.total)}</cbc:PayableAmount></cac:LegalMonetaryTotal>${lines}</Invoice>`;
+  const taxSubtotals = [...taxGroups.values()].map((group) =>
+    `<cac:TaxSubtotal><cbc:TaxableAmount currencyID="${x(currency)}">${money(group.taxable)}</cbc:TaxableAmount><cbc:TaxAmount currencyID="${x(currency)}">${money(group.tax)}</cbc:TaxAmount><cac:TaxCategory><cbc:ID>${x(group.category)}</cbc:ID>${group.category === "O" ? "" : `<cbc:Percent>${money(group.rate)}</cbc:Percent>`}${optionalElement("TaxExemptionReasonCode", group.reasonCode)}${optionalElement("TaxExemptionReason", group.reason)}<cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:TaxCategory></cac:TaxSubtotal>`,
+  ).join("");
+  const lines = items.map((item, index) => {
+    const category = item.vatCategoryCode || "S";
+    const unitCode = item.unitCode || "H87";
+    const quantity = Math.abs(Number(item.qty));
+    const lineAmount = Math.abs(Number(item.valoare));
+    const netUnitPrice = quantity ? lineAmount / quantity : 0;
+    const lineName = isCreditNote ? "CreditNoteLine" : "InvoiceLine";
+    const quantityName = isCreditNote ? "CreditedQuantity" : "InvoicedQuantity";
+    return `<cac:${lineName}><cbc:ID>${index + 1}</cbc:ID><cbc:${quantityName} unitCode="${x(unitCode)}">${quantity}</cbc:${quantityName}><cbc:LineExtensionAmount currencyID="${x(currency)}">${money(lineAmount)}</cbc:LineExtensionAmount><cac:Item><cbc:Name>${x(item.description)}</cbc:Name><cac:ClassifiedTaxCategory><cbc:ID>${x(category)}</cbc:ID>${category === "O" ? "" : `<cbc:Percent>${money(item.vatRate)}</cbc:Percent>`}<cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:ClassifiedTaxCategory></cac:Item><cac:Price><cbc:PriceAmount currencyID="${x(currency)}">${price(netUnitPrice)}</cbc:PriceAmount><cbc:BaseQuantity unitCode="${x(unitCode)}">1</cbc:BaseQuantity></cac:Price></cac:${lineName}>`;
+  }).join("");
+  const supplierCountry = country(company);
+  const supplierSubdivision = subdivision(company.county, supplierCountry);
+  const customerCountry = country(client);
+  const customerSubdivision = subdivision(client.judet, customerCountry);
+  const supplierFiscalId = cleanFiscalId(company.cif);
+  const customerFiscalId = cleanFiscalId(client.clientType === "PF" ? client.cnp : client.cif);
+  const supplierTax = `<cac:PartyTaxScheme><cbc:CompanyID>${x(company.vatPayer ? `RO${supplierFiscalId}` : supplierFiscalId)}</cbc:CompanyID><cac:TaxScheme><cbc:ID>${company.vatPayer ? "VAT" : "FC"}</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme>`;
+  const customerTax = client.vatPayer
+    ? `<cac:PartyTaxScheme><cbc:CompanyID>${x(`RO${customerFiscalId}`)}</cbc:CompanyID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme>`
+    : "";
+  const supplierContact = company.phone || company.email
+    ? `<cac:Contact>${optionalElement("Telephone", company.phone)}${optionalElement("ElectronicMail", company.email)}</cac:Contact>`
+    : "";
+  const customerContact = client.phone || client.email
+    ? `<cac:Contact>${optionalElement("Telephone", client.phone)}${optionalElement("ElectronicMail", client.email)}</cac:Contact>`
+    : "";
+  const supplierParty = `<cac:AccountingSupplierParty><cac:Party><cac:PostalAddress><cbc:StreetName>${x(company.address)}</cbc:StreetName><cbc:CityName>${x(xmlCity(company.city, supplierSubdivision))}</cbc:CityName>${optionalElement("PostalZone", company.postalCode)}<cbc:CountrySubentity>${x(supplierSubdivision)}</cbc:CountrySubentity><cac:Country><cbc:IdentificationCode>${x(supplierCountry)}</cbc:IdentificationCode></cac:Country></cac:PostalAddress>${supplierTax}<cac:PartyLegalEntity><cbc:RegistrationName>${x(company.name)}</cbc:RegistrationName><cbc:CompanyID>${x(supplierFiscalId)}</cbc:CompanyID></cac:PartyLegalEntity>${supplierContact}</cac:Party></cac:AccountingSupplierParty>`;
+  const customerLegalId = customerFiscalId ? `<cbc:CompanyID>${x(customerFiscalId)}</cbc:CompanyID>` : "";
+  const customerParty = `<cac:AccountingCustomerParty><cac:Party><cac:PostalAddress><cbc:StreetName>${x(client.address)}</cbc:StreetName><cbc:CityName>${x(xmlCity(client.city, customerSubdivision))}</cbc:CityName>${optionalElement("PostalZone", client.postalCode)}<cbc:CountrySubentity>${x(customerSubdivision)}</cbc:CountrySubentity><cac:Country><cbc:IdentificationCode>${x(customerCountry)}</cbc:IdentificationCode></cac:Country></cac:PostalAddress>${customerTax}<cac:PartyLegalEntity><cbc:RegistrationName>${x(client.name)}</cbc:RegistrationName>${customerLegalId}</cac:PartyLegalEntity>${customerContact}</cac:Party></cac:AccountingCustomerParty>`;
+  const typeElement = isCreditNote
+    ? `<cbc:CreditNoteTypeCode>${x(invoice.invoiceTypeCode || "381")}</cbc:CreditNoteTypeCode>`
+    : `<cbc:InvoiceTypeCode>${x(invoice.invoiceTypeCode || "380")}</cbc:InvoiceTypeCode>`;
+  const billingReference = isCreditNote && originalInvoice
+    ? `<cac:BillingReference><cac:InvoiceDocumentReference><cbc:ID>${x(originalInvoice.series)}-${originalInvoice.number}</cbc:ID><cbc:IssueDate>${x(originalInvoice.issueDate)}</cbc:IssueDate></cac:InvoiceDocumentReference></cac:BillingReference>`
+    : "";
+  const paymentMeans = `<cac:PaymentMeans><cbc:PaymentMeansCode>${x(invoice.paymentMeansCode || "30")}</cbc:PaymentMeansCode>${company.iban ? `<cac:PayeeFinancialAccount><cbc:ID>${x(company.iban)}</cbc:ID></cac:PayeeFinancialAccount>` : ""}</cac:PaymentMeans>`;
+  const root = isCreditNote ? "CreditNote" : "Invoice";
+  const namespace = isCreditNote ? "CreditNote-2" : "Invoice-2";
+  const subtotal = Math.abs(Number(invoice.subtotal));
+  const vatTotal = Math.abs(Number(invoice.vatTotal));
+  const total = Math.abs(Number(invoice.total));
+  return `<?xml version="1.0" encoding="UTF-8"?><${root} xmlns="urn:oasis:names:specification:ubl:schema:xsd:${namespace}" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"><cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:efactura.mfinante.ro:CIUS-RO:1.0.1</cbc:CustomizationID><cbc:ID>${x(invoice.series)}-${invoice.number}</cbc:ID><cbc:IssueDate>${x(invoice.issueDate)}</cbc:IssueDate>${!isCreditNote && invoice.dueDate ? `<cbc:DueDate>${x(invoice.dueDate)}</cbc:DueDate>` : ""}${typeElement}${optionalElement("Note", invoice.notes)}<cbc:TaxPointDate>${x(invoice.taxPointDate || invoice.issueDate)}</cbc:TaxPointDate><cbc:DocumentCurrencyCode>${x(currency)}</cbc:DocumentCurrencyCode>${optionalElement("BuyerReference", invoice.buyerReference)}${billingReference}${supplierParty}${customerParty}${paymentMeans}${invoice.paymentTerms ? `<cac:PaymentTerms><cbc:Note>${x(invoice.paymentTerms)}</cbc:Note></cac:PaymentTerms>` : ""}<cac:TaxTotal><cbc:TaxAmount currencyID="${x(currency)}">${money(vatTotal)}</cbc:TaxAmount>${taxSubtotals}</cac:TaxTotal><cac:LegalMonetaryTotal><cbc:LineExtensionAmount currencyID="${x(currency)}">${money(subtotal)}</cbc:LineExtensionAmount><cbc:TaxExclusiveAmount currencyID="${x(currency)}">${money(subtotal)}</cbc:TaxExclusiveAmount><cbc:TaxInclusiveAmount currencyID="${x(currency)}">${money(total)}</cbc:TaxInclusiveAmount><cbc:PayableAmount currencyID="${x(currency)}">${money(total)}</cbc:PayableAmount></cac:LegalMonetaryTotal>${lines}</${root}>`;
 }
+
 function parseId(text: string, names: string[]) {
   for (const name of names) {
     const json = new RegExp(`"${name}"\\s*:\\s*"?([^",}]+)`, "i").exec(
@@ -305,6 +404,8 @@ class AnafSubmissionError extends Error {
 function isRetryableError(error: unknown) {
   if (error instanceof AnafSubmissionError) return error.retryable;
   if (error instanceof TypeError) return true; // fetch/network failure
+  if (error instanceof Error && ["AbortError", "TimeoutError"].includes(error.name))
+    return true;
   return false;
 }
 

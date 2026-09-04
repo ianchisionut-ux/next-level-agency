@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RotateCcw } from "lucide-react";
 import { StatusBadge } from "@/components/accounting/StatusBadge";
+import { bucharestDate } from "@/lib/accounting/date";
 
 type InvoiceRow = {
   id: number; series: string; number: number; clientName: string; issueDate: string;
@@ -19,7 +20,7 @@ export default function StornoInvoicePage() {
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [invoiceId, setInvoiceId] = useState("");
   const [series, setSeries] = useState("STO");
-  const [issueDate, setIssueDate] = useState(new Date().toISOString().slice(0, 10));
+  const [issueDate, setIssueDate] = useState(bucharestDate());
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
 

@@ -1,6 +1,7 @@
 import { ready } from "./db";
 import { createRefIncomeForPayment } from "./ref";
 import type { PoolClient } from "pg";
+import { bucharestDate } from "./date";
 
 export type User = {
   id: number;
@@ -136,6 +137,12 @@ export type Invoice = {
 
 function round2(n: number) {
   return Math.round(n * 100) / 100;
+}
+
+function isIsoDate(value: string | null | undefined) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
 // ---------- Company ----------
@@ -582,18 +589,63 @@ export async function createInvoice(input: {
   const pool = await ready();
   const series = input.series.trim().toUpperCase();
   if (!series) throw new Error("Completează seria facturii.");
+  if (!/^[A-Z0-9._/-]{1,20}$/.test(series))
+    throw new Error("Seria poate conține maximum 20 de caractere: litere, cifre, punct, cratimă, / sau _.");
+  if (!Number.isInteger(Number(input.clientId)) || Number(input.clientId) <= 0)
+    throw new Error("Selectează un client valid.");
+  if (!isIsoDate(input.issueDate)) throw new Error("Data emiterii nu este validă.");
+  if (input.dueDate && !isIsoDate(input.dueDate))
+    throw new Error("Data scadenței nu este validă.");
+  if (input.dueDate && input.dueDate < input.issueDate)
+    throw new Error("Data scadenței nu poate fi anterioară datei emiterii.");
+  if (input.taxPointDate && !isIsoDate(input.taxPointDate))
+    throw new Error("Data exigibilității TVA nu este validă.");
+  if (!Array.isArray(input.items) || input.items.length === 0)
+    throw new Error("Factura trebuie să conțină cel puțin o poziție.");
   const discountPercent = input.discountPercent ?? 0;
+  if (!Number.isFinite(discountPercent) || discountPercent < 0 || discountPercent > 100)
+    throw new Error("Discountul trebuie să fie între 0% și 100%.");
+  const invoiceType = input.invoiceType ?? "STANDARD";
+  const currency = String(input.currency || "RON").trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(currency)) throw new Error("Moneda facturii nu este validă.");
+  const exchangeRate = Number(input.exchangeRate ?? 1);
+  if (!Number.isFinite(exchangeRate) || exchangeRate <= 0)
+    throw new Error("Cursul de schimb trebuie să fie pozitiv.");
+  input.items.forEach((item, index) => {
+    const line = index + 1;
+    if (!String(item.description || "").trim())
+      throw new Error(`Poziția ${line}: completează denumirea.`);
+    if (!Number.isFinite(item.qty) || item.qty <= 0)
+      throw new Error(`Poziția ${line}: cantitatea trebuie să fie pozitivă.`);
+    if (!Number.isFinite(item.unitPrice))
+      throw new Error(`Poziția ${line}: prețul nu este valid.`);
+    if (invoiceType === "STANDARD" && item.unitPrice < 0)
+      throw new Error(`Poziția ${line}: prețul unei facturi normale nu poate fi negativ.`);
+    if (!Number.isFinite(item.vatRate) || item.vatRate < 0 || item.vatRate > 100)
+      throw new Error(`Poziția ${line}: cota TVA nu este validă.`);
+    const category = String(item.vatCategoryCode || (item.vatRate === 0 ? "Z" : "S")).toUpperCase();
+    if (!/^[A-Z]{1,3}$/.test(category))
+      throw new Error(`Poziția ${line}: categoria TVA nu este validă.`);
+    if (category === "S" && item.vatRate <= 0)
+      throw new Error(`Poziția ${line}: categoria TVA S necesită o cotă pozitivă.`);
+    if (category !== "S" && item.vatRate !== 0)
+      throw new Error(`Poziția ${line}: o categorie TVA diferită de S trebuie să aibă cota 0%.`);
+    if (["E", "AE", "K", "G", "O"].includes(category) && !String(item.taxExemptionReasonCode || item.taxExemptionReason || "").trim())
+      throw new Error(`Poziția ${line}: completează motivul sau codul scutirii de TVA.`);
+  });
   const { computed, subtotal, vatTotal } = computeTotals(
     input.items,
     discountPercent,
   );
   const total = round2(subtotal + vatTotal);
-  if (input.paidOnSpot && (input.invoiceType ?? "STANDARD") !== "STANDARD") {
+  if (invoiceType === "STANDARD" && total <= 0)
+    throw new Error("Totalul unei facturi normale trebuie să fie pozitiv.");
+  if (input.paidOnSpot && invoiceType !== "STANDARD") {
     throw new Error(
       "Chitanța automată este disponibilă doar pentru facturi normale.",
     );
   }
-  if (input.paidOnSpot && (input.currency ?? "RON") !== "RON") {
+  if (input.paidOnSpot && currency !== "RON") {
     throw new Error(
       "Chitanța automată poate fi emisă doar pentru facturi în RON.",
     );
@@ -616,6 +668,16 @@ export async function createInvoice(input: {
       `SELECT * FROM company WHERE id=1`,
     );
     if (!clientResult.rows[0]) throw new Error("Clientul selectat nu există.");
+    const seller = (input.sellerSnapshot || companyResult.rows[0] || {}) as Company;
+    const buyer = (input.clientSnapshot || clientResult.rows[0] || {}) as Client;
+    if (!seller.name || !seller.cif || !seller.address || !seller.city || !seller.county)
+      throw new Error("Completează denumirea, CIF-ul și adresa completă în secțiunea Firma înainte de emitere.");
+    if (!buyer.name || !buyer.address || !buyer.city || !buyer.judet)
+      throw new Error("Completează denumirea și adresa completă a clientului înainte de emitere.");
+    if (buyer.clientType === "PJ" && !buyer.cif)
+      throw new Error("Completează CIF-ul clientului persoană juridică înainte de emitere.");
+    if (!seller.vatPayer && computed.some((item) => Number(item.vatRate) !== 0 || String(item.vatCategoryCode || "") !== "O"))
+      throw new Error("Firma este setată neplătitoare de TVA. Toate pozițiile trebuie să aibă cota 0%, categoria O și motivul legal completat.");
 
     const { rows } = await connection.query(
       `INSERT INTO invoices
@@ -633,8 +695,8 @@ export async function createInvoice(input: {
         vatTotal,
         total,
         discountPercent,
-        input.currency ?? "RON",
-        input.exchangeRate ?? 1,
+        currency,
+        exchangeRate,
         input.notes ?? "",
         input.delegateName ?? "",
         input.delegateCI ?? "",
@@ -651,7 +713,7 @@ export async function createInvoice(input: {
        "invoiceTypeCode"=$5, "paymentMeansCode"=$6, "paymentTerms"=$7, "taxPointDate"=$8, "buyerReference"=$9,
        "sellerSnapshot"=$10::jsonb, "clientSnapshot"=$11::jsonb, "autoEfactura"=$12 WHERE id=$13`,
       [
-        input.invoiceType ?? "STANDARD",
+        invoiceType,
         input.originalInvoiceId ?? null,
         input.stornoReason ?? "",
         input.initialStatus ?? "issued",
@@ -675,17 +737,17 @@ export async function createInvoice(input: {
         [
           invoiceId,
           item.productId ?? null,
-          item.description,
-          item.um,
+          item.description.trim(),
+          item.um.trim() || "buc",
           item.qty,
           item.unitPrice,
           item.vatRate,
           item.valoare,
           item.vatValue,
-          item.unitCode || "H87",
-          item.vatCategoryCode || (item.vatRate === 0 ? "Z" : "S"),
-          item.taxExemptionReasonCode || "",
-          item.taxExemptionReason || "",
+          String(item.unitCode || "H87").trim().toUpperCase(),
+          String(item.vatCategoryCode || (item.vatRate === 0 ? "Z" : "S")).trim().toUpperCase(),
+          String(item.taxExemptionReasonCode || "").trim(),
+          String(item.taxExemptionReason || "").trim(),
         ],
       );
     }
@@ -742,6 +804,8 @@ export async function createStornoInvoice(input: {
   issueDate: string;
   reason: string;
 }): Promise<number> {
+  if (!String(input.reason || "").trim())
+    throw new Error("Completează motivul stornării.");
   const original = await getInvoiceFull(input.originalInvoiceId);
   if (!original?.client) throw new Error("Factura selectată nu există.");
   if (
@@ -774,7 +838,7 @@ export async function createStornoInvoice(input: {
     discountPercent: original.invoice.discountPercent,
     invoiceType: "STORNO",
     originalInvoiceId: original.invoice.id,
-    stornoReason: input.reason,
+    stornoReason: input.reason.trim(),
     invoiceTypeCode: "381",
     paymentMeansCode: original.invoice.paymentMeansCode,
     paymentTerms: original.invoice.paymentTerms,
@@ -872,7 +936,7 @@ export async function getInvoiceItems(
 export async function getInvoiceFull(id: number) {
   const invoice = await getInvoice(id);
   if (!invoice) return undefined;
-  const [items, liveClient, liveCompany, receipts, payments, user] =
+  const [items, liveClient, liveCompany, receipts, payments, user, originalInvoice] =
     await Promise.all([
       getInvoiceItems(id),
       getClient(invoice.clientId),
@@ -880,6 +944,9 @@ export async function getInvoiceFull(id: number) {
       listReceiptsForInvoice(id),
       listPaymentsForInvoice(id),
       invoice.userId ? getUser(invoice.userId) : Promise.resolve(undefined),
+      invoice.originalInvoiceId
+        ? getInvoice(invoice.originalInvoiceId)
+        : Promise.resolve(undefined),
     ]);
   const client = Object.keys(invoice.clientSnapshot || {}).length
     ? (invoice.clientSnapshot as Client)
@@ -887,7 +954,7 @@ export async function getInvoiceFull(id: number) {
   const company = Object.keys(invoice.sellerSnapshot || {}).length
     ? (invoice.sellerSnapshot as Company)
     : liveCompany;
-  return { invoice, items, client, company, receipts, payments, user };
+  return { invoice, items, client, company, receipts, payments, user, originalInvoice };
 }
 
 export async function setInvoiceStatus(id: number, status: Invoice["status"]) {
@@ -989,6 +1056,19 @@ export async function addPayment(
     }
     if (!Number.isFinite(amount) || amount <= 0)
       throw new Error("Suma încasată trebuie să fie pozitivă.");
+    if (!isIsoDate(date)) throw new Error("Data încasării nu este validă.");
+
+    const alreadyPaid = round2(
+      Number((await connection.query(
+        `SELECT COALESCE(SUM(amount),0) AS amount FROM payments WHERE "invoiceId"=$1`,
+        [invoiceId],
+      )).rows[0].amount),
+    );
+    const outstanding = round2(Number(invoice.total) - alreadyPaid);
+    if (outstanding <= 0) throw new Error("Factura este deja achitată integral.");
+    if (round2(amount) > outstanding)
+      throw new Error(`Suma depășește restul de plată de ${outstanding.toFixed(2)} ${invoice.currency}.`);
+    amount = round2(amount);
 
     const { rows: paymentRows } = await connection.query(
       `INSERT INTO payments ("invoiceId", amount, date, method, notes) VALUES ($1,$2,$3,$4,$5) RETURNING id`,
@@ -1017,11 +1097,7 @@ export async function addPayment(
       connection,
     );
 
-    const { rows: sumRows } = await connection.query(
-      `SELECT COALESCE(SUM(amount),0) as s FROM payments WHERE "invoiceId"=$1`,
-      [invoiceId],
-    );
-    const paid = round2(Number(sumRows[0].s));
+    const paid = round2(alreadyPaid + amount);
     const status: Invoice["status"] =
       paid <= 0 ? "issued" : paid >= invoice.total ? "paid" : "partial";
     await connection.query(
@@ -1060,22 +1136,47 @@ export async function createReceipt(
   cashier?: string,
 ): Promise<number> {
   const pool = await ready();
-  const invoice = await getInvoice(invoiceId);
-  if (
-    !invoice ||
-    invoice.invoiceType === "STORNO" ||
-    ["storno", "stornoed", "canceled"].includes(invoice.status)
-  ) {
-    throw new Error("Pentru această factură nu se poate emite chitanță.");
+  const connection = await pool.connect();
+  try {
+    await connection.query("BEGIN");
+    const invoice = (await connection.query(
+      `SELECT * FROM invoices WHERE id=$1 FOR UPDATE`,
+      [invoiceId],
+    )).rows[0] as Invoice | undefined;
+    if (!invoice || invoice.invoiceType === "STORNO" || ["storno", "stornoed", "canceled"].includes(invoice.status))
+      throw new Error("Pentru această factură nu se poate emite chitanță.");
+    if (invoice.currency !== "RON")
+      throw new Error("Chitanța poate fi emisă doar pentru o factură în RON.");
+    if (!isIsoDate(issueDate)) throw new Error("Data chitanței nu este validă.");
+    if (!Number.isFinite(amount) || amount <= 0)
+      throw new Error("Valoarea chitanței trebuie să fie pozitivă.");
+    const cashPaid = round2(Number((await connection.query(
+      `SELECT COALESCE(SUM(amount),0) AS amount FROM payments WHERE "invoiceId"=$1 AND lower(method) IN ('numerar','cash')`,
+      [invoiceId],
+    )).rows[0].amount));
+    const receipted = round2(Number((await connection.query(
+      `SELECT COALESCE(SUM(amount),0) AS amount FROM receipts WHERE "invoiceId"=$1`,
+      [invoiceId],
+    )).rows[0].amount));
+    const available = round2(cashPaid - receipted);
+    amount = round2(amount);
+    if (available <= 0)
+      throw new Error("Nu există o încasare în numerar fără chitanță pentru această factură.");
+    if (amount > available)
+      throw new Error(`Chitanța depășește suma încasată în numerar rămasă neacoperită: ${available.toFixed(2)} RON.`);
+    const number = await takeNextNumber("CH1", connection);
+    const { rows } = await connection.query(
+      `INSERT INTO receipts (series, number, "invoiceId", "issueDate", amount, cashier) VALUES ('CH1',$1,$2,$3,$4,$5) RETURNING id`,
+      [number, invoiceId, issueDate, amount, cashier ?? ""],
+    );
+    await connection.query("COMMIT");
+    return rows[0].id as number;
+  } catch (error) {
+    await connection.query("ROLLBACK");
+    throw error;
+  } finally {
+    connection.release();
   }
-  if (!Number.isFinite(amount) || amount <= 0)
-    throw new Error("Valoarea chitanței trebuie să fie pozitivă.");
-  const number = await takeNextNumber("CH1");
-  const { rows } = await pool.query(
-    `INSERT INTO receipts (series, number, "invoiceId", "issueDate", amount, cashier) VALUES ('CH1',$1,$2,$3,$4,$5) RETURNING id`,
-    [number, invoiceId, issueDate, amount, cashier ?? ""],
-  );
-  return rows[0].id as number;
 }
 
 export async function listReceiptsForInvoice(invoiceId: number) {
@@ -1266,7 +1367,7 @@ export async function getSalesByAgent(range?: DateRange) {
 
 export async function getOverdueInvoices() {
   const pool = await ready();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = bucharestDate();
   const { rows } = await pool.query(
     `SELECT i.*, c.name as "clientName" FROM invoices i
      JOIN clients c ON c.id = i."clientId"
