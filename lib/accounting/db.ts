@@ -1,6 +1,6 @@
 import { Pool } from "pg";
 
-const ACCOUNTING_SCHEMA_VERSION = 9;
+const ACCOUNTING_SCHEMA_VERSION = 10;
 
 declare global {
   // eslint-disable-next-line no-var
@@ -270,6 +270,11 @@ async function ensureSchema(pool: Pool) {
   `);
   await pool.query(`ALTER TABLE efactura_submissions ADD COLUMN IF NOT EXISTS retryable INTEGER NOT NULL DEFAULT 0;`);
   await pool.query(`ALTER TABLE efactura_submissions ADD COLUMN IF NOT EXISTS "attemptNumber" INTEGER NOT NULL DEFAULT 1;`);
+  await pool.query(`ALTER TABLE anaf_connections ADD COLUMN IF NOT EXISTS environment TEXT NOT NULL DEFAULT 'test';`);
+  await pool.query(`ALTER TABLE efactura_submissions ADD COLUMN IF NOT EXISTS environment TEXT NOT NULL DEFAULT 'test';`);
+  await pool.query(`ALTER TABLE efactura_messages ADD COLUMN IF NOT EXISTS environment TEXT NOT NULL DEFAULT 'test';`);
+  await pool.query(`ALTER TABLE efactura_messages DROP CONSTRAINT IF EXISTS "efactura_messages_messageId_key";`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS "efactura_messages_environment_id_idx" ON efactura_messages (environment,"messageId");`);
   // Clean up only locally-active duplicates from older code before enforcing
   // the invariant. Validated/rejected history remains untouched.
   await pool.query(`
@@ -281,13 +286,15 @@ async function ensureSchema(pool: Pool) {
        AND EXISTS (
          SELECT 1 FROM efactura_submissions newer
           WHERE newer."invoiceId"=older."invoiceId"
+            AND newer.environment=older.environment
             AND newer.status IN ('UPLOADING','PROCESSING')
             AND newer.id>older.id
        );
   `);
   await pool.query(`
-    CREATE UNIQUE INDEX IF NOT EXISTS "efactura_one_active_submission_per_invoice"
-      ON efactura_submissions ("invoiceId")
+    DROP INDEX IF EXISTS "efactura_one_active_submission_per_invoice";
+    CREATE UNIQUE INDEX "efactura_one_active_submission_per_invoice"
+      ON efactura_submissions ("invoiceId",environment)
       WHERE status IN ('UPLOADING','PROCESSING');
   `);
   await pool.query(`ALTER TABLE ref_transactions ADD COLUMN IF NOT EXISTS "partnerName" TEXT NOT NULL DEFAULT '';`);
