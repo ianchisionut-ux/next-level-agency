@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { accountingApi } from "@/lib/accounting/access";
 import { processAutomaticEFactura } from "@/lib/accounting/efactura";
+export const maxDuration = 300;
 
 async function POSTHandler() {
   try {

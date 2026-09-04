@@ -7,6 +7,7 @@ async function POSTHandler(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const { id } = await params;
     const data = await req.json();
+    if (data.anafEnvironment !== (process.env.ANAF_ENVIRONMENT === 'production' ? 'production' : 'test')) return NextResponse.json({ error: 'Mediul ANAF s-a schimbat. Reîncarcă pagina.' }, { status: 409 });
     if (typeof data.sendToAnafNow !== "boolean") return NextResponse.json({ error: "Alege trimiterea la ANAF acum sau mâine." }, { status: 400 });
     const reason = String(data.reason || "").trim();
     if (!reason) return NextResponse.json({ error: "Completează motivul stornării." }, { status: 400 });

@@ -432,6 +432,7 @@ async function recordPermanentInvoiceError(invoiceId: number, message: string) {
         [invoiceId, environment],
       )
     ).rows[0];
+    if (latest && ['UPLOADING','PROCESSING','VALIDATED','UNCERTAIN'].includes(latest.status)) { await connection.query('COMMIT'); return; }
     if (!latest || latest.status !== "ERROR" || latest.message !== message) {
       const attempt = Number(
         (
@@ -460,11 +461,13 @@ export async function submitEFactura(
   invoiceId: number,
   xml: string,
   cif: string,
+  approveEnvironment = false,
 ) {
   const pool = await ready();
   const environment = config().environment;
   const connection = await pool.connect();
   let submissionId = 0;
+  let uploadAccessToken = '';
   try {
     await connection.query("BEGIN");
     await connection.query(`SELECT pg_advisory_xact_lock($1,$2)`, [
@@ -479,7 +482,7 @@ export async function submitEFactura(
     ).rows[0];
     if (
       latest &&
-      ["UPLOADING", "PROCESSING", "VALIDATED"].includes(String(latest.status))
+      ["UPLOADING", "PROCESSING", "VALIDATED", "UNCERTAIN"].includes(String(latest.status))
     ) {
       await connection.query("COMMIT");
       return {
@@ -492,9 +495,14 @@ export async function submitEFactura(
     // Re-read under the same lock used by corrections, so a concurrent edit
     // cannot leave an outdated XML snapshot queued for transmission.
     const current = await getInvoiceFull(invoiceId);
+    if (approveEnvironment) await connection.query(`UPDATE invoices SET "anafApprovedEnvironment"=$2 WHERE id=$1`, [invoiceId, environment]);
+    const approval = (await connection.query(`SELECT "anafApprovedEnvironment" FROM invoices WHERE id=$1`, [invoiceId])).rows[0];
+    if (approval?.anafApprovedEnvironment !== environment) throw new Error("Confirmă explicit trimiterea acestei facturi în mediul ANAF curent.");
     if (!current?.client || !['issued','partial','paid','storno'].includes(current.invoice.status)) throw new Error("Factura nu mai este eligibilă pentru transmitere.");
     xml = generateEFacturaXml({ ...current, client: current.client });
     cif = current.company.cif;
+    // Authentication failures before upload are not ambiguous transmissions.
+    uploadAccessToken = await accessToken();
     const attempt = Number(
       (
         await connection.query(
@@ -517,12 +525,14 @@ export async function submitEFactura(
     connection.release();
   }
 
+  let definitiveFailure = false;
   try {
-    const response = await anafFetch(
-      `/upload?standard=UBL&cif=${encodeURIComponent(cif.replace(/^RO/i, ""))}`,
+    const response = await fetch(
+      `${config().apiBase}/upload?standard=UBL&cif=${encodeURIComponent(cif.replace(/^RO/i, ""))}`,
       {
         method: "POST",
-        headers: { "Content-Type": "text/plain;charset=UTF-8" },
+        headers: { "Content-Type": "text/plain;charset=UTF-8", Authorization: `Bearer ${uploadAccessToken}` },
+        signal: AbortSignal.timeout(25_000),
         body: xml,
       },
     );
@@ -533,6 +543,7 @@ export async function submitEFactura(
       "uploadId",
     ]);
     if (!response.ok) {
+      definitiveFailure = response.status >= 400 && response.status < 500 && response.status !== 408;
       throw new AnafSubmissionError(
         responseText.slice(0, 500) ||
           `ANAF a răspuns cu HTTP ${response.status}.`,
@@ -557,18 +568,19 @@ export async function submitEFactura(
     };
   } catch (error) {
     await pool.query(
-      `UPDATE efactura_submissions SET status='ERROR',message=$1,retryable=$2,"checkedAt"=now() WHERE id=$3`,
+      `UPDATE efactura_submissions SET status=$4,message=$1,retryable=$2,"checkedAt"=now() WHERE id=$3`,
       [
         error instanceof Error ? error.message : String(error),
-        isRetryableError(error) ? 1 : 0,
+        definitiveFailure && isRetryableError(error) ? 1 : 0,
         submissionId,
+        definitiveFailure ? 'ERROR' : 'UNCERTAIN',
       ],
     );
     throw error;
   }
 }
 
-export async function sendInvoiceToAnaf(invoiceId: number) {
+export async function sendInvoiceToAnaf(invoiceId: number, approveEnvironment = false) {
   const full = await getInvoiceFull(invoiceId);
   if (!full?.client)
     throw new Error("Factura nu există sau clientul nu este disponibil.");
@@ -583,7 +595,7 @@ export async function sendInvoiceToAnaf(invoiceId: number) {
     );
     throw error;
   }
-  return submitEFactura(invoiceId, xml, full.company.cif);
+  return submitEFactura(invoiceId, xml, full.company.cif, approveEnvironment);
 }
 
 export async function checkSubmission(id: number) {
@@ -605,11 +617,11 @@ export async function checkSubmission(id: number) {
         `ANAF a răspuns cu HTTP ${response.status}.`,
       response.status === 429 || response.status >= 500,
     );
-  const lower = responseText.toLowerCase();
+  const lower = (/\bstare\s*=\s*["']([^"']+)["']/i.exec(responseText)?.[1] || "").toLowerCase();
   const status: EFacturaStatus =
-    lower.includes("nok") || lower.includes("eroare")
+    lower === "nok"
       ? "REJECTED"
-      : lower.includes("ok")
+      : lower === "ok"
         ? "VALIDATED"
         : "PROCESSING";
   const downloadId = parseId(responseText, ["id_descarcare", "downloadId"]);
@@ -630,6 +642,17 @@ export async function latestSubmission(invoiceId: number) {
     [invoiceId, environment],
   );
   return rows[0] || null;
+}
+
+export async function invoiceDownloadXml(invoiceId: number) {
+  const { rows } = await (await ready()).query(`SELECT "xmlSnapshot" FROM efactura_submissions WHERE "invoiceId"=$1 AND environment=$2 AND (COALESCE("uploadId",'')<>'' OR status IN ('UPLOADING','UNCERTAIN')) ORDER BY id DESC LIMIT 1`, [invoiceId, config().environment]);
+  if (rows[0]) {
+    if (!rows[0].xmlSnapshot) throw new Error('Copia XML transmisă lipsește. Descarcă răspunsul ANAF.');
+    return String(rows[0].xmlSnapshot);
+  }
+  const full = await getInvoiceFull(invoiceId);
+  if (!full?.client) throw new Error('Factura nu există.');
+  return generateEFacturaXml({ ...full, client: full.client });
 }
 
 async function saveAutomationState(
@@ -658,6 +681,7 @@ export async function recordAutomationFailure(error: unknown) {
 }
 
 export async function processAutomaticEFactura(limit = 20) {
+  const startedAt = Date.now();
   const pool = await ready();
   await saveAutomationState("RUNNING", { checked: 0, sent: 0, failed: 0 });
   const publicConfig = getAnafPublicConfig();
@@ -688,8 +712,8 @@ export async function processAutomaticEFactura(limit = 20) {
   let failed = 0;
   await pool.query(
     `UPDATE efactura_submissions
-        SET status='ERROR', retryable=1,
-            message='Trimiterea a rămas blocată și va fi reîncercată automat.', "checkedAt"=now()
+        SET status='UNCERTAIN', retryable=0,
+            message='Rezultat necunoscut. Verifică în SPV înainte de orice retrimitere; nu se reîncearcă automat.', "checkedAt"=now()
       WHERE status='UPLOADING' AND environment=$1 AND "createdAt" < now() - interval '1 hour'`,
     [environment],
   );
@@ -700,6 +724,7 @@ export async function processAutomaticEFactura(limit = 20) {
     [Math.max(1, Math.min(limit, 50)), environment],
   );
   for (const row of processing.rows) {
+    if (Date.now() - startedAt > 100_000) break;
     try {
       await checkSubmission(Number(row.id));
       checked += 1;
@@ -715,6 +740,7 @@ export async function processAutomaticEFactura(limit = 20) {
         WHERE "invoiceId"=i.id AND environment=$2 ORDER BY id DESC LIMIT 1
      ) ef ON true
      WHERE i."autoEfactura"=1
+       AND i."anafApprovedEnvironment"=$2
        AND (i."anafSendAfter" IS NULL OR i."anafSendAfter" <= now())
        AND ((i."invoiceType"='STANDARD' AND i.status IN ('issued','partial','paid')) OR (i."invoiceType"='STORNO' AND i.status='storno'))
        AND (ef.status IS NULL OR (ef.status='ERROR' AND ef.retryable=1
@@ -723,6 +749,7 @@ export async function processAutomaticEFactura(limit = 20) {
     [Math.max(1, Math.min(limit, 50)), environment],
   );
   for (const row of candidates.rows) {
+    if (Date.now() - startedAt > 240_000) break;
     try {
       await sendInvoiceToAnaf(Number(row.id));
       sent += 1;

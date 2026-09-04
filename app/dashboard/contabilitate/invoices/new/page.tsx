@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAnafChoice } from "@/components/accounting/useAnafChoice";
 import { useRouter } from "next/navigation";
 import { CURRENT_USER_KEY } from "@/components/accounting/CurrentUserBox";
 import { Plus, X, Cable, RefreshCw, FileText } from "lucide-react";
@@ -43,6 +44,7 @@ function fmt(n: number) {
 
 export default function NewInvoicePage() {
   const router = useRouter();
+  const { ask, dialog } = useAnafChoice();
   const [clients, setClients] = useState<Client[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [users, setUsers] = useState<UserT[]>([]);
@@ -239,13 +241,15 @@ export default function NewInvoicePage() {
       alert("Factura achitată pe loc și chitanța pot fi emise doar în RON.");
       return;
     }
-    const sendToAnafNow = confirm("Trimiți factura acum în ANAF/SPV?\nOK = trimite după validare.\nAnulează = emite fără trimitere imediată; trimiterea automată va avea loc mâine la 09:00 vara / 08:00 iarna (ora României). Se folosește mediul ANAF configurat.");
+    const choice = await ask();
+    if (!choice) return;
     setSaving(true);
+    try {
     const res = await fetch("/api/accounting/invoices", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        sendToAnafNow,
+        ...choice,
         series,
         number: selectedNumber,
         clientId,
@@ -287,6 +291,8 @@ export default function NewInvoicePage() {
     setSaving(false);
     if (!res.ok) return alert(data.error || "Factura nu a putut fi emisă.");
     router.push(`/dashboard/contabilitate/invoices/${data.id}`);
+    } catch { alert('Răspunsul serverului nu a putut fi citit. Verifică lista facturilor înainte de a reîncerca emiterea.'); }
+    finally { setSaving(false); }
   }
 
   return (
@@ -570,6 +576,7 @@ export default function NewInvoicePage() {
         <textarea className="input" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
 
+      {dialog}
       <button onClick={submit} disabled={saving} className="btn-primary" style={{ padding: "11px 22px" }}>
         {saving ? "Se salveaza..." : "Emite factura"}
       </button>

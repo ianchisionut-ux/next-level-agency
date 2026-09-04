@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useAnafChoice } from "@/components/accounting/useAnafChoice";
 import { useRouter } from "next/navigation";
 import { RotateCcw } from "lucide-react";
 import { StatusBadge } from "@/components/accounting/StatusBadge";
@@ -17,6 +18,7 @@ function fmt(n: number) {
 
 export default function StornoInvoicePage() {
   const router = useRouter();
+  const { ask, dialog } = useAnafChoice();
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [invoiceId, setInvoiceId] = useState("");
   const [series, setSeries] = useState("STO");
@@ -39,16 +41,20 @@ export default function StornoInvoicePage() {
     if (!invoiceId) return alert("Selectează factura care trebuie stornată.");
     if (!reason.trim()) return alert("Completează motivul stornării.");
     if (!confirm(`Creezi factura storno pentru ${selected?.series} ${String(selected?.number || 0).padStart(4, "0")}?`)) return;
-    const sendToAnafNow = confirm("Trimiți și factura storno acum la ANAF/SPV?\nOK = trimite acum.\nAnulează = trimite automat mâine, la verificarea zilnică (09:00 vara / 08:00 iarna). Se folosește mediul ANAF configurat.");
+    const choice = await ask();
+    if (!choice) return;
     setSaving(true);
+    try {
     const response = await fetch(`/api/accounting/invoices/${invoiceId}/storno`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ series, issueDate, reason, sendToAnafNow }),
+      body: JSON.stringify({ series, issueDate, reason, ...choice }),
     });
     const data = await response.json();
     setSaving(false);
     if (!response.ok) return alert(data.error || "Factura nu a putut fi stornată.");
     router.push(`/dashboard/contabilitate/invoices/${data.id}`);
+    } catch { alert('Nu am putut citi răspunsul. Verifică lista facturilor înainte de a reîncerca.'); }
+    finally { setSaving(false); }
   }
 
   return <div>
@@ -77,6 +83,7 @@ export default function StornoInvoicePage() {
       <p className="text-xs text-slate-500 mt-3">Noua factură va avea totalul de -{fmt(Math.abs(selected.total))} RON și va fi legată de documentul inițial.</p>
     </div>}
 
+    {dialog}
     <button type="button" className="btn-danger" onClick={submit} disabled={saving || !selected} style={{ padding: "11px 22px" }}><RotateCcw size={15}/>{saving ? "Se stornează..." : "Emite factura storno"}</button>
   </div>;
 }

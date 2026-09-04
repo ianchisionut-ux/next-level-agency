@@ -708,7 +708,7 @@ export async function createInvoice(input: {
     );
 
     const invoiceId = rows[0].id as number;
-    await connection.query(`UPDATE invoices SET "anafSendAfter"=((now() AT TIME ZONE 'Europe/Bucharest')::date + 1)::timestamp AT TIME ZONE 'Europe/Bucharest' WHERE id=$1`, [invoiceId]);
+    await connection.query(`UPDATE invoices SET "anafSendAfter"=(((now() AT TIME ZONE 'Europe/Bucharest')::date + 1)::timestamp + interval '6 hours') AT TIME ZONE 'UTC', "anafApprovedEnvironment"=$2 WHERE id=$1`, [invoiceId, process.env.ANAF_ENVIRONMENT === 'production' ? 'production' : 'test']);
     await connection.query(
       `UPDATE invoices SET "invoiceType"=$1, "originalInvoiceId"=$2, "stornoReason"=$3, status=$4,
        "invoiceTypeCode"=$5, "paymentMeansCode"=$6, "paymentTerms"=$7, "taxPointDate"=$8, "buyerReference"=$9,
@@ -963,7 +963,7 @@ export async function setInvoiceStatus(id: number, status: Invoice["status"]) {
   await pool.query(`UPDATE invoices SET status=$1 WHERE id=$2`, [status, id]);
 }
 
-export async function correctUnsentInvoice(id: number, input: { dueDate: string; paymentTerms: string; notes: string; items: { id: number; description: string }[] }) {
+export async function correctUnsentInvoice(id: number, input: { clientId?: number; dueDate: string; paymentTerms: string; notes: string; items: { id: number; description: string; qty?: number; unitPrice?: number }[] }) {
   const connection = await (await ready()).connect();
   try {
     await connection.query("BEGIN");
@@ -974,8 +974,23 @@ export async function correctUnsentInvoice(id: number, input: { dueDate: string;
     if (locked) throw new Error("Factura a fost transmisă sau este în procesare. Editarea este blocată.");
     if (typeof input.dueDate !== 'string' || typeof input.paymentTerms !== 'string' || typeof input.notes !== 'string' || !Array.isArray(input.items)) throw new Error("Date de corecție invalide.");
     if (input.dueDate && (!/^\d{4}-\d{2}-\d{2}$/.test(input.dueDate) || !Number.isFinite(Date.parse(input.dueDate)) || new Date(input.dueDate).toISOString().slice(0,10) !== input.dueDate)) throw new Error("Scadență invalidă.");
-    const existing = (await connection.query(`SELECT id FROM invoice_items WHERE "invoiceId"=$1`, [id])).rows;
+    const existing = (await connection.query(`SELECT * FROM invoice_items WHERE "invoiceId"=$1 ORDER BY id`, [id])).rows;
     if (input.items.length !== existing.length || new Set(input.items.map(i => i.id)).size !== existing.length || input.items.some(i => !existing.some(e => e.id === i.id) || typeof i.description !== 'string' || !i.description.trim())) throw new Error("Pozițiile facturii sunt invalide.");
+    const changedMoney = input.items.some(i => { const old = existing.find(e => e.id === i.id)!; return (i.qty !== undefined && Number(i.qty) !== Number(old.qty)) || (i.unitPrice !== undefined && Number(i.unitPrice) !== Number(old.unitPrice)); });
+    const changedClient = input.clientId !== undefined && input.clientId !== invoice.clientId;
+    const hasPayments = Number((await connection.query(`SELECT (SELECT COUNT(*) FROM payments WHERE "invoiceId"=$1)+(SELECT COUNT(*) FROM receipts WHERE "invoiceId"=$1) AS count`, [id])).rows[0].count) > 0;
+    if ((changedMoney || changedClient) && (hasPayments || Number(invoice.paidAmount) !== 0)) throw new Error('Beneficiarul și valorile nu pot fi schimbate după încasare. Plățile și chitanțele existente sunt protejate.');
+    if (changedClient) {
+      const client = (await connection.query(`SELECT * FROM clients WHERE id=$1`, [input.clientId])).rows[0];
+      if (!client?.name || !client.address || !client.city || !client.judet) throw new Error('Beneficiar inexistent sau adresă incompletă.');
+      await connection.query(`UPDATE invoices SET "clientId"=$2,"clientSnapshot"=$3::jsonb WHERE id=$1`, [id, input.clientId, JSON.stringify(client)]);
+    }
+    if (changedMoney) {
+      const values = existing.map(old => { const item = input.items.find(i => i.id === old.id)!; const qty = Number(item.qty ?? old.qty), unitPrice = Number(item.unitPrice ?? old.unitPrice); if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(unitPrice) || unitPrice < 0) throw new Error('Cantitate sau preț invalid.'); return { ...old, qty, unitPrice }; });
+      const totals = computeTotals(values, Number(invoice.discountPercent));
+      for (let i=0;i<existing.length;i++) { const item=totals.computed[i]; await connection.query(`UPDATE invoice_items SET qty=$1,"unitPrice"=$2,valoare=$3,"vatValue"=$4 WHERE id=$5`, [item.qty,item.unitPrice,item.valoare,item.vatValue,existing[i].id]); }
+      await connection.query(`UPDATE invoices SET subtotal=$2,"vatTotal"=$3,total=$4 WHERE id=$1`, [id,totals.subtotal,totals.vatTotal,round2(totals.subtotal+totals.vatTotal)]);
+    }
     await connection.query(`UPDATE invoices SET "dueDate"=$1,"paymentTerms"=$2,notes=$3 WHERE id=$4`, [input.dueDate || null, input.paymentTerms, input.notes, id]);
     for (const item of input.items) await connection.query(`UPDATE invoice_items SET description=$1 WHERE id=$2 AND "invoiceId"=$3`, [item.description.trim(), item.id, id]);
     // Preserve payments, receipts, amounts, fiscal classification and transmission history.
@@ -1000,7 +1015,7 @@ export async function deleteInvoice(id: number) {
         `SELECT id,status,"uploadId" FROM efactura_submissions
           WHERE ("invoiceId"=$1 OR "invoiceId" IN (SELECT id FROM invoices WHERE "originalInvoiceId"=$1))
             AND environment='production'
-            AND ("uploadId"<>'' OR status IN ('UPLOADING','PROCESSING','VALIDATED','REJECTED'))
+            AND ("uploadId"<>'' OR status IN ('UPLOADING','PROCESSING','VALIDATED','REJECTED','UNCERTAIN'))
           LIMIT 1`,
         [id],
       )

@@ -10,6 +10,7 @@ async function GETHandler() {
 async function POSTHandler(req: NextRequest) {
   try {
     const data = await req.json();
+    if (data.anafEnvironment !== (process.env.ANAF_ENVIRONMENT === 'production' ? 'production' : 'test')) return NextResponse.json({ error: 'Mediul ANAF s-a schimbat. Reîncarcă pagina și confirmă din nou.' }, { status: 409 });
     if (typeof data.sendToAnafNow !== "boolean") return NextResponse.json({ error: "Alege trimiterea la ANAF acum sau în ziua următoare." }, { status: 400 });
     const id = await createInvoice(data);
     if (data.sendToAnafNow) after(async () => {

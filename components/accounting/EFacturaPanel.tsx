@@ -24,6 +24,7 @@ type Validation = {
 };
 
 function statusMeta(status?: string) {
+  if (status === 'UNCERTAIN') return { color: '#dc2626', label: 'Rezultat necunoscut — verifică SPV; retrimitere blocată' };
   if (status === "VALIDATED") return { color: "#16a34a", label: "Validată de ANAF" };
   if (status === "REJECTED") return { color: "#dc2626", label: "Respinsă de ANAF" };
   if (status === "ERROR") return { color: "#dc2626", label: "Eroare la trimitere" };
@@ -59,7 +60,7 @@ export function EFacturaPanel({ invoiceId }: { invoiceId: number }) {
     setBusy(true);
     setError("");
     try {
-      const response = await fetch(url, { method: "POST" });
+      const response = await fetch(url, { method: "POST", headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ anafEnvironment: data?.environment }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || fallback);
       await load();
@@ -71,7 +72,7 @@ export function EFacturaPanel({ invoiceId }: { invoiceId: number }) {
   }
 
   async function send() {
-    if (!confirm("Trimiți factura la ANAF în mediul configurat?")) return;
+    if (!data || !confirm(`Trimiți factura în ANAF ${data.environment === 'production' ? 'PRODUCȚIE (transmitere reală)' : 'TEST'}?`)) return;
     await runAction(`/api/accounting/efactura/invoices/${invoiceId}/send`, "Transmiterea a eșuat.");
   }
 
