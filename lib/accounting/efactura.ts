@@ -268,6 +268,11 @@ export function validateEFactura(full: {
   if (!invoice.series || !invoice.number)
     errors.push("Seria și numărul facturii sunt obligatorii.");
   if (!invoice.issueDate) errors.push("Data emiterii este obligatorie.");
+  const credit = invoice.invoiceType === "STORNO" || invoice.invoiceTypeCode === "381";
+  const prepaid = credit ? 0 : Number(invoice.paidAmount || 0);
+  if (!Number.isFinite(prepaid) || prepaid < 0 || prepaid > Math.abs(Number(invoice.total))) errors.push("Suma achitată este invalidă.");
+  if (Math.abs(Number(invoice.total)) - prepaid > 0.005 && !(credit ? false : invoice.dueDate) && !invoice.paymentTerms?.trim()) errors.push("[BR-CO-25] Completează scadența sau termenii de plată pentru soldul pozitiv.");
+  if (items.some(i => i.vatCategoryCode === 'O') && items.some(i => i.vatCategoryCode !== 'O')) errors.push("Categoria O nu poate fi combinată cu alte categorii TVA.");
   if ((invoice.invoiceType === "STORNO" || invoice.invoiceTypeCode === "381") && !full.originalInvoice)
     errors.push("Factura storno nu are referința completă către factura inițială.");
   if (!items.length)
@@ -306,6 +311,7 @@ export function generateEFacturaXml({
   const errors = validateEFactura({ invoice, items, client, company, originalInvoice });
   if (errors.length) throw new Error(errors.join("\n"));
   const currency = invoice.currency || "RON";
+  const outsideVat = items.some(i => i.vatCategoryCode === 'O');
   const isCreditNote = invoice.invoiceType === "STORNO" || invoice.invoiceTypeCode === "381";
   const taxGroups = new Map<
     string,
@@ -346,8 +352,8 @@ export function generateEFacturaXml({
   const customerSubdivision = subdivision(client.judet, customerCountry);
   const supplierFiscalId = cleanFiscalId(company.cif);
   const customerFiscalId = cleanFiscalId(client.clientType === "PF" ? client.cnp : client.cif);
-  const supplierTax = `<cac:PartyTaxScheme><cbc:CompanyID>${x(company.vatPayer ? `RO${supplierFiscalId}` : supplierFiscalId)}</cbc:CompanyID><cac:TaxScheme><cbc:ID>${company.vatPayer ? "VAT" : "FC"}</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme>`;
-  const customerTax = client.vatPayer
+  const supplierTax = `<cac:PartyTaxScheme><cbc:CompanyID>${x((company.vatPayer && !outsideVat) ? `RO${supplierFiscalId}` : supplierFiscalId)}</cbc:CompanyID><cac:TaxScheme><cbc:ID>${(company.vatPayer && !outsideVat) ? "VAT" : "FC"}</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme>`;
+  const customerTax = client.vatPayer && !outsideVat
     ? `<cac:PartyTaxScheme><cbc:CompanyID>${x(`RO${customerFiscalId}`)}</cbc:CompanyID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme>`
     : "";
   const supplierContact = company.phone || company.email
@@ -371,7 +377,8 @@ export function generateEFacturaXml({
   const subtotal = Math.abs(Number(invoice.subtotal));
   const vatTotal = Math.abs(Number(invoice.vatTotal));
   const total = Math.abs(Number(invoice.total));
-  return `<?xml version="1.0" encoding="UTF-8"?><${root} xmlns="urn:oasis:names:specification:ubl:schema:xsd:${namespace}" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"><cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:efactura.mfinante.ro:CIUS-RO:1.0.1</cbc:CustomizationID><cbc:ID>${x(invoice.series)}-${invoice.number}</cbc:ID><cbc:IssueDate>${x(invoice.issueDate)}</cbc:IssueDate>${!isCreditNote && invoice.dueDate ? `<cbc:DueDate>${x(invoice.dueDate)}</cbc:DueDate>` : ""}${typeElement}${optionalElement("Note", invoice.notes)}<cbc:TaxPointDate>${x(invoice.taxPointDate || invoice.issueDate)}</cbc:TaxPointDate><cbc:DocumentCurrencyCode>${x(currency)}</cbc:DocumentCurrencyCode>${optionalElement("BuyerReference", invoice.buyerReference)}${billingReference}${supplierParty}${customerParty}${paymentMeans}${invoice.paymentTerms ? `<cac:PaymentTerms><cbc:Note>${x(invoice.paymentTerms)}</cbc:Note></cac:PaymentTerms>` : ""}<cac:TaxTotal><cbc:TaxAmount currencyID="${x(currency)}">${money(vatTotal)}</cbc:TaxAmount>${taxSubtotals}</cac:TaxTotal><cac:LegalMonetaryTotal><cbc:LineExtensionAmount currencyID="${x(currency)}">${money(subtotal)}</cbc:LineExtensionAmount><cbc:TaxExclusiveAmount currencyID="${x(currency)}">${money(subtotal)}</cbc:TaxExclusiveAmount><cbc:TaxInclusiveAmount currencyID="${x(currency)}">${money(total)}</cbc:TaxInclusiveAmount><cbc:PayableAmount currencyID="${x(currency)}">${money(total)}</cbc:PayableAmount></cac:LegalMonetaryTotal>${lines}</${root}>`;
+  const prepaid = isCreditNote ? 0 : Number(invoice.paidAmount || 0);
+  return `<?xml version="1.0" encoding="UTF-8"?><${root} xmlns="urn:oasis:names:specification:ubl:schema:xsd:${namespace}" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"><cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:efactura.mfinante.ro:CIUS-RO:1.0.1</cbc:CustomizationID><cbc:ID>${x(invoice.series)}-${invoice.number}</cbc:ID><cbc:IssueDate>${x(invoice.issueDate)}</cbc:IssueDate>${!isCreditNote && invoice.dueDate ? `<cbc:DueDate>${x(invoice.dueDate)}</cbc:DueDate>` : ""}${typeElement}${optionalElement("Note", invoice.notes)}<cbc:TaxPointDate>${x(invoice.taxPointDate || invoice.issueDate)}</cbc:TaxPointDate><cbc:DocumentCurrencyCode>${x(currency)}</cbc:DocumentCurrencyCode>${optionalElement("BuyerReference", invoice.buyerReference)}${billingReference}${supplierParty}${customerParty}${paymentMeans}${invoice.paymentTerms ? `<cac:PaymentTerms><cbc:Note>${x(invoice.paymentTerms)}</cbc:Note></cac:PaymentTerms>` : ""}<cac:TaxTotal><cbc:TaxAmount currencyID="${x(currency)}">${money(vatTotal)}</cbc:TaxAmount>${taxSubtotals}</cac:TaxTotal><cac:LegalMonetaryTotal><cbc:LineExtensionAmount currencyID="${x(currency)}">${money(subtotal)}</cbc:LineExtensionAmount><cbc:TaxExclusiveAmount currencyID="${x(currency)}">${money(subtotal)}</cbc:TaxExclusiveAmount><cbc:TaxInclusiveAmount currencyID="${x(currency)}">${money(total)}</cbc:TaxInclusiveAmount>${prepaid > 0 ? `<cbc:PrepaidAmount currencyID="${x(currency)}">${money(prepaid)}</cbc:PrepaidAmount>` : ""}<cbc:PayableAmount currencyID="${x(currency)}">${money(total - prepaid)}</cbc:PayableAmount></cac:LegalMonetaryTotal>${lines}</${root}>`;
 }
 
 function parseId(text: string, names: string[]) {
@@ -482,6 +489,12 @@ export async function submitEFactura(
         duplicatePrevented: true,
       };
     }
+    // Re-read under the same lock used by corrections, so a concurrent edit
+    // cannot leave an outdated XML snapshot queued for transmission.
+    const current = await getInvoiceFull(invoiceId);
+    if (!current?.client || !['issued','partial','paid','storno'].includes(current.invoice.status)) throw new Error("Factura nu mai este eligibilă pentru transmitere.");
+    xml = generateEFacturaXml({ ...current, client: current.client });
+    cif = current.company.cif;
     const attempt = Number(
       (
         await connection.query(
@@ -702,6 +715,7 @@ export async function processAutomaticEFactura(limit = 20) {
         WHERE "invoiceId"=i.id AND environment=$2 ORDER BY id DESC LIMIT 1
      ) ef ON true
      WHERE i."autoEfactura"=1
+       AND (i."anafSendAfter" IS NULL OR i."anafSendAfter" <= now())
        AND ((i."invoiceType"='STANDARD' AND i.status IN ('issued','partial','paid')) OR (i."invoiceType"='STORNO' AND i.status='storno'))
        AND (ef.status IS NULL OR (ef.status='ERROR' AND ef.retryable=1
             AND COALESCE(ef."checkedAt",ef."createdAt") < now() - interval '6 hours'))

@@ -66,4 +66,11 @@ assert(credit.includes("<cac:BillingReference>"), "Referința la factura iniția
 assert(!/>-\d/.test(credit), "CreditNote conține valori monetare negative.");
 assert(validateEFactura({ invoice: baseInvoice, items: [{ ...item, vatRate: 21, vatCategoryCode: "S" }], client, company }).length > 0, "Regimul TVA incompatibil nu a fost respins.");
 
+const paid = generateEFacturaXml({ invoice: { ...baseInvoice, dueDate: '', paymentTerms: '', paidAmount: 100 }, items: [item], client: { ...client, vatPayer: 1 }, company });
+assert(paid.includes('<cbc:PrepaidAmount currencyID="RON">100.00</cbc:PrepaidAmount>'), 'Suma achitată lipsește.');
+assert(paid.includes('<cbc:PayableAmount currencyID="RON">0.00</cbc:PayableAmount>'), 'Soldul achitat nu este zero.');
+assert(!(paid.match(/<cac:PartyTaxScheme>[\s\S]*?<\/cac:PartyTaxScheme>/g) || []).some(p => p.includes('<cbc:ID>VAT</cbc:ID>')), 'Categoria O include un identificator TVA.');
+assert(validateEFactura({ invoice: { ...baseInvoice, dueDate: '', paymentTerms: '' }, items: [item], client, company }).some(e => e.includes('BR-CO-25')), 'Lipsa scadenței nu este detectată.');
+const partial = generateEFacturaXml({ invoice: { ...baseInvoice, paidAmount: 25 }, items: [item], client, company });
+assert(partial.includes('<cbc:PayableAmount currencyID="RON">75.00</cbc:PayableAmount>'), 'Soldul parțial este greșit.');
 console.log("Accounting XML self-test passed.");

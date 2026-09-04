@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { StatusBadge } from "@/components/accounting/StatusBadge";
 import { EFacturaPanel } from "@/components/accounting/EFacturaPanel";
+import { InvoiceCorrection } from "@/components/accounting/InvoiceCorrection";
 import { ArrowLeft, Download, Trash2, Receipt as ReceiptIcon, RotateCcw } from "lucide-react";
 import { bucharestDate } from "@/lib/accounting/date";
 
@@ -142,6 +143,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       </div>
 
       <EFacturaPanel invoiceId={Number(id)} />
+      {!financialLocked && <InvoiceCorrection invoiceId={Number(id)} />}
 
       <div className="card-table mb-6">
         <table>

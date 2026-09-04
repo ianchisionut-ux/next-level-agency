@@ -39,10 +39,11 @@ export default function StornoInvoicePage() {
     if (!invoiceId) return alert("Selectează factura care trebuie stornată.");
     if (!reason.trim()) return alert("Completează motivul stornării.");
     if (!confirm(`Creezi factura storno pentru ${selected?.series} ${String(selected?.number || 0).padStart(4, "0")}?`)) return;
+    const sendToAnafNow = confirm("Trimiți și factura storno acum la ANAF/SPV?\nOK = trimite acum.\nAnulează = trimite automat mâine, la verificarea zilnică (09:00 vara / 08:00 iarna). Se folosește mediul ANAF configurat.");
     setSaving(true);
     const response = await fetch(`/api/accounting/invoices/${invoiceId}/storno`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ series, issueDate, reason }),
+      body: JSON.stringify({ series, issueDate, reason, sendToAnafNow }),
     });
     const data = await response.json();
     setSaving(false);

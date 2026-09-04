@@ -111,7 +111,7 @@ export function EFacturaPanel({ invoiceId }: { invoiceId: number }) {
 
       <div className="ef-safety-line">
         <ShieldCheck size={17}/>
-        <span>{data?.autoEfactura ? "Protecție automată activă: trimitere imediată la emitere, fallback zilnic și reverificarea statusului." : "Trimiterea automată nu este activă pentru această factură."}</span>
+        <span>{data?.autoEfactura ? "Trimitere la emitere numai cu confirmare. Facturile noi amânate sunt preluate automat din ziua următoare; statusul transmiterilor este reverificat zilnic." : "Trimiterea automată nu este activă pentru această factură."}</span>
       </div>
 
       {data && data.errors.length > 0 && <ul className="ef-errors">{data.errors.map((item) => <li key={item}>{item}</li>)}</ul>}

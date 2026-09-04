@@ -708,6 +708,7 @@ export async function createInvoice(input: {
     );
 
     const invoiceId = rows[0].id as number;
+    await connection.query(`UPDATE invoices SET "anafSendAfter"=((now() AT TIME ZONE 'Europe/Bucharest')::date + 1)::timestamp AT TIME ZONE 'Europe/Bucharest' WHERE id=$1`, [invoiceId]);
     await connection.query(
       `UPDATE invoices SET "invoiceType"=$1, "originalInvoiceId"=$2, "stornoReason"=$3, status=$4,
        "invoiceTypeCode"=$5, "paymentMeansCode"=$6, "paymentTerms"=$7, "taxPointDate"=$8, "buyerReference"=$9,
@@ -960,6 +961,27 @@ export async function getInvoiceFull(id: number) {
 export async function setInvoiceStatus(id: number, status: Invoice["status"]) {
   const pool = await ready();
   await pool.query(`UPDATE invoices SET status=$1 WHERE id=$2`, [status, id]);
+}
+
+export async function correctUnsentInvoice(id: number, input: { dueDate: string; paymentTerms: string; notes: string; items: { id: number; description: string }[] }) {
+  const connection = await (await ready()).connect();
+  try {
+    await connection.query("BEGIN");
+    await connection.query(`SELECT pg_advisory_xact_lock($1,$2)`, [73001, id]);
+    const invoice = (await connection.query(`SELECT * FROM invoices WHERE id=$1 FOR UPDATE`, [id])).rows[0];
+    if (!invoice || invoice.invoiceType !== "STANDARD" || !['issued','paid','partial'].includes(invoice.status)) throw new Error("Factura nu poate fi modificată.");
+    const locked = (await connection.query(`SELECT id FROM efactura_submissions WHERE "invoiceId"=$1 AND NOT ((status='ERROR' AND COALESCE("uploadId",'')='') OR (environment='test' AND status='REJECTED')) LIMIT 1`, [id])).rows[0];
+    if (locked) throw new Error("Factura a fost transmisă sau este în procesare. Editarea este blocată.");
+    if (typeof input.dueDate !== 'string' || typeof input.paymentTerms !== 'string' || typeof input.notes !== 'string' || !Array.isArray(input.items)) throw new Error("Date de corecție invalide.");
+    if (input.dueDate && (!/^\d{4}-\d{2}-\d{2}$/.test(input.dueDate) || !Number.isFinite(Date.parse(input.dueDate)) || new Date(input.dueDate).toISOString().slice(0,10) !== input.dueDate)) throw new Error("Scadență invalidă.");
+    const existing = (await connection.query(`SELECT id FROM invoice_items WHERE "invoiceId"=$1`, [id])).rows;
+    if (input.items.length !== existing.length || new Set(input.items.map(i => i.id)).size !== existing.length || input.items.some(i => !existing.some(e => e.id === i.id) || typeof i.description !== 'string' || !i.description.trim())) throw new Error("Pozițiile facturii sunt invalide.");
+    await connection.query(`UPDATE invoices SET "dueDate"=$1,"paymentTerms"=$2,notes=$3 WHERE id=$4`, [input.dueDate || null, input.paymentTerms, input.notes, id]);
+    for (const item of input.items) await connection.query(`UPDATE invoice_items SET description=$1 WHERE id=$2 AND "invoiceId"=$3`, [item.description.trim(), item.id, id]);
+    // Preserve payments, receipts, amounts, fiscal classification and transmission history.
+    await connection.query("COMMIT");
+  } catch (error) { await connection.query("ROLLBACK"); throw error; }
+  finally { connection.release(); }
 }
 
 export async function deleteInvoice(id: number) {

@@ -1,6 +1,6 @@
 import { accountingApi } from '@/lib/accounting/access'
 import { NextRequest, NextResponse } from "next/server";
-import { getInvoiceFull, deleteInvoice } from "@/lib/accounting/repo";
+import { getInvoiceFull, deleteInvoice, correctUnsentInvoice } from "@/lib/accounting/repo";
 import { latestSubmission } from "@/lib/accounting/efactura";
 
 async function GETHandler(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -22,3 +22,10 @@ async function DELETEHandler(_req: NextRequest, { params }: { params: Promise<{ 
 
 export const GET = accountingApi(GETHandler)
 export const DELETE = accountingApi(DELETEHandler)
+export const PATCH = accountingApi(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+  try {
+    const { id } = await params;
+    await correctUnsentInvoice(Number(id), await req.json());
+    return NextResponse.json({ ok: true });
+  } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Corecția a eșuat." }, { status: 400 }); }
+});

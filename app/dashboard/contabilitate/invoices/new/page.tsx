@@ -239,11 +239,13 @@ export default function NewInvoicePage() {
       alert("Factura achitată pe loc și chitanța pot fi emise doar în RON.");
       return;
     }
+    const sendToAnafNow = confirm("Trimiți factura acum în ANAF/SPV?\nOK = trimite după validare.\nAnulează = emite fără trimitere imediată; trimiterea automată va avea loc mâine la 09:00 vara / 08:00 iarna (ora României). Se folosește mediul ANAF configurat.");
     setSaving(true);
     const res = await fetch("/api/accounting/invoices", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        sendToAnafNow,
         series,
         number: selectedNumber,
         clientId,

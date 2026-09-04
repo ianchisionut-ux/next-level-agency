@@ -7,6 +7,7 @@ async function POSTHandler(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const { id } = await params;
     const data = await req.json();
+    if (typeof data.sendToAnafNow !== "boolean") return NextResponse.json({ error: "Alege trimiterea la ANAF acum sau mâine." }, { status: 400 });
     const reason = String(data.reason || "").trim();
     if (!reason) return NextResponse.json({ error: "Completează motivul stornării." }, { status: 400 });
     const stornoId = await createStornoInvoice({
@@ -15,7 +16,7 @@ async function POSTHandler(req: NextRequest, { params }: { params: Promise<{ id:
       issueDate: String(data.issueDate || new Date().toISOString().slice(0, 10)),
       reason,
     });
-    after(async () => {
+    if (data.sendToAnafNow) after(async () => {
       try {
         const connection = await getAnafConnectionStatus();
         if (connection.configured && connection.connected) await sendInvoiceToAnaf(stornoId);
@@ -23,7 +24,7 @@ async function POSTHandler(req: NextRequest, { params }: { params: Promise<{ id:
         console.error(`Trimiterea automată e-Factura pentru storno ${stornoId} a eșuat:`, error);
       }
     });
-    return NextResponse.json({ id: stornoId, eFactura: { status: "PENDING" } });
+    return NextResponse.json({ id: stornoId, eFactura: { status: data.sendToAnafNow ? "PENDING" : "DEFERRED" } });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Factura nu a putut fi stornată." }, { status: 400 });
   }

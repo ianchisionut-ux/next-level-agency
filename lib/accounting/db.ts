@@ -196,6 +196,7 @@ async function ensureSchema(pool: Pool) {
   // never be picked up by the automatic sender. Only newly issued invoices are
   // explicitly opted in inside createInvoice().
   await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "autoEfactura" INTEGER NOT NULL DEFAULT 0;`);
+  await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "anafSendAfter" TIMESTAMPTZ;`);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS "invoices_one_storno_per_original" ON invoices ("originalInvoiceId") WHERE "invoiceType"='STORNO';`);
 
   await pool.query(`
