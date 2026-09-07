@@ -1,6 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import {
+  CalendarCheck,
+  Check,
+  Globe2,
+  LayoutTemplate,
+  Mail,
+  Megaphone,
+  MousePointerClick,
+  Palette,
+  ShieldCheck,
+  WalletCards,
+} from "lucide-react";
 
 // -----------------------------------------------------------------------------
 // Chestionar & Audit — Proiect Site Web
@@ -97,6 +109,126 @@ const STEP_TITLES = [
   "Marketing & social media",
   "Termen, buget & contact",
 ];
+
+const STEP_GUIDES = [
+  {
+    eyebrow: "Direcția proiectului",
+    title: "Spune-ne ce trebuie să obțină site-ul",
+    text: "Nu căutăm termeni tehnici. Vrem să înțelegem afacerea, imaginea ei și acțiunea principală pe care trebuie s-o facă vizitatorul.",
+    points: ["Alege obiectivul cel mai important", "Spune-ne ce elemente de brand există deja", "Poți selecta mai multe acțiuni"],
+  },
+  {
+    eyebrow: "Adresa și infrastructura",
+    title: "Domeniul este adresa, hostingul este casa site-ului",
+    text: "Dacă le ai deja, continuăm cu ele. Dacă nu, te ajutăm să alegi o adresă potrivită și să pregătim găzduirea, securitatea și e-mailul profesional.",
+    points: ["Domeniu: numefirma.ro", "E-mail: contact@numefirma.ro", "SSL: lacătul de securitate din browser"],
+  },
+  {
+    eyebrow: "Harta site-ului",
+    title: "Alege paginile de care are nevoie clientul",
+    text: "Gândește-te la drumul unui vizitator: află cine ești, înțelege serviciile, vede dovezi și apoi te contactează.",
+    points: ["Bifează toate paginile necesare", "Menționează paginile speciale", "Spune-ne dacă ai deja texte și imagini"],
+  },
+  {
+    eyebrow: "Aspect și funcții",
+    title: "Arată-ne stilul și modul de interacțiune dorit",
+    text: "Exemplele de site-uri ne ajută să înțelegem atmosfera preferată. Separat, alegi funcțiile care îi permit clientului să te contacteze ușor.",
+    points: ["Curat și aerisit sau dinamic", "WhatsApp, formular, hartă ori ofertă", "Exemplele sunt orientative, nu le copiem"],
+  },
+  {
+    eyebrow: "Promovare conectată",
+    title: "Site-ul poate lucra împreună cu social media",
+    text: "Răspunsurile ne arată dacă trebuie să conectăm site-ul cu paginile sociale și dacă propunerea include administrare sau campanii plătite.",
+    points: ["Selectează doar conturile active", "Bugetul pentru reclame este separat de site", "Poți începe promovarea și ulterior"],
+  },
+  {
+    eyebrow: "Încadrarea proiectului",
+    title: "Un termen și un buget realist ne ajută să propunem corect",
+    text: "Nu trebuie să fie valori finale. O estimare ne permite să recomandăm varianta potrivită și să planificăm etapele proiectului.",
+    points: ["Poți indica o perioadă aproximativă", "Bugetul poate fi un interval", "Telefonul sau e-mailul sunt suficiente pentru răspuns"],
+  },
+];
+
+function BrowserFrame({ children, address = "www.afacerea-ta.ro" }: { children: React.ReactNode; address?: string }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-white/15 bg-white shadow-2xl shadow-blue/10">
+      <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-100 px-3 py-2">
+        <div className="flex gap-1"><span className="h-2 w-2 rounded-full bg-red-400"/><span className="h-2 w-2 rounded-full bg-amber-400"/><span className="h-2 w-2 rounded-full bg-emerald-400"/></div>
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded-md bg-white px-2 py-1 text-[9px] font-semibold text-slate-500"><ShieldCheck size={10} className="text-emerald-500"/><span className="truncate">{address}</span></div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function StepPreview({ step }: { step: number }) {
+  if (step === 0) return (
+    <BrowserFrame>
+      <div className="bg-slate-950 px-4 py-3 text-white">
+        <div className="flex items-center justify-between"><span className="text-[10px] font-black tracking-wide">LOGO</span><div className="flex gap-2 text-[7px] text-white/60"><span>Servicii</span><span>Despre</span><span>Contact</span></div></div>
+        <div className="py-7 text-center"><div className="mx-auto mb-2 h-2 w-3/4 rounded bg-white/90"/><div className="mx-auto mb-4 h-1.5 w-1/2 rounded bg-white/30"/><span className="inline-flex items-center gap-1 rounded-md bg-blue px-3 py-1.5 text-[8px] font-bold"><MousePointerClick size={10}/>Cere o ofertă</span></div>
+      </div>
+    </BrowserFrame>
+  );
+  if (step === 1) return (
+    <BrowserFrame address="https://www.numefirma.ro">
+      <div className="grid grid-cols-2 gap-2 bg-slate-50 p-4">
+        <div className="rounded-lg border border-slate-200 bg-white p-3"><Globe2 size={18} className="mb-2 text-blue"/><p className="text-[9px] font-black text-slate-800">numefirma.ro</p><p className="mt-1 text-[7px] text-slate-400">Domeniul tău</p></div>
+        <div className="rounded-lg border border-slate-200 bg-white p-3"><Mail size={18} className="mb-2 text-blue"/><p className="text-[9px] font-black text-slate-800">contact@...</p><p className="mt-1 text-[7px] text-slate-400">E-mail profesional</p></div>
+      </div>
+    </BrowserFrame>
+  );
+  if (step === 2) return (
+    <BrowserFrame>
+      <div className="bg-white p-4">
+        <div className="mb-3 flex flex-wrap gap-1">{["Acasă", "Despre", "Servicii", "Portofoliu", "Contact"].map((item, index) => <span key={item} className={`rounded px-2 py-1 text-[7px] font-bold ${index === 0 ? "bg-blue text-white" : "bg-slate-100 text-slate-500"}`}>{item}</span>)}</div>
+        <div className="grid grid-cols-[1.35fr_.65fr] gap-2"><div className="h-20 rounded-lg bg-gradient-to-br from-blue/20 to-blue/5 p-3"><LayoutTemplate size={17} className="text-blue"/><div className="mt-2 h-1.5 w-3/4 rounded bg-slate-700"/><div className="mt-1.5 h-1 w-1/2 rounded bg-slate-300"/></div><div className="grid gap-2"><div className="rounded-lg bg-slate-100"/><div className="rounded-lg bg-slate-100"/></div></div>
+      </div>
+    </BrowserFrame>
+  );
+  if (step === 3) return (
+    <BrowserFrame>
+      <div className="grid grid-cols-2 gap-2 bg-slate-100 p-3">
+        <div className="rounded-lg bg-white p-3"><Palette size={16} className="mb-2 text-blue"/><div className="h-2 w-3/4 rounded bg-slate-800"/><div className="mt-2 h-1 w-full rounded bg-slate-200"/><div className="mt-1 h-1 w-2/3 rounded bg-slate-200"/></div>
+        <div className="overflow-hidden rounded-lg bg-gradient-to-br from-violet-600 to-blue p-3 text-white"><div className="h-5 w-5 rounded-full border border-white/50"/><div className="mt-4 h-2 w-full rounded bg-white/80"/><div className="mt-2 h-1 w-2/3 rounded bg-white/40"/></div>
+        <div className="col-span-2 flex gap-1.5"><span className="flex flex-1 items-center justify-center rounded bg-emerald-500 py-1.5 text-[7px] font-bold text-white">WhatsApp</span><span className="flex flex-1 items-center justify-center rounded bg-blue py-1.5 text-[7px] font-bold text-white">Formular ofertă</span></div>
+      </div>
+    </BrowserFrame>
+  );
+  if (step === 4) return (
+    <BrowserFrame>
+      <div className="grid grid-cols-[.8fr_1.2fr] gap-2 bg-slate-50 p-3">
+        <div className="space-y-2">{["f", "◎", "♪"].map((icon, index) => <div key={icon} className="flex items-center gap-2 rounded-lg bg-white p-2 shadow-sm"><span className={`grid h-5 w-5 place-items-center rounded-md text-[10px] font-black text-white ${index === 0 ? "bg-blue" : index === 1 ? "bg-pink-500" : "bg-slate-900"}`}>{icon}</span><span className="text-[7px] font-bold text-slate-600">Cont activ</span></div>)}</div>
+        <div className="rounded-lg bg-white p-3 shadow-sm"><Megaphone size={17} className="text-blue"/><p className="mt-2 text-[9px] font-black text-slate-800">Campanie conectată</p><div className="mt-3 h-1.5 overflow-hidden rounded bg-slate-100"><div className="h-full w-2/3 rounded bg-blue"/></div><p className="mt-1 text-[7px] text-slate-400">Audiență → site → cerere</p></div>
+      </div>
+    </BrowserFrame>
+  );
+  return (
+    <BrowserFrame>
+      <div className="grid grid-cols-2 gap-2 bg-slate-50 p-4">
+        <div className="rounded-lg bg-white p-3 shadow-sm"><CalendarCheck size={18} className="mb-2 text-blue"/><p className="text-[9px] font-black text-slate-800">Lansare</p><p className="mt-1 text-[7px] text-slate-400">Perioadă estimată</p></div>
+        <div className="rounded-lg bg-white p-3 shadow-sm"><WalletCards size={18} className="mb-2 text-blue"/><p className="text-[9px] font-black text-slate-800">Buget</p><p className="mt-1 text-[7px] text-slate-400">Interval orientativ</p></div>
+        <div className="col-span-2 flex items-center gap-2 rounded-lg border border-blue/15 bg-blue/5 p-2.5"><Check size={14} className="text-blue"/><p className="text-[8px] font-bold text-slate-600">Primești o propunere potrivită obiectivelor tale</p></div>
+      </div>
+    </BrowserFrame>
+  );
+}
+
+function StepExplainer({ step }: { step: number }) {
+  const guide = STEP_GUIDES[step];
+  return (
+    <aside className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 text-white shadow-xl lg:sticky lg:top-24">
+      <div className="p-6 sm:p-8">
+        <div className="mb-6 flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-blue text-sm font-black">{step + 1}</span><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-bright">Ghid vizual</p><p className="text-xs font-semibold text-white/50">{guide.eyebrow}</p></div></div>
+        <h2 className="text-2xl font-extrabold leading-tight">{guide.title}</h2>
+        <p className="mt-3 text-sm leading-6 text-white/60">{guide.text}</p>
+        <div className="my-6"><StepPreview step={step}/></div>
+        <ul className="space-y-2.5">{guide.points.map((point) => <li key={point} className="flex items-start gap-2.5 text-xs leading-5 text-white/70"><span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-blue/20 text-blue-bright"><Check size={10} strokeWidth={3}/></span>{point}</li>)}</ul>
+      </div>
+      <div className="border-t border-white/10 bg-white/5 px-6 py-4 text-[11px] leading-5 text-white/45 sm:px-8">Nu există răspunsuri greșite. Recomandarea finală va fi adaptată situației tale.</div>
+    </aside>
+  );
+}
 
 function toggleInArray(arr: string[], value: string) {
   return arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value];
@@ -284,7 +416,9 @@ export default function AuditForm() {
   }
 
   return (
-    <div className="rounded-2xl border border-line-light bg-paper-soft p-6 sm:p-10">
+    <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:gap-10">
+      <StepExplainer step={step} />
+      <div className="rounded-2xl border border-line-light bg-paper-soft p-6 shadow-sm sm:p-10">
       {/* Progress */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
@@ -660,6 +794,7 @@ export default function AuditForm() {
             {status === "loading" ? "Se trimite..." : "Trimite chestionarul"}
           </button>
         )}
+      </div>
       </div>
     </div>
   );

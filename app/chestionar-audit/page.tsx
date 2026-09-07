@@ -32,7 +32,7 @@ export default function ChestionarAuditPage() {
 
         {/* FORM — light, la fel ca pagina de contact */}
         <section className="bg-paper py-16 text-slate-900">
-          <div className="mx-auto max-w-3xl px-6">
+          <div className="mx-auto max-w-7xl px-6">
             <AuditForm />
           </div>
         </section>
