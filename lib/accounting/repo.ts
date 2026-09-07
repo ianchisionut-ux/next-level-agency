@@ -132,6 +132,8 @@ export type Invoice = {
   deliveryDate: string;
   deliveryTime: string;
   autoEfactura: number;
+  integrationSource: string | null;
+  externalId: string | null;
   createdAt: string;
 };
 
@@ -290,6 +292,33 @@ export async function updateClient(id: number, data: ClientInput) {
       id,
     ],
   );
+}
+
+export async function upsertIntegrationClient(
+  source: string,
+  externalId: string,
+  data: ClientInput,
+): Promise<number> {
+  const sourceConnectionId = `${source}:${externalId}`;
+  const pool = await ready();
+  const { rows } = await pool.query(
+    `INSERT INTO clients (name, "clientType", "regCom", cif, cnp, address, judet, city, phone, email, "ciSeries", "ciNumber", "vatPayer", "countryCode", "postalCode", "sourceConnectionId", "sourceNib")
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'')
+     ON CONFLICT ("sourceConnectionId") WHERE "sourceConnectionId" IS NOT NULL
+     DO UPDATE SET name=EXCLUDED.name, "clientType"=EXCLUDED."clientType", "regCom"=EXCLUDED."regCom",
+       cif=EXCLUDED.cif, cnp=EXCLUDED.cnp, address=EXCLUDED.address, judet=EXCLUDED.judet,
+       city=EXCLUDED.city, phone=EXCLUDED.phone, email=EXCLUDED.email, "ciSeries"=EXCLUDED."ciSeries",
+       "ciNumber"=EXCLUDED."ciNumber", "vatPayer"=EXCLUDED."vatPayer",
+       "countryCode"=EXCLUDED."countryCode", "postalCode"=EXCLUDED."postalCode"
+     RETURNING id`,
+    [
+      data.name, data.clientType || "PF", data.regCom ?? "", data.cif ?? "", data.cnp ?? "",
+      data.address ?? "", data.judet ?? "", data.city ?? "", data.phone ?? "", data.email ?? "",
+      data.ciSeries ?? "", data.ciNumber ?? "", data.vatPayer ? 1 : 0,
+      data.countryCode || "RO", data.postalCode ?? "", sourceConnectionId,
+    ],
+  );
+  return Number(rows[0].id);
 }
 
 export async function syncClientFromConnection(data: {
@@ -585,6 +614,8 @@ export async function createInvoice(input: {
   clientSnapshot?: Client;
   paidOnSpot?: boolean;
   cashier?: string;
+  integrationSource?: string;
+  externalId?: string;
 }): Promise<number> {
   const pool = await ready();
   const series = input.series.trim().toUpperCase();
@@ -611,6 +642,14 @@ export async function createInvoice(input: {
   const exchangeRate = Number(input.exchangeRate ?? 1);
   if (!Number.isFinite(exchangeRate) || exchangeRate <= 0)
     throw new Error("Cursul de schimb trebuie să fie pozitiv.");
+  const integrationSource = input.integrationSource?.trim().toLowerCase() || null;
+  const externalId = input.externalId?.trim() || null;
+  if ((integrationSource && !externalId) || (!integrationSource && externalId))
+    throw new Error("Sursa integrării și identificatorul extern trebuie furnizate împreună.");
+  if (integrationSource && !/^[a-z0-9_-]{2,40}$/.test(integrationSource))
+    throw new Error("Sursa integrării nu este validă.");
+  if (externalId && (externalId.length > 160 || /[\u0000-\u001f]/.test(externalId)))
+    throw new Error("Identificatorul extern nu este valid.");
   input.items.forEach((item, index) => {
     const line = index + 1;
     if (!String(item.description || "").trim())
@@ -681,8 +720,8 @@ export async function createInvoice(input: {
 
     const { rows } = await connection.query(
       `INSERT INTO invoices
-        (series, number, "clientId", "userId", "issueDate", "dueDate", status, "paidAmount", subtotal, "vatTotal", total, "discountPercent", currency, "exchangeRate", notes, "delegateName", "delegateCI", "delegateCNP", "vehiclePlate", "deliveryDate", "deliveryTime")
-       VALUES ($1,$2,$3,$4,$5,$6,'issued',0,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+        (series, number, "clientId", "userId", "issueDate", "dueDate", status, "paidAmount", subtotal, "vatTotal", total, "discountPercent", currency, "exchangeRate", notes, "delegateName", "delegateCI", "delegateCNP", "vehiclePlate", "deliveryDate", "deliveryTime", "integrationSource", "externalId")
+       VALUES ($1,$2,$3,$4,$5,$6,'issued',0,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
        RETURNING id`,
       [
         series,
@@ -704,6 +743,8 @@ export async function createInvoice(input: {
         input.vehiclePlate ?? "",
         input.deliveryDate ?? "",
         input.deliveryTime ?? "",
+        integrationSource,
+        externalId,
       ],
     );
 
@@ -797,6 +838,15 @@ export async function createInvoice(input: {
   } finally {
     connection.release();
   }
+}
+
+export async function getInvoiceByIntegrationReference(source: string, externalId: string) {
+  const pool = await ready();
+  const { rows } = await pool.query(
+    `SELECT id FROM invoices WHERE "integrationSource"=$1 AND "externalId"=$2 LIMIT 1`,
+    [source.trim().toLowerCase(), externalId.trim()],
+  );
+  return rows[0] ? getInvoiceFull(Number(rows[0].id)) : undefined;
 }
 
 export async function createStornoInvoice(input: {
