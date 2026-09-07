@@ -15,23 +15,22 @@ export default function ChestionarAuditPage() {
       <Header />
       <main>
         {/* HERO — dark, la fel ca restul paginilor site-ului */}
-        <section className="grain bg-navy py-20 text-center">
+        <section className="grain bg-navy py-8 text-center sm:py-10">
           <div className="mx-auto max-w-3xl px-6">
             <p className="eyebrow text-blue-bright">Chestionar &amp; Audit</p>
-            <h1 className="mt-3 text-4xl font-extrabold tracking-tight sm:text-5xl">
+            <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
               Proiectul tău de site web, pas cu pas
             </h1>
-            <p className="mt-5 text-base text-white/60">
+            <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-white/60">
               Acest chestionar ne ajută să înțelegem afacerea ta și să construim un site
-              și o prezență digitală aliniate cu obiectivele tale. Durează 3–5 minute —
-              răspunsurile tale devin baza propunerii pe care echipa Next Level o
-              pregătește pentru tine.
+              aliniat cu obiectivele tale. Durează 3–5 minute, iar răspunsurile devin
+              baza propunerii pregătite de echipa Next Level.
             </p>
           </div>
         </section>
 
         {/* FORM — light, la fel ca pagina de contact */}
-        <section className="bg-paper py-16 text-slate-900">
+        <section className="bg-paper py-8 text-slate-900 sm:py-10">
           <div className="mx-auto max-w-7xl px-6">
             <AuditForm />
           </div>

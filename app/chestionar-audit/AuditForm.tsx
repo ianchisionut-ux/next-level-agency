@@ -116,36 +116,48 @@ const STEP_GUIDES = [
     title: "Spune-ne ce trebuie să obțină site-ul",
     text: "Nu căutăm termeni tehnici. Vrem să înțelegem afacerea, imaginea ei și acțiunea principală pe care trebuie s-o facă vizitatorul.",
     points: ["Alege obiectivul cel mai important", "Spune-ne ce elemente de brand există deja", "Poți selecta mai multe acțiuni"],
+    example: "Exemplu: «Salon de cosmetică — programări online și prezentarea serviciilor».",
+    impact: "Răspunsurile stabilesc mesajul principal, primul ecran și butoanele importante ale site-ului.",
   },
   {
     eyebrow: "Adresa și infrastructura",
     title: "Domeniul este adresa, hostingul este casa site-ului",
     text: "Dacă le ai deja, continuăm cu ele. Dacă nu, te ajutăm să alegi o adresă potrivită și să pregătim găzduirea, securitatea și e-mailul profesional.",
     points: ["Domeniu: numefirma.ro", "E-mail: contact@numefirma.ro", "SSL: lacătul de securitate din browser"],
+    example: "Exemplu: domeniu existent «firma.ro», dar hosting și e-mail profesional incluse în proiect.",
+    impact: "Stabilim ce păstrăm, ce configurăm și dacă sunt necesare mutări tehnice înainte de lansare.",
   },
   {
     eyebrow: "Harta site-ului",
     title: "Alege paginile de care are nevoie clientul",
     text: "Gândește-te la drumul unui vizitator: află cine ești, înțelege serviciile, vede dovezi și apoi te contactează.",
     points: ["Bifează toate paginile necesare", "Menționează paginile speciale", "Spune-ne dacă ai deja texte și imagini"],
+    example: "Exemplu: Acasă + Servicii + Portofoliu + Contact, în română și engleză.",
+    impact: "Selecția determină meniul, volumul de conținut și estimarea de timp pentru proiect.",
   },
   {
     eyebrow: "Aspect și funcții",
     title: "Arată-ne stilul și modul de interacțiune dorit",
     text: "Exemplele de site-uri ne ajută să înțelegem atmosfera preferată. Separat, alegi funcțiile care îi permit clientului să te contacteze ușor.",
     points: ["Curat și aerisit sau dinamic", "WhatsApp, formular, hartă ori ofertă", "Exemplele sunt orientative, nu le copiem"],
+    example: "Exemplu: design aerisit, buton WhatsApp și formular de cerere ofertă.",
+    impact: "Alegem direcția vizuală, nivelul de animație și funcțiile care trebuie proiectate și testate.",
   },
   {
     eyebrow: "Promovare conectată",
     title: "Site-ul poate lucra împreună cu social media",
     text: "Răspunsurile ne arată dacă trebuie să conectăm site-ul cu paginile sociale și dacă propunerea include administrare sau campanii plătite.",
     points: ["Selectează doar conturile active", "Bugetul pentru reclame este separat de site", "Poți începe promovarea și ulterior"],
+    example: "Exemplu: Facebook + Instagram, administrare lunară și buget ads de 500–2.000 lei.",
+    impact: "Vedem dacă site-ul trebuie pregătit pentru campanii, măsurarea conversiilor și conținut social.",
   },
   {
     eyebrow: "Încadrarea proiectului",
     title: "Un termen și un buget realist ne ajută să propunem corect",
     text: "Nu trebuie să fie valori finale. O estimare ne permite să recomandăm varianta potrivită și să planificăm etapele proiectului.",
     points: ["Poți indica o perioadă aproximativă", "Bugetul poate fi un interval", "Telefonul sau e-mailul sunt suficiente pentru răspuns"],
+    example: "Exemplu: lansare în 6–8 săptămâni, buget orientativ 3.000–5.000 lei.",
+    impact: "Putem propune o soluție realizabilă, etape clare și un calendar potrivit priorităților tale.",
   },
 ];
 
@@ -161,69 +173,88 @@ function BrowserFrame({ children, address = "www.afacerea-ta.ro" }: { children: 
   );
 }
 
-function StepPreview({ step }: { step: number }) {
+function StepPreview({ step, data }: { step: number; data: FormState }) {
+  const company = data.companyName.trim() || "AFACEREA TA";
   if (step === 0) return (
     <BrowserFrame>
       <div className="bg-slate-950 px-4 py-3 text-white">
-        <div className="flex items-center justify-between"><span className="text-[10px] font-black tracking-wide">LOGO</span><div className="flex gap-2 text-[7px] text-white/60"><span>Servicii</span><span>Despre</span><span>Contact</span></div></div>
-        <div className="py-7 text-center"><div className="mx-auto mb-2 h-2 w-3/4 rounded bg-white/90"/><div className="mx-auto mb-4 h-1.5 w-1/2 rounded bg-white/30"/><span className="inline-flex items-center gap-1 rounded-md bg-blue px-3 py-1.5 text-[8px] font-bold"><MousePointerClick size={10}/>Cere o ofertă</span></div>
+        <div className="flex items-center justify-between"><span className="max-w-[45%] truncate text-[10px] font-black tracking-wide">{data.brandIdentity === "Nu, avem nevoie de branding" ? "LOGO NOU" : company}</span><div className="flex gap-2 text-[7px] text-white/60"><span>Servicii</span><span>Despre</span><span>Contact</span></div></div>
+        <div className="py-6 text-center"><p className="truncate text-[12px] font-black">{company}</p><p className="mx-auto mt-2 max-w-[85%] truncate text-[8px] text-white/45">{data.activity.trim() || "Descrierea clară a activității"}</p><div className="mt-4 flex flex-wrap justify-center gap-1.5">{(data.ctaGoals.length ? data.ctaGoals : ["Acțiunea principală"]).slice(0, 2).map((goal) => <span key={goal} className="inline-flex max-w-[125px] items-center gap-1 truncate rounded-md bg-blue px-2.5 py-1.5 text-[7px] font-bold"><MousePointerClick size={9}/>{goal}</span>)}</div></div>
+        {data.linkedCampaign && <div className="mb-2 rounded bg-white/5 px-2 py-1 text-center text-[7px] text-white/50">Campanie: {data.linkedCampaign}</div>}
       </div>
     </BrowserFrame>
   );
-  if (step === 1) return (
-    <BrowserFrame address="https://www.numefirma.ro">
+  if (step === 1) {
+    const domain = data.domainName.trim() || (data.hasDomain ? "domeniu-de-completat.ro" : "domeniul-tau.ro");
+    return (
+    <BrowserFrame address={`https://www.${domain}`}>
       <div className="grid grid-cols-2 gap-2 bg-slate-50 p-4">
-        <div className="rounded-lg border border-slate-200 bg-white p-3"><Globe2 size={18} className="mb-2 text-blue"/><p className="text-[9px] font-black text-slate-800">numefirma.ro</p><p className="mt-1 text-[7px] text-slate-400">Domeniul tău</p></div>
-        <div className="rounded-lg border border-slate-200 bg-white p-3"><Mail size={18} className="mb-2 text-blue"/><p className="text-[9px] font-black text-slate-800">contact@...</p><p className="mt-1 text-[7px] text-slate-400">E-mail profesional</p></div>
+        <div className="min-w-0 rounded-lg border border-slate-200 bg-white p-3"><Globe2 size={18} className="mb-2 text-blue"/><p className="truncate text-[9px] font-black text-slate-800">{domain}</p><p className="mt-1 text-[7px] text-slate-400">{data.hasDomain || "Domeniu neales"}</p></div>
+        <div className="min-w-0 rounded-lg border border-slate-200 bg-white p-3"><Mail size={18} className="mb-2 text-blue"/><p className="truncate text-[9px] font-black text-slate-800">{data.needsEmail === "Da, am nevoie" ? `contact@${domain}` : "E-mail existent"}</p><p className="mt-1 text-[7px] text-slate-400">E-mail profesional</p></div>
+        <div className="col-span-2 flex flex-wrap gap-1.5 text-[7px] font-bold"><span className="rounded bg-emerald-100 px-2 py-1 text-emerald-700">{data.wantsSSL === "Da" ? "SSL inclus" : "SSL de stabilit"}</span><span className="rounded bg-blue/10 px-2 py-1 text-blue">{data.hasHosting === "Da, la o firmă existentă" ? data.hostingProvider.trim() || "Hosting existent" : data.hasHosting ? "Hosting inclus" : "Hosting neales"}</span></div>
       </div>
     </BrowserFrame>
-  );
-  if (step === 2) return (
+    );
+  }
+  if (step === 2) {
+    const selectedPages = data.pages.length ? data.pages : ["Acasă", "Servicii", "Contact"];
+    return (
     <BrowserFrame>
       <div className="bg-white p-4">
-        <div className="mb-3 flex flex-wrap gap-1">{["Acasă", "Despre", "Servicii", "Portofoliu", "Contact"].map((item, index) => <span key={item} className={`rounded px-2 py-1 text-[7px] font-bold ${index === 0 ? "bg-blue text-white" : "bg-slate-100 text-slate-500"}`}>{item}</span>)}</div>
+        <div className="mb-3 flex flex-wrap gap-1">{selectedPages.slice(0, 6).map((item, index) => <span key={item} className={`max-w-[86px] truncate rounded px-2 py-1 text-[7px] font-bold ${index === 0 ? "bg-blue text-white" : "bg-slate-100 text-slate-500"}`}>{item}</span>)}{data.pagesOther.trim() && <span className="max-w-[86px] truncate rounded bg-blue/10 px-2 py-1 text-[7px] font-bold text-blue">{data.pagesOther}</span>}</div>
         <div className="grid grid-cols-[1.35fr_.65fr] gap-2"><div className="h-20 rounded-lg bg-gradient-to-br from-blue/20 to-blue/5 p-3"><LayoutTemplate size={17} className="text-blue"/><div className="mt-2 h-1.5 w-3/4 rounded bg-slate-700"/><div className="mt-1.5 h-1 w-1/2 rounded bg-slate-300"/></div><div className="grid gap-2"><div className="rounded-lg bg-slate-100"/><div className="rounded-lg bg-slate-100"/></div></div>
+        <div className="mt-2 flex flex-wrap gap-1 text-[7px]"><span className="rounded bg-slate-100 px-2 py-1 text-slate-500">{data.hasContent || "Conținut de stabilit"}</span><span className="rounded bg-slate-100 px-2 py-1 text-slate-500">{data.languages || "Limba de stabilit"}</span>{data.wantsTestimonials === "Da" && <span className="rounded bg-amber-100 px-2 py-1 text-amber-700">★ Recenzii</span>}</div>
       </div>
     </BrowserFrame>
-  );
-  if (step === 3) return (
+    );
+  }
+  if (step === 3) {
+    const dynamic = data.visualStyle.startsWith("Spectaculos");
+    return (
     <BrowserFrame>
       <div className="grid grid-cols-2 gap-2 bg-slate-100 p-3">
-        <div className="rounded-lg bg-white p-3"><Palette size={16} className="mb-2 text-blue"/><div className="h-2 w-3/4 rounded bg-slate-800"/><div className="mt-2 h-1 w-full rounded bg-slate-200"/><div className="mt-1 h-1 w-2/3 rounded bg-slate-200"/></div>
-        <div className="overflow-hidden rounded-lg bg-gradient-to-br from-violet-600 to-blue p-3 text-white"><div className="h-5 w-5 rounded-full border border-white/50"/><div className="mt-4 h-2 w-full rounded bg-white/80"/><div className="mt-2 h-1 w-2/3 rounded bg-white/40"/></div>
-        <div className="col-span-2 flex gap-1.5"><span className="flex flex-1 items-center justify-center rounded bg-emerald-500 py-1.5 text-[7px] font-bold text-white">WhatsApp</span><span className="flex flex-1 items-center justify-center rounded bg-blue py-1.5 text-[7px] font-bold text-white">Formular ofertă</span></div>
+        <div className={`col-span-2 overflow-hidden rounded-lg p-4 ${dynamic ? "bg-gradient-to-br from-violet-600 to-blue text-white" : "bg-white text-slate-800"}`}><Palette size={16} className="mb-2 text-blue-bright"/><p className="text-[9px] font-black">{data.visualStyle || "Stilul site-ului"}</p><div className={`mt-2 h-1 w-2/3 rounded ${dynamic ? "bg-white/40" : "bg-slate-200"}`}/>{(data.likedSite1 || data.likedSite2) && <p className={`mt-2 truncate text-[7px] ${dynamic ? "text-white/55" : "text-slate-400"}`}>Inspirat de: {[data.likedSite1, data.likedSite2].filter(Boolean).join(", ")}</p>}</div>
+        <div className="col-span-2 flex flex-wrap gap-1.5">{(data.contactElements.length ? data.contactElements : ["Alege elementele de contact"]).map((item) => <span key={item} className="flex flex-1 items-center justify-center whitespace-nowrap rounded bg-blue px-2 py-1.5 text-[7px] font-bold text-white">{item}</span>)}</div>
+        {data.wantsSocialIntegration === "Da" && <div className="col-span-2 rounded bg-pink-50 px-2 py-1.5 text-center text-[7px] font-bold text-pink-600">Flux Facebook / Instagram integrat</div>}
       </div>
     </BrowserFrame>
-  );
-  if (step === 4) return (
+    );
+  }
+  if (step === 4) {
+    const accounts = [...data.socialAccounts, ...(data.socialOther.trim() ? [data.socialOther.trim()] : [])];
+    const budgetWidths: Record<string, string> = { "Nu avem încă buget alocat": "w-0", "sub 500 lei": "w-1/4", "500 – 2.000 lei": "w-2/3", "peste 2.000 lei": "w-full" };
+    return (
     <BrowserFrame>
       <div className="grid grid-cols-[.8fr_1.2fr] gap-2 bg-slate-50 p-3">
-        <div className="space-y-2">{["f", "◎", "♪"].map((icon, index) => <div key={icon} className="flex items-center gap-2 rounded-lg bg-white p-2 shadow-sm"><span className={`grid h-5 w-5 place-items-center rounded-md text-[10px] font-black text-white ${index === 0 ? "bg-blue" : index === 1 ? "bg-pink-500" : "bg-slate-900"}`}>{icon}</span><span className="text-[7px] font-bold text-slate-600">Cont activ</span></div>)}</div>
-        <div className="rounded-lg bg-white p-3 shadow-sm"><Megaphone size={17} className="text-blue"/><p className="mt-2 text-[9px] font-black text-slate-800">Campanie conectată</p><div className="mt-3 h-1.5 overflow-hidden rounded bg-slate-100"><div className="h-full w-2/3 rounded bg-blue"/></div><p className="mt-1 text-[7px] text-slate-400">Audiență → site → cerere</p></div>
+        <div className="space-y-2">{(accounts.length ? accounts : ["Alege rețelele"]).slice(0, 4).map((account, index) => <div key={account} className="flex items-center gap-2 rounded-lg bg-white p-2 shadow-sm"><span className={`grid h-5 w-5 place-items-center rounded-md text-[9px] font-black text-white ${index === 0 ? "bg-blue" : index === 1 ? "bg-pink-500" : "bg-slate-900"}`}>{account.charAt(0)}</span><span className="truncate text-[7px] font-bold text-slate-600">{account}</span></div>)}</div>
+        <div className="rounded-lg bg-white p-3 shadow-sm"><Megaphone size={17} className="text-blue"/><p className="mt-2 text-[9px] font-black text-slate-800">{data.wantsSocialManagement || "Administrare de stabilit"}</p><div className="mt-3 h-1.5 overflow-hidden rounded bg-slate-100"><div className={`h-full rounded bg-blue transition-all ${budgetWidths[data.adBudget] || "w-0"}`}/></div><p className="mt-1 text-[7px] text-slate-400">{data.adBudget || "Selectează bugetul ads"}</p></div>
       </div>
     </BrowserFrame>
-  );
+    );
+  }
   return (
     <BrowserFrame>
       <div className="grid grid-cols-2 gap-2 bg-slate-50 p-4">
-        <div className="rounded-lg bg-white p-3 shadow-sm"><CalendarCheck size={18} className="mb-2 text-blue"/><p className="text-[9px] font-black text-slate-800">Lansare</p><p className="mt-1 text-[7px] text-slate-400">Perioadă estimată</p></div>
-        <div className="rounded-lg bg-white p-3 shadow-sm"><WalletCards size={18} className="mb-2 text-blue"/><p className="text-[9px] font-black text-slate-800">Buget</p><p className="mt-1 text-[7px] text-slate-400">Interval orientativ</p></div>
-        <div className="col-span-2 flex items-center gap-2 rounded-lg border border-blue/15 bg-blue/5 p-2.5"><Check size={14} className="text-blue"/><p className="text-[8px] font-bold text-slate-600">Primești o propunere potrivită obiectivelor tale</p></div>
+        <div className="min-w-0 rounded-lg bg-white p-3 shadow-sm"><CalendarCheck size={18} className="mb-2 text-blue"/><p className="text-[9px] font-black text-slate-800">Lansare</p><p className="mt-1 truncate text-[7px] text-slate-400">{data.launchDate || "Perioadă estimată"}</p></div>
+        <div className="min-w-0 rounded-lg bg-white p-3 shadow-sm"><WalletCards size={18} className="mb-2 text-blue"/><p className="text-[9px] font-black text-slate-800">Buget</p><p className="mt-1 truncate text-[7px] text-slate-400">{data.budget || "Interval orientativ"}</p></div>
+        <div className="col-span-2 flex items-center gap-2 rounded-lg border border-blue/15 bg-blue/5 p-2.5"><Check size={14} className="shrink-0 text-blue"/><div className="min-w-0"><p className="truncate text-[8px] font-bold text-slate-600">{data.contactName || "Datele tale de contact"}</p><p className="truncate text-[7px] text-slate-400">{data.contactEmail || data.contactPhone || "Telefon sau e-mail"}</p></div></div>
       </div>
     </BrowserFrame>
   );
 }
 
-function StepExplainer({ step }: { step: number }) {
+function StepExplainer({ step, data }: { step: number; data: FormState }) {
   const guide = STEP_GUIDES[step];
   return (
-    <aside className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 text-white shadow-xl lg:sticky lg:top-24">
+    <aside className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 text-white shadow-xl lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
       <div className="p-6 sm:p-8">
         <div className="mb-6 flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-blue text-sm font-black">{step + 1}</span><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-bright">Ghid vizual</p><p className="text-xs font-semibold text-white/50">{guide.eyebrow}</p></div></div>
         <h2 className="text-2xl font-extrabold leading-tight">{guide.title}</h2>
         <p className="mt-3 text-sm leading-6 text-white/60">{guide.text}</p>
-        <div className="my-6"><StepPreview step={step}/></div>
+        <div className="my-6" aria-live="polite"><div className="mb-2 flex items-center justify-between"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">Previzualizare live</p><span className="flex items-center gap-1 text-[9px] font-bold text-emerald-400"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400"/>se actualizează</span></div><StepPreview step={step} data={data}/></div>
+        <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">Cum completezi pasul</p>
         <ul className="space-y-2.5">{guide.points.map((point) => <li key={point} className="flex items-start gap-2.5 text-xs leading-5 text-white/70"><span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-blue/20 text-blue-bright"><Check size={10} strokeWidth={3}/></span>{point}</li>)}</ul>
+        <div className="mt-5 space-y-2.5"><div className="rounded-xl border border-white/10 bg-white/5 p-3"><p className="text-[9px] font-bold uppercase tracking-wider text-blue-bright">Exemplu de răspuns</p><p className="mt-1.5 text-[11px] leading-5 text-white/65">{guide.example}</p></div><div className="rounded-xl border border-blue/20 bg-blue/10 p-3"><p className="text-[9px] font-bold uppercase tracking-wider text-blue-bright">Ce influențează</p><p className="mt-1.5 text-[11px] leading-5 text-white/65">{guide.impact}</p></div></div>
       </div>
       <div className="border-t border-white/10 bg-white/5 px-6 py-4 text-[11px] leading-5 text-white/45 sm:px-8">Nu există răspunsuri greșite. Recomandarea finală va fi adaptată situației tale.</div>
     </aside>
@@ -417,7 +448,7 @@ export default function AuditForm() {
 
   return (
     <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:gap-10">
-      <StepExplainer step={step} />
+      <StepExplainer step={step} data={data} />
       <div className="rounded-2xl border border-line-light bg-paper-soft p-6 shadow-sm sm:p-10">
       {/* Progress */}
       <div className="mb-8">
