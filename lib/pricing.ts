@@ -93,14 +93,14 @@ export function estimateWebsiteBrief(b: ScorableBrief): BriefEstimate {
   const businessModels = reqArray("businessModels");
 
   // ---- Tipul proiectului și comerț ----
-  const isEcommerce = (b.ctaGoals || []).includes("Să cumpere online") || projectTypes.some((type) => /Magazin|Marketplace|comenzi online/i.test(type)) || businessModels.some((model) => /Vânzare|Abonamente|Comision/i.test(model));
+  const isEcommerce = (b.ctaGoals || []).includes("Să cumpere online") || projectTypes.some((type) => /Magazin|vânzători|comenzi/i.test(type)) || businessModels.some((model) => /Vinde|Abonamente|Comision/i.test(model));
   if (isEcommerce) score += add("Vânzare online (magazin/plăți)", 25);
   const typeWeights: Array<[RegExp, string, number]> = [
-    [/SaaS|aplicație web/i, "Platformă SaaS / aplicație web", 42],
-    [/Marketplace/i, "Marketplace multi-vânzător", 38],
-    [/Portal|intranet/i, "Portal privat / intranet", 20],
+    [/aplicație web/i, "Aplicație web", 42],
+    [/Marketplace|mai mulți vânzători/i, "Site cu mai mulți vânzători", 38],
+    [/Portal|intranet|Platformă cu conturi/i, "Platformă cu acces privat", 20],
     [/Cursuri|e-learning/i, "Platformă e-learning", 20],
-    [/Director|listări|Imobiliare/i, "Listări și căutare avansată", 16],
+    [/Director|listări|Imobiliare|anunțuri/i, "Listări și căutare avansată", 16],
     [/Rezervări|programări/i, "Rezervări și disponibilitate", 10],
     [/Restaurant|comenzi online/i, "Comenzi online pentru restaurant", 14],
     [/Evenimente|bilete/i, "Evenimente și ticketing", 16],
@@ -117,7 +117,7 @@ export function estimateWebsiteBrief(b: ScorableBrief): BriefEstimate {
   if (commerceOperations.length) score += add(`${commerceOperations.length} fluxuri comerciale`, Math.min(26, commerceOperations.length * 2));
   if (paymentMethods.length > 1) score += add("Metode multiple de plată", Math.min(8, paymentMethods.length));
   if (reqText("accountNeeds") && reqText("accountNeeds") !== "Nu, totul este public") score += add("Conturi și acces privat", 8 + Math.min(10, reqArray("userRoles").length * 2));
-  if (reqText("dataMigration") && reqText("dataMigration") !== "Nu există date de importat") score += add("Migrare de date", 6);
+  if (reqText("dataMigration") && !["Nu", "Nu există date de importat"].includes(reqText("dataMigration"))) score += add("Migrare de date", 6);
   if (reqText("customRequirements")) score += add("Flux personalizat descris de client", 8);
 
   // ---- Branding ----

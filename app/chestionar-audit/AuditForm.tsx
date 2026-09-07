@@ -7,7 +7,6 @@ import {
   Globe2,
   LayoutTemplate,
   Mail,
-  Megaphone,
   MousePointerClick,
   Palette,
   ShieldCheck,
@@ -134,12 +133,11 @@ const initialState: FormState = {
 const STEP_TITLES = [
   "Afacerea ta & brand",
   "Tipul proiectului",
-  "Vânzare & operațiuni",
+  "Comenzi & plăți",
   "Structură & conținut",
-  "Conturi, funcții & integrări",
+  "Ce trebuie să poată face",
   "Design & funcționalități",
-  "Domeniu, securitate & mentenanță",
-  "Marketing & social media",
+  "Domeniu & promovare",
   "Termen, buget & contact",
 ];
 
@@ -154,11 +152,11 @@ const STEP_GUIDES = [
   },
   {
     eyebrow: "Arhitectura soluției",
-    title: "Un website poate fi magazin, platformă sau instrument de lucru",
+    title: "Site-ul poate prezenta, vinde sau ajuta oamenii să lucreze",
     text: "Poți combina mai multe tipuri. De exemplu, un site de prezentare poate avea magazin, programări și zonă privată pentru clienți.",
     points: ["Selectează toate tipurile care descriu proiectul", "Alege cine îl va folosi", "Indică modul în care proiectul produce valoare sau venit"],
     example: "Exemplu: site pentru clinică + programări online + portal privat pentru pacienți.",
-    impact: "Stabilim dacă este suficient un website clasic sau este necesară o aplicație cu bază de date și fluxuri personalizate.",
+    impact: "Stabilim dacă este suficient un site simplu sau este nevoie de conturi, informații salvate și funcții făcute special.",
   },
   {
     eyebrow: "Plăți și procese",
@@ -166,7 +164,7 @@ const STEP_GUIDES = [
     text: "Produsele, serviciile, abonamentele, rezervările și comisioanele au fluxuri diferite. Selectează ce trebuie să se întâmple după comandă.",
     points: ["Spune ce vinzi și dimensiunea catalogului", "Alege metodele de plată necesare", "Bifează operațiunile: stoc, livrare, facturi, retururi sau abonamente"],
     example: "Exemplu: 100–500 produse, card și ramburs, curier, facturare și sincronizare stoc.",
-    impact: "Răspunsurile decid procesatorul de plăți, structura bazei de date și integrările cu furnizorii externi.",
+    impact: "Răspunsurile stabilesc cum se încasează banii, cum se păstrează comenzile și cu ce servicii trebuie legat site-ul.",
   },
   {
     eyebrow: "Harta site-ului",
@@ -178,11 +176,11 @@ const STEP_GUIDES = [
   },
   {
     eyebrow: "Experiență și automatizare",
-    title: "Conturile și integrările transformă site-ul într-o aplicație",
-    text: "Aici alegi funcțiile avansate: autentificare, roluri, dashboard, rezervări, fișiere, chat, notificări, API-uri și conectarea cu alte sisteme.",
-    points: ["Alege dacă utilizatorii au cont și ce roluri există", "Bifează funcțiile necesare", "Menționează sistemele existente și datele care trebuie importate"],
+    title: "Alege ce trebuie să poată face oamenii pe site",
+    text: "Poate fi un site public sau poate avea conturi, pagini personale, rezervări, documente, mesaje, alerte și legături cu programele folosite deja.",
+    points: ["Spune dacă oamenii se conectează cu parolă", "Bifează acțiunile de care au nevoie", "Menționează programele folosite și informațiile care trebuie mutate"],
     example: "Exemplu: client + furnizor + administrator, dashboard separat, notificări și integrare CRM.",
-    impact: "Definim permisiunile, automatizările, integrările și nivelul real de dezvoltare personalizată.",
+    impact: "Stabilim cine vede fiecare informație, ce se întâmplă automat și ce trebuie construit special.",
   },
   {
     eyebrow: "Aspect și funcții",
@@ -194,19 +192,11 @@ const STEP_GUIDES = [
   },
   {
     eyebrow: "Adresa și infrastructura",
-    title: "Domeniul este adresa, hostingul este casa site-ului",
-    text: "Dacă le ai deja, continuăm cu ele. Dacă nu, te ajutăm să alegi adresa și să pregătim găzduirea, securitatea, e-mailul și mentenanța.",
-    points: ["Domeniu: numefirma.ro", "E-mail: contact@numefirma.ro", "SSL, monitorizare și actualizări după lansare"],
-    example: "Exemplu: domeniu existent, dar hosting, e-mail profesional și mentenanță incluse.",
-    impact: "Stabilim ce păstrăm, ce configurăm și cum protejăm și întreținem proiectul după lansare.",
-  },
-  {
-    eyebrow: "Promovare conectată",
-    title: "Site-ul poate lucra împreună cu social media",
-    text: "Răspunsurile ne arată dacă trebuie să conectăm site-ul cu paginile sociale și dacă propunerea include administrare sau campanii plătite.",
-    points: ["Selectează doar conturile active", "Bugetul pentru reclame este separat de site", "Poți începe promovarea și ulterior"],
-    example: "Exemplu: Facebook + Instagram, administrare lunară și buget ads de 500–2.000 lei.",
-    impact: "Vedem dacă site-ul trebuie pregătit pentru campanii, măsurarea conversiilor și conținut social.",
+    title: "Spune-ne ce ai deja și cum vrei să fii găsit",
+    text: "Domeniul este adresa site-ului, iar găzduirea îl ține online. Tot aici ne spui pe ce rețele ești prezent și dacă dorești ajutor cu promovarea.",
+    points: ["Scrie domeniul dacă îl ai deja", "Alege dacă ai nevoie de e-mail profesional", "Bifează rețelele folosite și bugetul de promovare"],
+    example: "Exemplu: firma.ro, e-mail profesional, Facebook și Instagram, promovare lunară.",
+    impact: "Stabilim ce configurăm la lansare și cum pregătim site-ul pentru promovare și măsurarea rezultatelor.",
   },
   {
     eyebrow: "Încadrarea proiectului",
@@ -266,6 +256,7 @@ function StepPreview({ step, data }: { step: number; data: FormState }) {
         <div className="min-w-0 rounded-lg border border-slate-200 bg-white p-3"><Globe2 size={18} className="mb-2 text-blue"/><p className="truncate text-[9px] font-black text-slate-800">{domain}</p><p className="mt-1 text-[7px] text-slate-400">{data.hasDomain || "Domeniu neales"}</p></div>
         <div className="min-w-0 rounded-lg border border-slate-200 bg-white p-3"><Mail size={18} className="mb-2 text-blue"/><p className="truncate text-[9px] font-black text-slate-800">{data.needsEmail === "Da, am nevoie" ? `contact@${domain}` : "E-mail existent"}</p><p className="mt-1 text-[7px] text-slate-400">E-mail profesional</p></div>
         <div className="col-span-2 flex flex-wrap gap-1.5 text-[7px] font-bold"><span className="rounded bg-emerald-100 px-2 py-1 text-emerald-700">{data.wantsSSL === "Da" ? "SSL inclus" : "SSL de stabilit"}</span><span className="rounded bg-blue/10 px-2 py-1 text-blue">{data.hasHosting === "Da, la o firmă existentă" ? data.hostingProvider.trim() || "Hosting existent" : data.hasHosting ? "Hosting inclus" : "Hosting neales"}</span></div>
+        {data.socialAccounts.length > 0 && <div className="col-span-2 flex flex-wrap gap-1">{data.socialAccounts.map((account) => <span key={account} className="rounded bg-pink-50 px-2 py-1 text-[7px] font-bold text-pink-600">{account}</span>)}</div>}
       </div>
     </BrowserFrame>
     );
@@ -303,18 +294,6 @@ function StepPreview({ step, data }: { step: number; data: FormState }) {
     </BrowserFrame>
     );
   }
-  if (step === 7) {
-    const accounts = [...data.socialAccounts, ...(data.socialOther.trim() ? [data.socialOther.trim()] : [])];
-    const budgetWidths: Record<string, string> = { "Nu avem încă buget alocat": "w-0", "sub 500 lei": "w-1/4", "500 – 2.000 lei": "w-2/3", "peste 2.000 lei": "w-full" };
-    return (
-    <BrowserFrame>
-      <div className="grid grid-cols-[.8fr_1.2fr] gap-2 bg-slate-50 p-3">
-        <div className="space-y-2">{(accounts.length ? accounts : ["Alege rețelele"]).slice(0, 4).map((account, index) => <div key={account} className="flex items-center gap-2 rounded-lg bg-white p-2 shadow-sm"><span className={`grid h-5 w-5 place-items-center rounded-md text-[9px] font-black text-white ${index === 0 ? "bg-blue" : index === 1 ? "bg-pink-500" : "bg-slate-900"}`}>{account.charAt(0)}</span><span className="truncate text-[7px] font-bold text-slate-600">{account}</span></div>)}</div>
-        <div className="rounded-lg bg-white p-3 shadow-sm"><Megaphone size={17} className="text-blue"/><p className="mt-2 text-[9px] font-black text-slate-800">{data.wantsSocialManagement || "Administrare de stabilit"}</p><div className="mt-3 h-1.5 overflow-hidden rounded bg-slate-100"><div className={`h-full rounded bg-blue transition-all ${budgetWidths[data.adBudget] || "w-0"}`}/></div><p className="mt-1 text-[7px] text-slate-400">{data.adBudget || "Selectează bugetul ads"}</p></div>
-      </div>
-    </BrowserFrame>
-    );
-  }
   return (
     <BrowserFrame>
       <div className="grid grid-cols-2 gap-2 bg-slate-50 p-4">
@@ -329,7 +308,7 @@ function StepPreview({ step, data }: { step: number; data: FormState }) {
 function StepExplainer({ step, data }: { step: number; data: FormState }) {
   const guide = STEP_GUIDES[step];
   return (
-    <aside className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 text-white shadow-xl lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
+    <aside className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 text-white shadow-xl lg:sticky lg:top-24">
       <div className="p-6 sm:p-8">
         <div className="mb-6 flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-blue text-sm font-black">{step + 1}</span><div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-bright">Ghid vizual</p><p className="text-xs font-semibold text-white/50">{guide.eyebrow}</p></div></div>
         <h2 className="text-2xl font-extrabold leading-tight">{guide.title}</h2>
@@ -376,7 +355,7 @@ function TextInput({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full rounded-lg border border-line-light bg-white px-4 py-3 text-sm outline-none focus:border-blue"
+      className="w-full rounded-lg border border-line-light bg-white px-3.5 py-2.5 text-sm outline-none focus:border-blue"
     />
   );
 }
@@ -398,7 +377,7 @@ function TextAreaInput({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={rows}
-      className="w-full rounded-lg border border-line-light bg-white px-4 py-3 text-sm outline-none focus:border-blue"
+      className="w-full rounded-lg border border-line-light bg-white px-3.5 py-2.5 text-sm outline-none focus:border-blue"
     />
   );
 }
@@ -416,7 +395,7 @@ function Pill({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-lg border px-4 py-2.5 text-sm font-semibold transition ${
+      className={`rounded-lg border px-3 py-2 text-[13px] font-semibold transition ${
         active
           ? "border-blue bg-blue text-white"
           : "border-line-light bg-white text-ink-soft hover:border-blue/40"
@@ -437,7 +416,7 @@ function SingleChoice({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-2.5">
+    <div className="flex flex-wrap gap-2">
       {options.map((opt) => (
         <Pill key={opt} label={opt} active={value === opt} onClick={() => onChange(opt)} />
       ))}
@@ -455,7 +434,7 @@ function MultiChoice({
   onChange: (v: string[]) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-2.5">
+    <div className="flex flex-wrap gap-2">
       {options.map((opt) => (
         <Pill
           key={opt}
@@ -532,9 +511,9 @@ export default function AuditForm() {
   return (
     <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1.08fr)_minmax(540px,0.92fr)] lg:gap-8 xl:gap-10">
       <StepExplainer step={step} data={data} />
-      <div className="rounded-2xl border border-line-light bg-paper-soft p-6 shadow-sm sm:p-10">
+      <div className="rounded-2xl border border-line-light bg-paper-soft p-5 shadow-sm sm:p-7">
       {/* Progress */}
-      <div className="mb-8">
+      <div className="mb-6">
         <div className="flex items-center justify-between">
           <p className="text-xs font-bold uppercase tracking-widest text-blue">
             Pasul {step + 1} din {STEP_TITLES.length}
@@ -549,7 +528,7 @@ export default function AuditForm() {
         </div>
       </div>
 
-      <div className="space-y-7">
+      <div className="space-y-5">
         {/* STEP 0 — Afacerea ta & brand */}
         {step === 0 && (
           <>
@@ -609,7 +588,7 @@ export default function AuditForm() {
                 Ce fel de website sau platformă dorești?
               </FieldLabel>
               <MultiChoice
-                options={["Site de prezentare / companie", "Landing page / campanie", "Magazin online", "Rezervări / programări", "Restaurant / comenzi online", "Marketplace cu mai mulți vânzători", "Platformă SaaS / aplicație web", "Portal clienți / intranet", "Cursuri / e-learning", "Director / anunțuri / listări", "Imobiliare", "Evenimente / bilete", "Publicație / blog / comunitate", "ONG / donații", "Alt proiect personalizat"]}
+                options={["Site pentru prezentarea firmei", "Pagină pentru o campanie", "Magazin online", "Programări sau rezervări", "Restaurant sau evenimente", "Site cu anunțuri sau mai mulți vânzători", "Platformă cu conturi pentru clienți", "Cursuri sau zonă pentru membri", "Blog sau comunitate", "Alt tip de proiect"]}
                 values={data.projectTypes}
                 onChange={(v) => set("projectTypes", v)}
               />
@@ -617,15 +596,15 @@ export default function AuditForm() {
             <div>
               <FieldLabel>Cine va folosi proiectul?</FieldLabel>
               <MultiChoice
-                options={["Public larg", "Clienți persoane fizice", "Companii / B2B", "Angajați / echipă internă", "Parteneri / furnizori", "Profesioniști / membri", "Elevi / cursanți", "Administratori"]}
+                options={["Oricine intră pe site", "Clienți persoane fizice", "Firme", "Angajații mei", "Parteneri sau furnizori", "Membri sau cursanți"]}
                 values={data.audienceTypes}
                 onChange={(v) => set("audienceTypes", v)}
               />
             </div>
             <div>
-              <FieldLabel hint="Cum creează proiectul valoare sau venit pentru afacere?">Modelul de funcționare dorit</FieldLabel>
+              <FieldLabel hint="Alege ce rezultat vrei să obții prin site.">Cum va ajuta site-ul afacerea?</FieldLabel>
               <MultiChoice
-                options={["Prezentare și generare de clienți", "Vânzare de produse", "Vânzare de servicii", "Abonamente recurente", "Comision din tranzacții", "Publicitate / conținut sponsorizat", "Donații", "Instrument intern", "Model încă neclar"]}
+                options={["Aduce cereri și clienți", "Vinde produse", "Vinde servicii", "Încasează abonamente", "Ajută echipa să lucreze", "Strânge donații", "Încă nu știm"]}
                 values={data.businessModels}
                 onChange={(v) => set("businessModels", v)}
               />
@@ -655,8 +634,8 @@ export default function AuditForm() {
                   <MultiChoice options={["Card online", "Transfer bancar", "Ramburs", "Plată la sediu", "Apple Pay / Google Pay", "Plată în rate", "Abonament recurent", "Plată în mai multe monede"]} values={data.paymentMethods} onChange={(v) => set("paymentMethods", v)} />
                 </div>
                 <div>
-                  <FieldLabel hint="Selectează tot ce trebuie administrat după ce clientul apasă «Comandă». ">Operațiuni comerciale necesare</FieldLabel>
-                  <MultiChoice options={["Catalog și variante", "Stoc și depozite", "Curier și AWB", "Livrare digitală", "Facturare / e-Factura", "Coduri de reducere", "Retururi și rambursări", "Abonamente", "Comisioane pentru vânzători", "Rezervări și disponibilitate", "Bilete / coduri QR", "Notificări comandă", "Sincronizare ERP / gestiune"]} values={data.commerceOperations} onChange={(v) => set("commerceOperations", v)} />
+                  <FieldLabel hint="Ce trebuie să se întâmple după ce clientul comandă?">Ce trebuie să administrăm?</FieldLabel>
+                  <MultiChoice options={["Produse și opțiuni", "Stoc", "Curier și livrare", "Facturi", "Reduceri", "Retururi", "Abonamente", "Programări", "Bilete", "Mesaje despre comandă", "Legare cu programul de gestiune"]} values={data.commerceOperations} onChange={(v) => set("commerceOperations", v)} />
                 </div>
               </>
             )}
@@ -668,26 +647,26 @@ export default function AuditForm() {
         {step === 4 && (
           <>
             <div>
-              <FieldLabel>Utilizatorii vor avea cont și zonă privată?</FieldLabel>
-              <SingleChoice options={["Nu, totul este public", "Da, cont simplu de client", "Da, mai multe tipuri de utilizatori", "Doar administrare internă", "Nu știm încă"]} value={data.accountNeeds} onChange={(v) => set("accountNeeds", v)} />
+              <FieldLabel>Oamenii trebuie să se conecteze cu e-mail și parolă?</FieldLabel>
+              <SingleChoice options={["Nu, totul este public", "Da, clienții au cont", "Da, există mai multe tipuri de cont", "Doar echipa mea se conectează", "Nu știm încă"]} value={data.accountNeeds} onChange={(v) => set("accountNeeds", v)} />
             </div>
             {data.accountNeeds && data.accountNeeds !== "Nu, totul este public" && (
               <div>
-                <FieldLabel>Ce roluri sau tipuri de utilizatori sunt necesare?</FieldLabel>
-                <MultiChoice options={["Client", "Administrator", "Angajat", "Manager", "Furnizor / vânzător", "Partener", "Instructor", "Cursant", "Membru / abonat", "Moderator", "Agent"]} values={data.userRoles} onChange={(v) => set("userRoles", v)} />
+                <FieldLabel>Cine se va conecta?</FieldLabel>
+                <MultiChoice options={["Client", "Administrator", "Angajat", "Furnizor sau vânzător", "Partener", "Profesor", "Cursant sau membru"]} values={data.userRoles} onChange={(v) => set("userRoles", v)} />
               </div>
             )}
             <div>
-              <FieldLabel hint="Bifează inclusiv funcțiile care ar putea fi necesare într-o etapă ulterioară. ">Ce trebuie să poată face platforma?</FieldLabel>
-              <MultiChoice options={["Dashboard personalizat", "Căutare și filtre avansate", "Rezervări și calendar", "Formulare complexe", "Încărcare documente / fișiere", "Generare PDF / contracte", "Chat între utilizatori", "Recenzii și rating", "Favorite / liste salvate", "Notificări e-mail / SMS", "Notificări push", "Semnătură electronică", "Hartă și geolocație", "Calculator / configurator", "Rapoarte și statistici", "Moderare conținut", "API pentru aplicație mobilă", "Funcții AI / automatizări"]} values={data.platformFeatures} onChange={(v) => set("platformFeatures", v)} />
+              <FieldLabel hint="Alege doar ce știi că îți trebuie. Restul îl stabilim împreună.">Ce ar trebui să poată face site-ul?</FieldLabel>
+              <MultiChoice options={["Pagină personală după conectare", "Căutare și filtre", "Programări și calendar", "Formulare", "Trimitere documente", "Creare PDF sau contracte", "Mesaje între utilizatori", "Recenzii", "Favorite", "Alerte prin e-mail sau SMS", "Hartă", "Calculator de preț", "Rapoarte", "Ajutor cu inteligență artificială"]} values={data.platformFeatures} onChange={(v) => set("platformFeatures", v)} />
             </div>
             <div>
-              <FieldLabel>Cu ce servicii trebuie conectat?</FieldLabel>
-              <MultiChoice options={["Procesator de plăți", "ANAF / e-Factura", "CRM", "ERP / gestiune", "Curieri", "Google Calendar", "Google Maps", "Newsletter", "WhatsApp / SMS", "Social media", "Analytics și reclame", "Contabilitate", "Open Banking", "Sistem existent prin API", "Nicio integrare cunoscută"]} values={data.integrations} onChange={(v) => set("integrations", v)} />
+              <FieldLabel hint="Dacă nu recunoști o opțiune, nu trebuie s-o alegi.">Cu ce servicii folosite deja trebuie legat?</FieldLabel>
+              <MultiChoice options={["Plată cu cardul", "Facturare", "Program de clienți", "Program de gestiune", "Curier", "Google Calendar sau Maps", "Newsletter", "WhatsApp sau SMS", "Social media", "Statistici și reclame", "Alt program al firmei", "Nu știm încă"]} values={data.integrations} onChange={(v) => set("integrations", v)} />
             </div>
             <div>
-              <FieldLabel>Datele existente trebuie mutate în noua platformă?</FieldLabel>
-              <SingleChoice options={["Nu există date de importat", "Da, din Excel / CSV", "Da, dintr-un site vechi", "Da, dintr-un alt program / API", "Trebuie analizat"]} value={data.dataMigration} onChange={(v) => set("dataMigration", v)} />
+              <FieldLabel>Ai informații care trebuie mutate în noul site?</FieldLabel>
+              <SingleChoice options={["Nu", "Da, dintr-un tabel", "Da, din site-ul vechi", "Da, din alt program", "Nu știm încă"]} value={data.dataMigration} onChange={(v) => set("dataMigration", v)} />
             </div>
             <div>
               <FieldLabel hint="Descrie orice flux special, chiar dacă nu știi cum se numește tehnic. ">Alte funcții sau automatizări</FieldLabel>
@@ -745,7 +724,7 @@ export default function AuditForm() {
             </div>
 
             <div>
-              <FieldLabel>Dorești certificat SSL și monitorizare uptime incluse în mentenanță?</FieldLabel>
+              <FieldLabel>Vrei să includem securizarea site-ului și verificarea că rămâne online?</FieldLabel>
               <SingleChoice
                 options={["Da", "Nu știu, recomandați voi"]}
                 value={data.wantsSSL}
@@ -871,8 +850,8 @@ export default function AuditForm() {
           </>
         )}
 
-        {/* STEP 7 — Marketing & social media */}
-        {step === 7 && (
+        {/* STEP 6 — Marketing & social media */}
+        {step === 6 && (
           <>
             <p className="rounded-lg bg-blue/5 px-4 py-3 text-xs italic leading-relaxed text-ink-soft">
               Next Level oferă și management de social media printr-o platformă proprie de
@@ -916,8 +895,8 @@ export default function AuditForm() {
           </>
         )}
 
-        {/* STEP 8 — Termen, buget & contact */}
-        {step === 8 && (
+        {/* STEP 7 — Termen, buget & contact */}
+        {step === 7 && (
           <>
             <div>
               <FieldLabel>Data dorită pentru lansare</FieldLabel>
@@ -974,7 +953,7 @@ export default function AuditForm() {
       </div>
 
       {/* Navigation */}
-      <div className="mt-9 flex items-center justify-between border-t border-line-light pt-6">
+      <div className="mt-6 flex items-center justify-between border-t border-line-light pt-5">
         <button
           type="button"
           onClick={() => setStep((s) => Math.max(0, s - 1))}
