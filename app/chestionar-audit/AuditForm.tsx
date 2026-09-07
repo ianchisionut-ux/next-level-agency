@@ -210,12 +210,14 @@ const STEP_GUIDES = [
 
 function BrowserFrame({ children, address = "www.afacerea-ta.ro" }: { children: React.ReactNode; address?: string }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-white/15 bg-white shadow-2xl shadow-blue/10">
-      <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-100 px-3 py-2">
-        <div className="flex gap-1"><span className="h-2 w-2 rounded-full bg-red-400"/><span className="h-2 w-2 rounded-full bg-amber-400"/><span className="h-2 w-2 rounded-full bg-emerald-400"/></div>
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded-md bg-white px-2 py-1 text-[9px] font-semibold text-slate-500"><ShieldCheck size={10} className="text-emerald-500"/><span className="truncate">{address}</span></div>
+    <div className="overflow-hidden rounded-2xl border border-white/15 bg-white shadow-2xl shadow-blue/10">
+      <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-100 px-4 py-3">
+        <div className="flex gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-red-400"/><span className="h-2.5 w-2.5 rounded-full bg-amber-400"/><span className="h-2.5 w-2.5 rounded-full bg-emerald-400"/></div>
+        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-500"><ShieldCheck size={13} className="text-emerald-500"/><span className="truncate">{address}</span></div>
       </div>
-      {children}
+      <div className="min-h-[250px] bg-slate-50 sm:min-h-[340px] [&>*]:min-h-[250px] sm:[&>*]:min-h-[340px] [&_p]:!text-[11px] sm:[&_p]:!text-[12px] [&_span]:!text-[9px] sm:[&_span]:!text-[11px] [&_svg]:h-5 [&_svg]:w-5">
+        {children}
+      </div>
     </div>
   );
 }
@@ -509,7 +511,7 @@ export default function AuditForm() {
   }
 
   return (
-    <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1.08fr)_minmax(540px,0.92fr)] lg:gap-8 xl:gap-10">
+    <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1.2fr)_minmax(520px,0.8fr)] lg:gap-8 xl:gap-10">
       <StepExplainer step={step} data={data} />
       <div className="rounded-2xl border border-line-light bg-paper-soft p-5 shadow-sm sm:p-7">
       {/* Progress */}
