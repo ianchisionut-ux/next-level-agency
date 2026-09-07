@@ -11,6 +11,9 @@ export async function POST(req: Request) {
 
     const {
       companyName, activity, brandIdentity, ctaGoals, linkedCampaign,
+      projectTypes, audienceTypes, businessModels,
+      salesModel, catalogSize, paymentMethods, commerceOperations,
+      accountNeeds, userRoles, platformFeatures, integrations, customRequirements, dataMigration,
       hasDomain, domainName, hasHosting, hostingProvider, needsEmail, wantsSSL,
       pages, pagesOther, hasContent, languages, otherLanguage, wantsTestimonials,
       likedSite1, likedSite2, visualStyle, contactElements, wantsSocialIntegration, maintenance,
@@ -29,6 +32,21 @@ export async function POST(req: Request) {
         brandIdentity: brandIdentity || null,
         ctaGoals: Array.isArray(ctaGoals) ? ctaGoals : [],
         linkedCampaign: linkedCampaign || null,
+        projectRequirements: {
+          projectTypes: Array.isArray(projectTypes) ? projectTypes : [],
+          audienceTypes: Array.isArray(audienceTypes) ? audienceTypes : [],
+          businessModels: Array.isArray(businessModels) ? businessModels : [],
+          salesModel: salesModel || "",
+          catalogSize: catalogSize || "",
+          paymentMethods: Array.isArray(paymentMethods) ? paymentMethods : [],
+          commerceOperations: Array.isArray(commerceOperations) ? commerceOperations : [],
+          accountNeeds: accountNeeds || "",
+          userRoles: Array.isArray(userRoles) ? userRoles : [],
+          platformFeatures: Array.isArray(platformFeatures) ? platformFeatures : [],
+          integrations: Array.isArray(integrations) ? integrations : [],
+          customRequirements: typeof customRequirements === "string" ? customRequirements.slice(0, 5000) : "",
+          dataMigration: dataMigration || "",
+        },
 
         hasDomain: hasDomain || null,
         domainName: domainName || null,

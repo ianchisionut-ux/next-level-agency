@@ -49,6 +49,7 @@ export type ScorableBrief = {
   wantsSSL?: string | null;
   maintenance?: string | null;
   wantsSocialManagement?: string | null;
+  projectRequirements?: unknown;
 };
 
 function fmtLei(n: number) {
@@ -83,9 +84,41 @@ export function estimateWebsiteBrief(b: ScorableBrief): BriefEstimate {
   }
   if (b.pagesOther) score += add("Pagini custom suplimentare", 3);
 
-  // ---- E-commerce (cel mai mare impact) ----
-  const isEcommerce = (b.ctaGoals || []).includes("Să cumpere online");
+  const requirements = b.projectRequirements && typeof b.projectRequirements === "object" && !Array.isArray(b.projectRequirements)
+    ? b.projectRequirements as Record<string, unknown>
+    : {};
+  const reqArray = (key: string) => Array.isArray(requirements[key]) ? (requirements[key] as unknown[]).filter((value): value is string => typeof value === "string") : [];
+  const reqText = (key: string) => typeof requirements[key] === "string" ? requirements[key] as string : "";
+  const projectTypes = reqArray("projectTypes");
+  const businessModels = reqArray("businessModels");
+
+  // ---- Tipul proiectului și comerț ----
+  const isEcommerce = (b.ctaGoals || []).includes("Să cumpere online") || projectTypes.some((type) => /Magazin|Marketplace|comenzi online/i.test(type)) || businessModels.some((model) => /Vânzare|Abonamente|Comision/i.test(model));
   if (isEcommerce) score += add("Vânzare online (magazin/plăți)", 25);
+  const typeWeights: Array<[RegExp, string, number]> = [
+    [/SaaS|aplicație web/i, "Platformă SaaS / aplicație web", 42],
+    [/Marketplace/i, "Marketplace multi-vânzător", 38],
+    [/Portal|intranet/i, "Portal privat / intranet", 20],
+    [/Cursuri|e-learning/i, "Platformă e-learning", 20],
+    [/Director|listări|Imobiliare/i, "Listări și căutare avansată", 16],
+    [/Rezervări|programări/i, "Rezervări și disponibilitate", 10],
+    [/Restaurant|comenzi online/i, "Comenzi online pentru restaurant", 14],
+    [/Evenimente|bilete/i, "Evenimente și ticketing", 16],
+    [/Publicație|comunitate/i, "Publicație / comunitate", 10],
+    [/Alt proiect/i, "Cerințe de proiect personalizat", 20],
+  ];
+  for (const [pattern, label, points] of typeWeights) if (projectTypes.some((type) => pattern.test(type))) score += add(label, points);
+  const platformFeatures = reqArray("platformFeatures");
+  const integrations = reqArray("integrations").filter((item) => item !== "Nicio integrare cunoscută");
+  const commerceOperations = reqArray("commerceOperations");
+  const paymentMethods = reqArray("paymentMethods");
+  if (platformFeatures.length) score += add(`${platformFeatures.length} funcții avansate de platformă`, Math.min(40, platformFeatures.length * 2));
+  if (integrations.length) score += add(`${integrations.length} integrări externe`, Math.min(24, integrations.length * 2));
+  if (commerceOperations.length) score += add(`${commerceOperations.length} fluxuri comerciale`, Math.min(26, commerceOperations.length * 2));
+  if (paymentMethods.length > 1) score += add("Metode multiple de plată", Math.min(8, paymentMethods.length));
+  if (reqText("accountNeeds") && reqText("accountNeeds") !== "Nu, totul este public") score += add("Conturi și acces privat", 8 + Math.min(10, reqArray("userRoles").length * 2));
+  if (reqText("dataMigration") && reqText("dataMigration") !== "Nu există date de importat") score += add("Migrare de date", 6);
+  if (reqText("customRequirements")) score += add("Flux personalizat descris de client", 8);
 
   // ---- Branding ----
   if (b.brandIdentity === "Nu, avem nevoie de branding") score += add("Branding complet de la zero", 6);
@@ -126,7 +159,17 @@ export function estimateWebsiteBrief(b: ScorableBrief): BriefEstimate {
   let priceMin: number;
   let priceMax: number;
 
-  if (isEcommerce || score >= 50) {
+  if (score >= 90) {
+    tier = "Platformă digitală complexă";
+    tierDescription = "Aplicație web, marketplace sau portal cu roluri și integrări — necesită analiză și arhitectură dedicată.";
+    priceMin = 45000;
+    priceMax = 100000;
+  } else if (score >= 65) {
+    tier = "Aplicație web / proiect custom";
+    tierDescription = "Funcții avansate, conturi, automatizări ori integrări multiple — dezvoltare personalizată în etape.";
+    priceMin = 30000;
+    priceMax = 60000;
+  } else if (isEcommerce || score >= 50) {
     tier = "Magazin online / proiect custom";
     tierDescription = "Vânzare online sau proiect cu multe integrări — necesită arhitectură dedicată.";
     priceMin = 22000;

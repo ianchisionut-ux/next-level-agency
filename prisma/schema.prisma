@@ -340,6 +340,7 @@ model WebsiteBrief {
   offerSentAt           DateTime?
   offerEmailSentAt      DateTime?
   offerWhatsappSentAt   DateTime?
+  projectRequirements   Json?
   updatedAt             DateTime @default(now()) @updatedAt
 
   // 1. Afacerea ta & brand

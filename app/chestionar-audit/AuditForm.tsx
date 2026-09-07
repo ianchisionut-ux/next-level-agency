@@ -27,6 +27,21 @@ type FormState = {
   brandIdentity: string;
   ctaGoals: string[];
   linkedCampaign: string;
+  projectTypes: string[];
+  audienceTypes: string[];
+  businessModels: string[];
+
+  salesModel: string;
+  catalogSize: string;
+  paymentMethods: string[];
+  commerceOperations: string[];
+
+  accountNeeds: string;
+  userRoles: string[];
+  platformFeatures: string[];
+  integrations: string[];
+  customRequirements: string;
+  dataMigration: string;
 
   hasDomain: string;
   domainName: string;
@@ -67,6 +82,21 @@ const initialState: FormState = {
   brandIdentity: "",
   ctaGoals: [],
   linkedCampaign: "",
+  projectTypes: [],
+  audienceTypes: [],
+  businessModels: [],
+
+  salesModel: "",
+  catalogSize: "",
+  paymentMethods: [],
+  commerceOperations: [],
+
+  accountNeeds: "",
+  userRoles: [],
+  platformFeatures: [],
+  integrations: [],
+  customRequirements: "",
+  dataMigration: "",
 
   hasDomain: "",
   domainName: "",
@@ -103,9 +133,12 @@ const initialState: FormState = {
 
 const STEP_TITLES = [
   "Afacerea ta & brand",
-  "Domeniu & Hosting",
+  "Tipul proiectului",
+  "Vânzare & operațiuni",
   "Structură & conținut",
+  "Conturi, funcții & integrări",
   "Design & funcționalități",
+  "Domeniu, securitate & mentenanță",
   "Marketing & social media",
   "Termen, buget & contact",
 ];
@@ -120,12 +153,20 @@ const STEP_GUIDES = [
     impact: "Răspunsurile stabilesc mesajul principal, primul ecran și butoanele importante ale site-ului.",
   },
   {
-    eyebrow: "Adresa și infrastructura",
-    title: "Domeniul este adresa, hostingul este casa site-ului",
-    text: "Dacă le ai deja, continuăm cu ele. Dacă nu, te ajutăm să alegi o adresă potrivită și să pregătim găzduirea, securitatea și e-mailul profesional.",
-    points: ["Domeniu: numefirma.ro", "E-mail: contact@numefirma.ro", "SSL: lacătul de securitate din browser"],
-    example: "Exemplu: domeniu existent «firma.ro», dar hosting și e-mail profesional incluse în proiect.",
-    impact: "Stabilim ce păstrăm, ce configurăm și dacă sunt necesare mutări tehnice înainte de lansare.",
+    eyebrow: "Arhitectura soluției",
+    title: "Un website poate fi magazin, platformă sau instrument de lucru",
+    text: "Poți combina mai multe tipuri. De exemplu, un site de prezentare poate avea magazin, programări și zonă privată pentru clienți.",
+    points: ["Selectează toate tipurile care descriu proiectul", "Alege cine îl va folosi", "Indică modul în care proiectul produce valoare sau venit"],
+    example: "Exemplu: site pentru clinică + programări online + portal privat pentru pacienți.",
+    impact: "Stabilim dacă este suficient un website clasic sau este necesară o aplicație cu bază de date și fluxuri personalizate.",
+  },
+  {
+    eyebrow: "Plăți și procese",
+    title: "Vânzarea online înseamnă mai mult decât un buton de plată",
+    text: "Produsele, serviciile, abonamentele, rezervările și comisioanele au fluxuri diferite. Selectează ce trebuie să se întâmple după comandă.",
+    points: ["Spune ce vinzi și dimensiunea catalogului", "Alege metodele de plată necesare", "Bifează operațiunile: stoc, livrare, facturi, retururi sau abonamente"],
+    example: "Exemplu: 100–500 produse, card și ramburs, curier, facturare și sincronizare stoc.",
+    impact: "Răspunsurile decid procesatorul de plăți, structura bazei de date și integrările cu furnizorii externi.",
   },
   {
     eyebrow: "Harta site-ului",
@@ -136,12 +177,28 @@ const STEP_GUIDES = [
     impact: "Selecția determină meniul, volumul de conținut și estimarea de timp pentru proiect.",
   },
   {
+    eyebrow: "Experiență și automatizare",
+    title: "Conturile și integrările transformă site-ul într-o aplicație",
+    text: "Aici alegi funcțiile avansate: autentificare, roluri, dashboard, rezervări, fișiere, chat, notificări, API-uri și conectarea cu alte sisteme.",
+    points: ["Alege dacă utilizatorii au cont și ce roluri există", "Bifează funcțiile necesare", "Menționează sistemele existente și datele care trebuie importate"],
+    example: "Exemplu: client + furnizor + administrator, dashboard separat, notificări și integrare CRM.",
+    impact: "Definim permisiunile, automatizările, integrările și nivelul real de dezvoltare personalizată.",
+  },
+  {
     eyebrow: "Aspect și funcții",
     title: "Arată-ne stilul și modul de interacțiune dorit",
     text: "Exemplele de site-uri ne ajută să înțelegem atmosfera preferată. Separat, alegi funcțiile care îi permit clientului să te contacteze ușor.",
     points: ["Curat și aerisit sau dinamic", "WhatsApp, formular, hartă ori ofertă", "Exemplele sunt orientative, nu le copiem"],
     example: "Exemplu: design aerisit, buton WhatsApp și formular de cerere ofertă.",
     impact: "Alegem direcția vizuală, nivelul de animație și funcțiile care trebuie proiectate și testate.",
+  },
+  {
+    eyebrow: "Adresa și infrastructura",
+    title: "Domeniul este adresa, hostingul este casa site-ului",
+    text: "Dacă le ai deja, continuăm cu ele. Dacă nu, te ajutăm să alegi adresa și să pregătim găzduirea, securitatea, e-mailul și mentenanța.",
+    points: ["Domeniu: numefirma.ro", "E-mail: contact@numefirma.ro", "SSL, monitorizare și actualizări după lansare"],
+    example: "Exemplu: domeniu existent, dar hosting, e-mail profesional și mentenanță incluse.",
+    impact: "Stabilim ce păstrăm, ce configurăm și cum protejăm și întreținem proiectul după lansare.",
   },
   {
     eyebrow: "Promovare conectată",
@@ -184,7 +241,24 @@ function StepPreview({ step, data }: { step: number; data: FormState }) {
       </div>
     </BrowserFrame>
   );
-  if (step === 1) {
+  if (step === 1) return (
+    <BrowserFrame>
+      <div className="bg-slate-50 p-4">
+        <p className="mb-2 text-[8px] font-black uppercase tracking-wider text-slate-400">Arhitectura proiectului</p>
+        <div className="grid grid-cols-2 gap-2">{(data.projectTypes.length ? data.projectTypes : ["Alege tipurile de proiect", "Funcțiile se pot combina"]).slice(0, 6).map((type, index) => <div key={type} className={`min-h-12 rounded-lg border p-2.5 ${index === 0 ? "border-blue/30 bg-blue/10" : "border-slate-200 bg-white"}`}><LayoutTemplate size={13} className={index === 0 ? "text-blue" : "text-slate-400"}/><p className="mt-1.5 text-[7px] font-bold leading-3 text-slate-700">{type}</p></div>)}</div>
+        {(data.audienceTypes.length > 0 || data.businessModels.length > 0) && <div className="mt-2 flex flex-wrap gap-1 text-[7px]">{data.audienceTypes.slice(0, 2).map((item) => <span key={item} className="rounded bg-slate-200 px-2 py-1 text-slate-600">{item}</span>)}{data.businessModels.slice(0, 2).map((item) => <span key={item} className="rounded bg-emerald-100 px-2 py-1 text-emerald-700">{item}</span>)}</div>}
+      </div>
+    </BrowserFrame>
+  );
+  if (step === 2) return (
+    <BrowserFrame>
+      <div className="bg-slate-50 p-4">
+        <div className="flex items-start justify-between rounded-lg bg-white p-3 shadow-sm"><div><p className="text-[8px] font-black text-slate-800">{data.salesModel || "Model de vânzare"}</p><p className="mt-1 text-[7px] text-slate-400">{data.catalogSize || "Volum de stabilit"}</p></div><WalletCards size={19} className="text-blue"/></div>
+        <div className="mt-2 grid grid-cols-2 gap-2"><div className="rounded-lg bg-white p-2.5"><p className="text-[7px] font-black uppercase text-slate-400">Plată</p>{(data.paymentMethods.length ? data.paymentMethods : ["Metode de plată"]).slice(0, 3).map((item) => <p key={item} className="mt-1 truncate text-[7px] font-semibold text-slate-600">✓ {item}</p>)}</div><div className="rounded-lg bg-white p-2.5"><p className="text-[7px] font-black uppercase text-slate-400">Operațiuni</p>{(data.commerceOperations.length ? data.commerceOperations : ["Fluxuri comerciale"]).slice(0, 3).map((item) => <p key={item} className="mt-1 truncate text-[7px] font-semibold text-slate-600">✓ {item}</p>)}</div></div>
+      </div>
+    </BrowserFrame>
+  );
+  if (step === 6) {
     const domain = data.domainName.trim() || (data.hasDomain ? "domeniu-de-completat.ro" : "domeniul-tau.ro");
     return (
     <BrowserFrame address={`https://www.${domain}`}>
@@ -196,7 +270,7 @@ function StepPreview({ step, data }: { step: number; data: FormState }) {
     </BrowserFrame>
     );
   }
-  if (step === 2) {
+  if (step === 3) {
     const selectedPages = data.pages.length ? data.pages : ["Acasă", "Servicii", "Contact"];
     return (
     <BrowserFrame>
@@ -208,7 +282,16 @@ function StepPreview({ step, data }: { step: number; data: FormState }) {
     </BrowserFrame>
     );
   }
-  if (step === 3) {
+  if (step === 4) return (
+    <BrowserFrame>
+      <div className="grid grid-cols-[.75fr_1.25fr] gap-2 bg-slate-100 p-3">
+        <div className="rounded-lg bg-slate-900 p-2.5 text-white"><p className="text-[7px] font-black uppercase text-white/40">Roluri</p>{(data.userRoles.length ? data.userRoles : [data.accountNeeds || "Acces public"]).slice(0, 4).map((role) => <div key={role} className="mt-1.5 truncate rounded bg-white/10 px-2 py-1 text-[7px]">{role}</div>)}</div>
+        <div className="rounded-lg bg-white p-2.5"><p className="text-[7px] font-black uppercase text-slate-400">Funcții</p><div className="mt-2 grid grid-cols-2 gap-1">{(data.platformFeatures.length ? data.platformFeatures : ["Dashboard", "Automatizări", "Notificări", "Integrări"]).slice(0, 6).map((item) => <span key={item} className="truncate rounded bg-blue/5 px-1.5 py-1 text-[6px] font-bold text-blue">{item}</span>)}</div>{data.integrations.length > 0 && <p className="mt-2 truncate text-[7px] text-slate-400">Conectat: {data.integrations.join(", ")}</p>}</div>
+        {data.customRequirements.trim() && <div className="col-span-2 truncate rounded-lg bg-amber-50 px-2.5 py-2 text-[7px] font-semibold text-amber-700">Custom: {data.customRequirements}</div>}
+      </div>
+    </BrowserFrame>
+  );
+  if (step === 5) {
     const dynamic = data.visualStyle.startsWith("Spectaculos");
     return (
     <BrowserFrame>
@@ -220,7 +303,7 @@ function StepPreview({ step, data }: { step: number; data: FormState }) {
     </BrowserFrame>
     );
   }
-  if (step === 4) {
+  if (step === 7) {
     const accounts = [...data.socialAccounts, ...(data.socialOther.trim() ? [data.socialOther.trim()] : [])];
     const budgetWidths: Record<string, string> = { "Nu avem încă buget alocat": "w-0", "sub 500 lei": "w-1/4", "500 – 2.000 lei": "w-2/3", "peste 2.000 lei": "w-full" };
     return (
@@ -447,7 +530,7 @@ export default function AuditForm() {
   }
 
   return (
-    <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:gap-10">
+    <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1.08fr)_minmax(540px,0.92fr)] lg:gap-8 xl:gap-10">
       <StepExplainer step={step} data={data} />
       <div className="rounded-2xl border border-line-light bg-paper-soft p-6 shadow-sm sm:p-10">
       {/* Progress */}
@@ -518,8 +601,103 @@ export default function AuditForm() {
           </>
         )}
 
-        {/* STEP 1 — Domeniu & Hosting */}
+        {/* STEP 1 — Tipul proiectului */}
         {step === 1 && (
+          <>
+            <div>
+              <FieldLabel hint="Poți combina oricâte variante. Dacă proiectul nu se încadrează perfect, selectează «Alt proiect personalizat». ">
+                Ce fel de website sau platformă dorești?
+              </FieldLabel>
+              <MultiChoice
+                options={["Site de prezentare / companie", "Landing page / campanie", "Magazin online", "Rezervări / programări", "Restaurant / comenzi online", "Marketplace cu mai mulți vânzători", "Platformă SaaS / aplicație web", "Portal clienți / intranet", "Cursuri / e-learning", "Director / anunțuri / listări", "Imobiliare", "Evenimente / bilete", "Publicație / blog / comunitate", "ONG / donații", "Alt proiect personalizat"]}
+                values={data.projectTypes}
+                onChange={(v) => set("projectTypes", v)}
+              />
+            </div>
+            <div>
+              <FieldLabel>Cine va folosi proiectul?</FieldLabel>
+              <MultiChoice
+                options={["Public larg", "Clienți persoane fizice", "Companii / B2B", "Angajați / echipă internă", "Parteneri / furnizori", "Profesioniști / membri", "Elevi / cursanți", "Administratori"]}
+                values={data.audienceTypes}
+                onChange={(v) => set("audienceTypes", v)}
+              />
+            </div>
+            <div>
+              <FieldLabel hint="Cum creează proiectul valoare sau venit pentru afacere?">Modelul de funcționare dorit</FieldLabel>
+              <MultiChoice
+                options={["Prezentare și generare de clienți", "Vânzare de produse", "Vânzare de servicii", "Abonamente recurente", "Comision din tranzacții", "Publicitate / conținut sponsorizat", "Donații", "Instrument intern", "Model încă neclar"]}
+                values={data.businessModels}
+                onChange={(v) => set("businessModels", v)}
+              />
+            </div>
+          </>
+        )}
+
+        {/* STEP 2 — Vânzare & operațiuni */}
+        {step === 2 && (
+          <>
+            <div>
+              <FieldLabel>Vor exista plăți sau comenzi prin website?</FieldLabel>
+              <SingleChoice
+                options={["Nu există tranzacții online", "Da, plată integrală online", "Da, avans sau garanție", "Cerere de ofertă, plata ulterior", "Încă nu știm"]}
+                value={data.salesModel}
+                onChange={(v) => set("salesModel", v)}
+              />
+            </div>
+            {data.salesModel !== "Nu există tranzacții online" && (
+              <>
+                <div>
+                  <FieldLabel>Volumul estimat de produse, servicii sau listări</FieldLabel>
+                  <SingleChoice options={["1–20", "21–100", "101–500", "Peste 500", "Se importă din alt sistem", "Nu știm încă"]} value={data.catalogSize} onChange={(v) => set("catalogSize", v)} />
+                </div>
+                <div>
+                  <FieldLabel>Metode de plată necesare</FieldLabel>
+                  <MultiChoice options={["Card online", "Transfer bancar", "Ramburs", "Plată la sediu", "Apple Pay / Google Pay", "Plată în rate", "Abonament recurent", "Plată în mai multe monede"]} values={data.paymentMethods} onChange={(v) => set("paymentMethods", v)} />
+                </div>
+                <div>
+                  <FieldLabel hint="Selectează tot ce trebuie administrat după ce clientul apasă «Comandă». ">Operațiuni comerciale necesare</FieldLabel>
+                  <MultiChoice options={["Catalog și variante", "Stoc și depozite", "Curier și AWB", "Livrare digitală", "Facturare / e-Factura", "Coduri de reducere", "Retururi și rambursări", "Abonamente", "Comisioane pentru vânzători", "Rezervări și disponibilitate", "Bilete / coduri QR", "Notificări comandă", "Sincronizare ERP / gestiune"]} values={data.commerceOperations} onChange={(v) => set("commerceOperations", v)} />
+                </div>
+              </>
+            )}
+            {data.salesModel === "Nu există tranzacții online" && <p className="rounded-lg bg-blue/5 px-4 py-3 text-sm leading-6 text-ink-soft">Perfect. Proiectul poate genera cereri, programări sau contacte fără să proceseze plăți. Funcțiile relevante se aleg la pasul următor.</p>}
+          </>
+        )}
+
+        {/* STEP 4 — Conturi, funcții & integrări */}
+        {step === 4 && (
+          <>
+            <div>
+              <FieldLabel>Utilizatorii vor avea cont și zonă privată?</FieldLabel>
+              <SingleChoice options={["Nu, totul este public", "Da, cont simplu de client", "Da, mai multe tipuri de utilizatori", "Doar administrare internă", "Nu știm încă"]} value={data.accountNeeds} onChange={(v) => set("accountNeeds", v)} />
+            </div>
+            {data.accountNeeds && data.accountNeeds !== "Nu, totul este public" && (
+              <div>
+                <FieldLabel>Ce roluri sau tipuri de utilizatori sunt necesare?</FieldLabel>
+                <MultiChoice options={["Client", "Administrator", "Angajat", "Manager", "Furnizor / vânzător", "Partener", "Instructor", "Cursant", "Membru / abonat", "Moderator", "Agent"]} values={data.userRoles} onChange={(v) => set("userRoles", v)} />
+              </div>
+            )}
+            <div>
+              <FieldLabel hint="Bifează inclusiv funcțiile care ar putea fi necesare într-o etapă ulterioară. ">Ce trebuie să poată face platforma?</FieldLabel>
+              <MultiChoice options={["Dashboard personalizat", "Căutare și filtre avansate", "Rezervări și calendar", "Formulare complexe", "Încărcare documente / fișiere", "Generare PDF / contracte", "Chat între utilizatori", "Recenzii și rating", "Favorite / liste salvate", "Notificări e-mail / SMS", "Notificări push", "Semnătură electronică", "Hartă și geolocație", "Calculator / configurator", "Rapoarte și statistici", "Moderare conținut", "API pentru aplicație mobilă", "Funcții AI / automatizări"]} values={data.platformFeatures} onChange={(v) => set("platformFeatures", v)} />
+            </div>
+            <div>
+              <FieldLabel>Cu ce servicii trebuie conectat?</FieldLabel>
+              <MultiChoice options={["Procesator de plăți", "ANAF / e-Factura", "CRM", "ERP / gestiune", "Curieri", "Google Calendar", "Google Maps", "Newsletter", "WhatsApp / SMS", "Social media", "Analytics și reclame", "Contabilitate", "Open Banking", "Sistem existent prin API", "Nicio integrare cunoscută"]} values={data.integrations} onChange={(v) => set("integrations", v)} />
+            </div>
+            <div>
+              <FieldLabel>Datele existente trebuie mutate în noua platformă?</FieldLabel>
+              <SingleChoice options={["Nu există date de importat", "Da, din Excel / CSV", "Da, dintr-un site vechi", "Da, dintr-un alt program / API", "Trebuie analizat"]} value={data.dataMigration} onChange={(v) => set("dataMigration", v)} />
+            </div>
+            <div>
+              <FieldLabel hint="Descrie orice flux special, chiar dacă nu știi cum se numește tehnic. ">Alte funcții sau automatizări</FieldLabel>
+              <TextAreaInput value={data.customRequirements} onChange={(v) => set("customRequirements", v)} placeholder="Ex: clientul completează un formular, primește automat oferta PDF, semnează și achită avansul..." rows={4} />
+            </div>
+          </>
+        )}
+
+        {/* STEP 6 — Domeniu & Hosting */}
+        {step === 6 && (
           <>
             <div>
               <FieldLabel>Ai deja un domeniu web cumpărat? (ex: numefirma.ro)</FieldLabel>
@@ -577,8 +755,8 @@ export default function AuditForm() {
           </>
         )}
 
-        {/* STEP 2 — Structură & conținut */}
-        {step === 2 && (
+        {/* STEP 3 — Structură & conținut */}
+        {step === 3 && (
           <>
             <div>
               <FieldLabel>Ce pagini dorești să includem?</FieldLabel>
@@ -634,8 +812,8 @@ export default function AuditForm() {
           </>
         )}
 
-        {/* STEP 3 — Design & funcționalități */}
-        {step === 3 && (
+        {/* STEP 5 — Design & funcționalități */}
+        {step === 5 && (
           <>
             <div>
               <FieldLabel>Exemple de site-uri care îți plac (design sau mod de lucru)</FieldLabel>
@@ -693,8 +871,8 @@ export default function AuditForm() {
           </>
         )}
 
-        {/* STEP 4 — Marketing & social media */}
-        {step === 4 && (
+        {/* STEP 7 — Marketing & social media */}
+        {step === 7 && (
           <>
             <p className="rounded-lg bg-blue/5 px-4 py-3 text-xs italic leading-relaxed text-ink-soft">
               Next Level oferă și management de social media printr-o platformă proprie de
@@ -738,8 +916,8 @@ export default function AuditForm() {
           </>
         )}
 
-        {/* STEP 5 — Termen, buget & contact */}
-        {step === 5 && (
+        {/* STEP 8 — Termen, buget & contact */}
+        {step === 8 && (
           <>
             <div>
               <FieldLabel>Data dorită pentru lansare</FieldLabel>

@@ -54,6 +54,12 @@ export default async function OfertaWebDetailPage({ params }: { params: Promise<
   const b = await prisma.websiteBrief.findUnique({ where: { id } });
   if (!b) notFound();
 
+  const requirements = b.projectRequirements && typeof b.projectRequirements === "object" && !Array.isArray(b.projectRequirements)
+    ? b.projectRequirements as Record<string, unknown>
+    : {};
+  const requirementText = (key: string) => typeof requirements[key] === "string" ? requirements[key] as string : null;
+  const requirementList = (key: string) => Array.isArray(requirements[key]) ? (requirements[key] as unknown[]).filter((item): item is string => typeof item === "string") : [];
+
   const est = estimateWebsiteBrief(b);
 
   return (
@@ -148,21 +154,43 @@ export default async function OfertaWebDetailPage({ params }: { params: Promise<
           <Row label="Campanie de marketing legată" value={b.linkedCampaign} />
         </Section>
 
-        <Section num={2} title="Domeniu & Hosting">
+        <Section num={2} title="Tipul proiectului & utilizatori">
+          <Row label="Tipuri de proiect" value={requirementList("projectTypes")} />
+          <Row label="Public / utilizatori" value={requirementList("audienceTypes")} />
+          <Row label="Model de funcționare" value={requirementList("businessModels")} />
+        </Section>
+
+        <Section num={3} title="Vânzare & operațiuni">
+          <Row label="Tranzacții online" value={requirementText("salesModel")} />
+          <Row label="Volum catalog" value={requirementText("catalogSize")} />
+          <Row label="Metode de plată" value={requirementList("paymentMethods")} />
+          <Row label="Operațiuni comerciale" value={requirementList("commerceOperations")} />
+        </Section>
+
+        <Section num={4} title="Domeniu & Hosting">
           <Row label="Domeniu" value={b.hasDomain === "Da, îl am deja" ? `Da — ${b.domainName || "nespecificat"}` : b.hasDomain} />
           <Row label="Hosting" value={b.hasHosting === "Da, la o firmă existentă" ? `Da — ${b.hostingProvider || "nespecificat"}` : b.hasHosting} />
           <Row label="Adrese e-mail profesionale" value={b.needsEmail} />
           <Row label="SSL & monitorizare uptime" value={b.wantsSSL} />
         </Section>
 
-        <Section num={3} title="Structură & conținut">
+        <Section num={5} title="Structură & conținut">
           <Row label="Pagini dorite" value={[...b.pages, ...(b.pagesOther ? [b.pagesOther] : [])]} />
           <Row label="Text / poze / logo" value={b.hasContent} />
           <Row label="Limbi" value={b.languages === "Română + altă limbă" ? `Română + ${b.otherLanguage || "?"}` : b.languages} />
           <Row label="Testimoniale" value={b.wantsTestimonials} />
         </Section>
 
-        <Section num={4} title="Design & funcționalități">
+        <Section num={6} title="Conturi, funcții & integrări">
+          <Row label="Acces utilizatori" value={requirementText("accountNeeds")} />
+          <Row label="Roluri" value={requirementList("userRoles")} />
+          <Row label="Funcții de platformă" value={requirementList("platformFeatures")} />
+          <Row label="Integrări" value={requirementList("integrations")} />
+          <Row label="Migrare date" value={requirementText("dataMigration")} />
+          <Row label="Cerințe personalizate" value={requirementText("customRequirements")} />
+        </Section>
+
+        <Section num={7} title="Design & funcționalități">
           <Row label="Site-uri de referință" value={[b.likedSite1, b.likedSite2].filter(Boolean) as string[]} />
           <Row label="Stil vizual" value={b.visualStyle} />
           <Row label="Contact rapid" value={b.contactElements} />
@@ -170,13 +198,13 @@ export default async function OfertaWebDetailPage({ params }: { params: Promise<
           <Row label="Mentenanță post-lansare" value={b.maintenance} />
         </Section>
 
-        <Section num={5} title="Marketing & social media">
+        <Section num={8} title="Marketing & social media">
           <Row label="Conturi active" value={[...b.socialAccounts, ...(b.socialOther ? [b.socialOther] : [])]} />
           <Row label="Vor management social media" value={b.wantsSocialManagement} />
           <Row label="Buget lunar ads" value={b.adBudget} />
         </Section>
 
-        <Section num={6} title="Termen, buget & contact">
+        <Section num={9} title="Termen, buget & contact">
           <Row label="Lansare dorită" value={b.launchDate} />
           <Row label="Buget orientativ" value={b.budget} />
           <Row label="Nume" value={b.contactName} />
