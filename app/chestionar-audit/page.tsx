@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import AuditForm from "./AuditForm";
@@ -26,6 +27,17 @@ export default function ChestionarAuditPage() {
               aliniat cu obiectivele tale. Durează 3–5 minute, iar răspunsurile devin
               baza propunerii pregătite de echipa Next Level.
             </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <span className="rounded-full bg-blue px-5 py-2.5 text-sm font-bold text-white">
+                Chestionar avansat
+              </span>
+              <Link
+                href="/chestionar-site-prezentare"
+                className="rounded-full border border-white/25 px-5 py-2.5 text-sm font-bold text-white transition hover:border-blue-bright hover:text-blue-bright"
+              >
+                Vreau un site simplu de prezentare
+              </Link>
+            </div>
           </div>
         </section>
 

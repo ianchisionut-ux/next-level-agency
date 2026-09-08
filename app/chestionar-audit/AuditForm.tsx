@@ -477,7 +477,7 @@ export default function AuditForm() {
       const res = await fetch("/api/audit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, questionnaireType: "advanced" }),
       });
       if (!res.ok) throw new Error("send-failed");
       setStatus("success");

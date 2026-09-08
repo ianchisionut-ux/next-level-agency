@@ -19,6 +19,7 @@ export async function POST(req: Request) {
       likedSite1, likedSite2, visualStyle, contactElements, wantsSocialIntegration, maintenance,
       socialAccounts, socialOther, wantsSocialManagement, adBudget,
       launchDate, budget, contactName, contactPhone, contactEmail,
+      questionnaireType,
     } = body || {};
 
     if (!companyName || !contactName || (!contactPhone && !contactEmail)) {
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
         ctaGoals: Array.isArray(ctaGoals) ? ctaGoals : [],
         linkedCampaign: linkedCampaign || null,
         projectRequirements: {
+          questionnaireType: questionnaireType === "simple-presentation" ? "simple-presentation" : "advanced",
           projectTypes: Array.isArray(projectTypes) ? projectTypes : [],
           audienceTypes: Array.isArray(audienceTypes) ? audienceTypes : [],
           businessModels: Array.isArray(businessModels) ? businessModels : [],

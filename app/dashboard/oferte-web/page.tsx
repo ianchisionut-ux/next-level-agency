@@ -55,12 +55,19 @@ export default async function OferteWebPage() {
             <tbody>
               {briefs.map((b) => {
                 const est = estimateWebsiteBrief(b);
+                const requirements = b.projectRequirements && typeof b.projectRequirements === "object" && !Array.isArray(b.projectRequirements)
+                  ? b.projectRequirements as Record<string, unknown>
+                  : {};
+                const isSimple = requirements.questionnaireType === "simple-presentation";
                 return (
                   <tr key={b.id} className="border-b border-ink-700 last:border-0 hover:bg-ink-700/40">
                     <td className="px-5 py-4">
                       <Link href={`/dashboard/oferte-web/${b.id}`} className="font-semibold text-mist-100 hover:text-signal-bright">
                         {b.companyName}
                       </Link>
+                      <div className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${isSimple ? "bg-emerald-500/15 text-emerald-300" : "bg-signal/15 text-signal-bright"}`}>
+                        {isSimple ? "Site prezentare" : "Avansat"}
+                      </div>
                     </td>
                     <td className="px-5 py-4 text-mist-500">
                       <div>{b.contactName}</div>

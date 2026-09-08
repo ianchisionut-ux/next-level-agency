@@ -59,6 +59,7 @@ export default async function OfertaWebDetailPage({ params }: { params: Promise<
     : {};
   const requirementText = (key: string) => typeof requirements[key] === "string" ? requirements[key] as string : null;
   const requirementList = (key: string) => Array.isArray(requirements[key]) ? (requirements[key] as unknown[]).filter((item): item is string => typeof item === "string") : [];
+  const isSimple = requirements.questionnaireType === "simple-presentation";
 
   const est = estimateWebsiteBrief(b);
 
@@ -67,7 +68,7 @@ export default async function OfertaWebDetailPage({ params }: { params: Promise<
       <div className="print:hidden">
         <PageHeader
           title={b.companyName}
-          description={`Chestionar primit pe ${formatDate(b.createdAt)}`}
+          description={`${isSimple ? "Site simplu de prezentare" : "Chestionar avansat"} · primit pe ${formatDate(b.createdAt)}`}
           actions={
             <BriefActions
               id={b.id}
@@ -95,7 +96,7 @@ export default async function OfertaWebDetailPage({ params }: { params: Promise<
 
       {/* Antet vizibil doar la print */}
       <div className="hidden print:block">
-        <p className="text-xs font-bold uppercase tracking-widest text-blue-600">Chestionar &amp; Audit — Oferte Web</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-blue-600">{isSimple ? "Chestionar site de prezentare" : "Chestionar avansat & audit"} — Oferte Web</p>
         <h1 className="mt-1 text-2xl font-extrabold text-slate-900">{b.companyName}</h1>
         <p className="mt-1 text-sm text-slate-500">Primit pe {formatDate(b.createdAt)}</p>
       </div>
