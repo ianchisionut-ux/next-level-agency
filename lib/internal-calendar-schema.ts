@@ -16,6 +16,7 @@ async function createInternalCalendarSchema() {
       "type" TEXT NOT NULL DEFAULT 'NOTE',
       "priority" TEXT NOT NULL DEFAULT 'MEDIUM',
       "status" TEXT NOT NULL DEFAULT 'TODO',
+      "visibility" TEXT NOT NULL DEFAULT 'TEAM',
       "startAt" TIMESTAMP(3) NOT NULL,
       "endAt" TIMESTAMP(3),
       "allDay" BOOLEAN NOT NULL DEFAULT false,
@@ -27,7 +28,9 @@ async function createInternalCalendarSchema() {
       CONSTRAINT "InternalCalendarItem_assigneeId_fkey" FOREIGN KEY ("assigneeId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE
     )
   `);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "InternalCalendarItem" ADD COLUMN IF NOT EXISTS "visibility" TEXT NOT NULL DEFAULT 'TEAM'`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "InternalCalendarItem_workspaceId_startAt_idx" ON "InternalCalendarItem"("workspaceId", "startAt")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "InternalCalendarItem_workspaceId_visibility_startAt_idx" ON "InternalCalendarItem"("workspaceId", "visibility", "startAt")`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "InternalCalendarItem_assigneeId_status_idx" ON "InternalCalendarItem"("assigneeId", "status")`);
 }
 

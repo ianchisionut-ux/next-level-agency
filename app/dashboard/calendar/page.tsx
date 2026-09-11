@@ -87,7 +87,14 @@ export default async function CalendarPage({
   await ensureInternalCalendarSchema();
   const [internalItems, memberships] = await Promise.all([
     prisma.internalCalendarItem.findMany({
-      where: { workspaceId: workspace.id, startAt: { gte: rangeStart, lte: rangeEnd } },
+      where: {
+        workspaceId: workspace.id,
+        startAt: { gte: rangeStart, lte: rangeEnd },
+        OR: [
+          { visibility: "TEAM" },
+          { visibility: "PERSONAL", authorId: user.userId },
+        ],
+      },
       include: { author: { select: { id: true, name: true } }, assignee: { select: { id: true, name: true } } },
       orderBy: [{ startAt: "asc" }, { createdAt: "asc" }],
     }),
@@ -109,7 +116,7 @@ export default async function CalendarPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Calendar intern & editorial" description="Planificarea echipei și calendarul de conținut pentru clienți, în același loc." />
+      <PageHeader title="Calendar intern & editorial" description="Planificare comună pentru echipă, cu mod Personal pentru notițele, programările și deadline-urile tale private." />
       <InternalTeamCalendar
         initialItems={internalItems.map((item) => ({ ...item, startAt: item.startAt.toISOString(), endAt: item.endAt?.toISOString() ?? null, createdAt: undefined, updatedAt: undefined }))}
         members={memberships.map((membership) => membership.user)}

@@ -6,6 +6,7 @@ import { getActiveWorkspace, getCurrentUser } from "@/lib/session";
 const STATUSES = new Set(["TODO", "IN_PROGRESS", "DONE"]);
 const TYPES = new Set(["NOTE", "TASK", "MEETING", "DEADLINE"]);
 const PRIORITIES = new Set(["LOW", "MEDIUM", "HIGH"]);
+const VISIBILITIES = new Set(["TEAM", "PERSONAL"]);
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
@@ -13,7 +14,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!user || !workspace) return NextResponse.json({ error: "Neautorizat" }, { status: 401 });
   await ensureInternalCalendarSchema();
   const { id } = await params;
-  const existing = await prisma.internalCalendarItem.findFirst({ where: { id, workspaceId: workspace.id } });
+  const existing = await prisma.internalCalendarItem.findFirst({
+    where: {
+      id,
+      workspaceId: workspace.id,
+      OR: [
+        { visibility: "TEAM" },
+        { visibility: "PERSONAL", authorId: user.userId },
+      ],
+    },
+  });
   if (!existing) return NextResponse.json({ error: "Elementul nu există." }, { status: 404 });
   const body = await req.json();
   const data: Record<string, unknown> = {};
@@ -25,11 +35,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (body.startAt) data.startAt = new Date(body.startAt);
   if (body.endAt !== undefined) data.endAt = body.endAt ? new Date(body.endAt) : null;
   if (body.allDay !== undefined) data.allDay = Boolean(body.allDay);
+  let nextVisibility = existing.visibility;
+  if (VISIBILITIES.has(body.visibility)) {
+    if (existing.authorId !== user.userId) {
+      return NextResponse.json({ error: "Doar autorul poate schimba vizibilitatea." }, { status: 403 });
+    }
+    nextVisibility = body.visibility;
+    data.visibility = nextVisibility;
+  }
   if (body.assigneeId !== undefined) {
     const assigneeId = body.assigneeId ? String(body.assigneeId) : null;
     const member = assigneeId ? await prisma.workspaceMember.findUnique({ where: { userId_workspaceId: { userId: assigneeId, workspaceId: workspace.id } } }) : null;
     data.assigneeId = member ? assigneeId : null;
   }
+  if (nextVisibility === "PERSONAL") data.assigneeId = null;
   const item = await prisma.internalCalendarItem.update({
     where: { id }, data,
     include: { author: { select: { id: true, name: true } }, assignee: { select: { id: true, name: true } } },
@@ -43,7 +62,16 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   if (!user || !workspace) return NextResponse.json({ error: "Neautorizat" }, { status: 401 });
   await ensureInternalCalendarSchema();
   const { id } = await params;
-  const existing = await prisma.internalCalendarItem.findFirst({ where: { id, workspaceId: workspace.id } });
+  const existing = await prisma.internalCalendarItem.findFirst({
+    where: {
+      id,
+      workspaceId: workspace.id,
+      OR: [
+        { visibility: "TEAM" },
+        { visibility: "PERSONAL", authorId: user.userId },
+      ],
+    },
+  });
   if (!existing) return NextResponse.json({ error: "Elementul nu există." }, { status: 404 });
   await prisma.internalCalendarItem.delete({ where: { id } });
   return NextResponse.json({ ok: true });

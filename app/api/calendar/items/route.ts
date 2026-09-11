@@ -5,6 +5,7 @@ import { getActiveWorkspace, getCurrentUser } from "@/lib/session";
 
 const TYPES = new Set(["NOTE", "TASK", "MEETING", "DEADLINE"]);
 const PRIORITIES = new Set(["LOW", "MEDIUM", "HIGH"]);
+const VISIBILITIES = new Set(["TEAM", "PERSONAL"]);
 
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
@@ -16,6 +17,10 @@ export async function GET(req: NextRequest) {
   const items = await prisma.internalCalendarItem.findMany({
     where: {
       workspaceId: workspace.id,
+      OR: [
+        { visibility: "TEAM" },
+        { visibility: "PERSONAL", authorId: user.userId },
+      ],
       ...(start && end ? { startAt: { gte: new Date(start), lte: new Date(end) } } : {}),
     },
     include: { author: { select: { id: true, name: true } }, assignee: { select: { id: true, name: true } } },
@@ -34,6 +39,8 @@ export async function POST(req: NextRequest) {
   const startAt = new Date(body.startAt);
   if (!title || Number.isNaN(startAt.getTime())) return NextResponse.json({ error: "Titlul și data sunt obligatorii." }, { status: 400 });
   let assigneeId = body.assigneeId ? String(body.assigneeId) : null;
+  const visibility = VISIBILITIES.has(body.visibility) ? body.visibility : "TEAM";
+  if (visibility === "PERSONAL") assigneeId = null;
   if (assigneeId) {
     const member = await prisma.workspaceMember.findUnique({ where: { userId_workspaceId: { userId: assigneeId, workspaceId: workspace.id } } });
     if (!member) assigneeId = null;
@@ -47,6 +54,7 @@ export async function POST(req: NextRequest) {
       notes: String(body.notes || "").trim() || null,
       type: TYPES.has(body.type) ? body.type : "NOTE",
       priority: PRIORITIES.has(body.priority) ? body.priority : "MEDIUM",
+      visibility,
       startAt,
       endAt: body.endAt ? new Date(body.endAt) : null,
       allDay: Boolean(body.allDay),

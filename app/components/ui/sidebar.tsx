@@ -38,6 +38,7 @@ export function Sidebar({
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const showMobileBack = pathname !== "/dashboard";
   const visibleNavGroups = NAV_GROUPS.map((group) => ({
     ...group,
     items: group.items.filter((item) => !item.superAdminOnly || isSuperAdmin),
@@ -57,22 +58,36 @@ export function Sidebar({
   return (
     <>
       {/* Bara de sus, doar pe mobil/tableta - buton de meniu + wordmark */}
-      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-nav-border bg-nav-bg px-4 lg:hidden">
-        <button
-          onClick={() => setMobileOpen(true)}
-          aria-label="Deschide meniul"
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-nav-text hover:bg-nav-bg-hover transition-colors"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round" />
-          </svg>
-        </button>
+      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-nav-border bg-nav-bg px-3 lg:hidden">
+        <div className="flex items-center gap-1">
+          {showMobileBack && (
+            <button
+              onClick={() => router.back()}
+              aria-label="Înapoi la pagina anterioară"
+              className="inline-flex h-9 items-center gap-1 rounded-lg px-2 text-sm font-medium text-nav-text hover:bg-nav-bg-hover transition-colors"
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+                <path d="m15 18-6-6 6-6M9 12h10" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Înapoi
+            </button>
+          )}
+          <button
+            onClick={() => setMobileOpen(true)}
+            aria-label="Deschide meniul"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-nav-text hover:bg-nav-bg-hover transition-colors"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
         <div className="flex items-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/brand/logo-mark-dark.png" alt="Next Level" className="h-9 w-9 object-contain" />
           <span className="font-display font-semibold text-base tracking-tight text-nav-text">Signal</span>
         </div>
-        <div className="w-9" />
+        <div className="w-1" />
       </div>
 
       {/* Fundal semi-transparent, doar cand drawer-ul de mobil e deschis */}

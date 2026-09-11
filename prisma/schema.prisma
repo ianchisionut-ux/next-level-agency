@@ -444,6 +444,7 @@ model InternalCalendarItem {
   type        String    @default("NOTE")
   priority    String    @default("MEDIUM")
   status      String    @default("TODO")
+  visibility  String    @default("TEAM")
   startAt     DateTime
   endAt       DateTime?
   allDay      Boolean   @default(false)
@@ -451,5 +452,6 @@ model InternalCalendarItem {
   updatedAt   DateTime  @updatedAt
 
   @@index([workspaceId, startAt])
+  @@index([workspaceId, visibility, startAt])
   @@index([assigneeId, status])
 }
