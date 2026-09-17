@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ensureInternalCalendarSchema } from "@/lib/internal-calendar-schema";
 import { getActiveWorkspace, getCurrentUser } from "@/lib/session";
+import { deleteInternalItemFromGoogle, syncInternalItemToGoogle } from "@/lib/google-calendar";
 
 const STATUSES = new Set(["TODO", "IN_PROGRESS", "DONE"]);
 const TYPES = new Set(["NOTE", "TASK", "MEETING", "DEADLINE"]);
@@ -53,7 +54,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     where: { id }, data,
     include: { author: { select: { id: true, name: true } }, assignee: { select: { id: true, name: true } } },
   });
-  return NextResponse.json(item);
+  let googleSyncError: string | undefined;
+  try {
+    await syncInternalItemToGoogle(item.id);
+  } catch (error) {
+    googleSyncError = error instanceof Error ? error.message : "Sincronizarea Google Calendar a eșuat.";
+  }
+  return NextResponse.json({ ...item, googleSyncError });
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -73,6 +80,14 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     },
   });
   if (!existing) return NextResponse.json({ error: "Elementul nu există." }, { status: 404 });
+  try {
+    await deleteInternalItemFromGoogle(existing);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Ștergerea din Google Calendar a eșuat." },
+      { status: 502 }
+    );
+  }
   await prisma.internalCalendarItem.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

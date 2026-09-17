@@ -53,10 +53,11 @@ model User {
   // Contul de super admin vede tot; restul conturilor de admin/staff nu vad Oferte Web.
   isSuperAdmin Boolean @default(false)
 
-  memberships WorkspaceMember[]
-  passwordResetTokens PasswordResetToken[]
-  calendarItemsAuthored InternalCalendarItem[] @relation("CalendarAuthor")
-  calendarItemsAssigned InternalCalendarItem[] @relation("CalendarAssignee")
+  memberships              WorkspaceMember[]
+  passwordResetTokens      PasswordResetToken[]
+  calendarItemsAuthored    InternalCalendarItem[]    @relation("CalendarAuthor")
+  calendarItemsAssigned    InternalCalendarItem[]    @relation("CalendarAssignee")
+  googleCalendarConnection GoogleCalendarConnection?
 }
 
 model WorkspaceMember {
@@ -76,9 +77,9 @@ model WorkspaceInvitation {
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id])
 
-  email     String
-  role      Role   @default(EDITOR)
-  token     String @unique
+  email String
+  role  Role   @default(EDITOR)
+  token String @unique
 
   invitedByName String
   createdAt     DateTime  @default(now())
@@ -89,11 +90,11 @@ model WorkspaceInvitation {
 }
 
 model PasswordResetToken {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  token     String   @unique
-  createdAt DateTime @default(now())
+  user      User      @relation(fields: [userId], references: [id])
+  token     String    @unique
+  createdAt DateTime  @default(now())
   expiresAt DateTime
   usedAt    DateTime?
 }
@@ -109,12 +110,12 @@ model Workspace {
   // Folosit pentru bara de progres "X% din obiectiv" pe /dashboard/analytics.
   monthlyEngagementGoal Int?
 
-  members           WorkspaceMember[]
-  invitations       WorkspaceInvitation[]
-  connectedAccounts ConnectedAccount[]
-  posts             Post[]
-  campaigns         Campaign[]
-  keywordSnapshots  KeywordSnapshot[]
+  members               WorkspaceMember[]
+  invitations           WorkspaceInvitation[]
+  connectedAccounts     ConnectedAccount[]
+  posts                 Post[]
+  campaigns             Campaign[]
+  keywordSnapshots      KeywordSnapshot[]
   internalCalendarItems InternalCalendarItem[]
 }
 
@@ -134,18 +135,18 @@ model ConnectedAccount {
   isActive    Boolean  @default(true)
   connectedAt DateTime @default(now())
 
-  variants PostVariant[]
-  insights PlatformInsight[]
-  demographics AudienceDemographic[]
+  variants             PostVariant[]
+  insights             PlatformInsight[]
+  demographics         AudienceDemographic[]
   pageInsightSnapshots PageInsightSnapshot[]
 
   @@unique([workspaceId, platform, externalId])
 }
 
 model Post {
-  id          String     @id @default(cuid())
+  id          String    @id @default(cuid())
   workspaceId String
-  workspace   Workspace  @relation(fields: [workspaceId], references: [id])
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
 
   campaignId String?
   campaign   Campaign? @relation(fields: [campaignId], references: [id])
@@ -168,7 +169,7 @@ model Campaign {
   workspace   Workspace @relation(fields: [workspaceId], references: [id])
 
   name        String
-  description String?   @db.Text
+  description String? @db.Text
 
   // Obiectiv opțional (nr. de interacțiuni țintă) - progresul se calculează
   // automat din interacțiunile reale ale postărilor din campanie.
@@ -194,10 +195,10 @@ model PostVariant {
   accountId String
   account   ConnectedAccount @relation(fields: [accountId], references: [id])
 
-  platform  Platform
-  content   String   @db.Text
-  mediaUrls String[]
-  hashtags  String[]
+  platform    Platform
+  content     String   @db.Text
+  mediaUrls   String[]
+  hashtags    String[]
   // Etichete de continut ("piloni") - ex: Educational, Promotional, Behind-the-scenes.
   // Setate manual la compose, folosite pentru breakdown de performanta pe categorie.
   contentTags String[]
@@ -218,7 +219,7 @@ model PostVariant {
   errorLog       String?       @db.Text
   retryCount     Int           @default(0)
 
-  insights PlatformInsight[]
+  insights   PlatformInsight[]
   sentiments PostSentiment[]
 
   @@index([status, scheduledAt])
@@ -254,9 +255,9 @@ model AudienceDemographic {
   account   ConnectedAccount @relation(fields: [accountId], references: [id])
 
   // "age" | "gender" | "country" | "city"
-  dimension String
+  dimension  String
   // ex: "25-34", "female", "RO"
-  label String
+  label      String
   // procent din audiența totală (0-100)
   percentage Float
 
@@ -276,12 +277,12 @@ model PageInsightSnapshot {
   accountId String
   account   ConnectedAccount @relation(fields: [accountId], references: [id])
 
-  views       Int? // page_views_total / IG: views
-  follows     Int? // page_follows / IG: follower_count (aproximare, nu delta)
-  visits      Int? // page_views_total (FB) / profile_views (IG)
+  views        Int? // page_views_total / IG: views
+  follows      Int? // page_follows / IG: follower_count (aproximare, nu delta)
+  visits       Int? // page_views_total (FB) / profile_views (IG)
   interactions Int? // page_post_engagements / IG: accounts_engaged
-  videoViews  Int? // page_video_views / IG: video_views (best-effort - Meta schimba des numele)
-  unfollows   Int? // page_fan_removes (best-effort, poate sa nu mai existe)
+  videoViews   Int? // page_video_views / IG: video_views (best-effort - Meta schimba des numele)
+  unfollows    Int? // page_fan_removes (best-effort, poate sa nu mai existe)
 
   // Ce metrici au esuat la aceasta colectare (nume + motiv) - util pentru
   // diagnostic cand Meta mai scoate din API alte metrici pe neasteptate.
@@ -335,13 +336,13 @@ model WebsiteBrief {
   id     String @id @default(cuid())
   status String @default("NEW") // "NEW" | "CONTACTED" | "QUOTED" | "ACCEPTED" | "REJECTED" | "ARCHIVED"
 
-  offerData             Json?
-  estimatedValue        Decimal? @db.Decimal(12, 2)
-  offerSentAt           DateTime?
-  offerEmailSentAt      DateTime?
-  offerWhatsappSentAt   DateTime?
-  projectRequirements   Json?
-  updatedAt             DateTime @default(now()) @updatedAt
+  offerData           Json?
+  estimatedValue      Decimal?  @db.Decimal(12, 2)
+  offerSentAt         DateTime?
+  offerEmailSentAt    DateTime?
+  offerWhatsappSentAt DateTime?
+  projectRequirements Json?
+  updatedAt           DateTime  @default(now()) @updatedAt
 
   // 1. Afacerea ta & brand
   companyName    String
@@ -392,17 +393,19 @@ model WebsiteBrief {
   @@index([createdAt])
   @@index([status])
 }
+
 // ==================== REGISTRU INTERN (proiecte & plati) ====================
 // Global, nu per-Workspace - e evidenta financiara proprie a agentiei
 // (Next Level), nu a unui client anume. Editabil de orice user autentificat.
 model RegistryEntry {
-  id          String  @id @default(cuid())
-  orderNumber Int     @default(autoincrement())
+  id          String   @id @default(cuid())
+  orderNumber Int      @default(autoincrement())
   projectName String
-  amount      Decimal @db.Decimal(10, 2)
-  isPaid      Boolean @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  amount      Decimal  @db.Decimal(10, 2)
+  isPaid      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
   @@index([orderNumber])
 }
 
@@ -439,19 +442,38 @@ model InternalCalendarItem {
   assigneeId  String?
   assignee    User?     @relation("CalendarAssignee", fields: [assigneeId], references: [id])
 
-  title       String
-  notes       String?   @db.Text
-  type        String    @default("NOTE")
-  priority    String    @default("MEDIUM")
-  status      String    @default("TODO")
-  visibility  String    @default("TEAM")
-  startAt     DateTime
-  endAt       DateTime?
-  allDay      Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  title            String
+  notes            String?   @db.Text
+  type             String    @default("NOTE")
+  priority         String    @default("MEDIUM")
+  status           String    @default("TODO")
+  visibility       String    @default("TEAM")
+  startAt          DateTime
+  endAt            DateTime?
+  allDay           Boolean   @default(false)
+  googleEventId    String?
+  googleCalendarId String?
+  googleOwnerId    String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
+  @@unique([googleOwnerId, googleCalendarId, googleEventId])
   @@index([workspaceId, startAt])
   @@index([workspaceId, visibility, startAt])
   @@index([assigneeId, status])
+}
+
+model GoogleCalendarConnection {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountEmail   String?
+  calendarId     String    @default("primary")
+  accessToken    String    @db.Text
+  refreshToken   String?   @db.Text
+  tokenExpiresAt DateTime?
+  syncToken      String?   @db.Text
+  lastSyncedAt   DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }

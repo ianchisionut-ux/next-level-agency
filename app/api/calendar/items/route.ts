@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ensureInternalCalendarSchema } from "@/lib/internal-calendar-schema";
 import { getActiveWorkspace, getCurrentUser } from "@/lib/session";
+import { syncInternalItemToGoogle } from "@/lib/google-calendar";
 
 const TYPES = new Set(["NOTE", "TASK", "MEETING", "DEADLINE"]);
 const PRIORITIES = new Set(["LOW", "MEDIUM", "HIGH"]);
@@ -61,5 +62,11 @@ export async function POST(req: NextRequest) {
     },
     include: { author: { select: { id: true, name: true } }, assignee: { select: { id: true, name: true } } },
   });
-  return NextResponse.json(item, { status: 201 });
+  let googleSyncError: string | undefined;
+  try {
+    await syncInternalItemToGoogle(item.id);
+  } catch (error) {
+    googleSyncError = error instanceof Error ? error.message : "Sincronizarea Google Calendar a eșuat.";
+  }
+  return NextResponse.json({ ...item, googleSyncError }, { status: 201 });
 }

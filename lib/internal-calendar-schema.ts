@@ -20,6 +20,9 @@ async function createInternalCalendarSchema() {
       "startAt" TIMESTAMP(3) NOT NULL,
       "endAt" TIMESTAMP(3),
       "allDay" BOOLEAN NOT NULL DEFAULT false,
+      "googleEventId" TEXT,
+      "googleCalendarId" TEXT,
+      "googleOwnerId" TEXT,
       "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "updatedAt" TIMESTAMP(3) NOT NULL,
       CONSTRAINT "InternalCalendarItem_pkey" PRIMARY KEY ("id"),
@@ -29,6 +32,28 @@ async function createInternalCalendarSchema() {
     )
   `);
   await prisma.$executeRawUnsafe(`ALTER TABLE "InternalCalendarItem" ADD COLUMN IF NOT EXISTS "visibility" TEXT NOT NULL DEFAULT 'TEAM'`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "InternalCalendarItem" ADD COLUMN IF NOT EXISTS "googleEventId" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "InternalCalendarItem" ADD COLUMN IF NOT EXISTS "googleCalendarId" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "InternalCalendarItem" ADD COLUMN IF NOT EXISTS "googleOwnerId" TEXT`);
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "GoogleCalendarConnection" (
+      "id" TEXT NOT NULL,
+      "userId" TEXT NOT NULL,
+      "accountEmail" TEXT,
+      "calendarId" TEXT NOT NULL DEFAULT 'primary',
+      "accessToken" TEXT NOT NULL,
+      "refreshToken" TEXT,
+      "tokenExpiresAt" TIMESTAMP(3),
+      "syncToken" TEXT,
+      "lastSyncedAt" TIMESTAMP(3),
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL,
+      CONSTRAINT "GoogleCalendarConnection_pkey" PRIMARY KEY ("id"),
+      CONSTRAINT "GoogleCalendarConnection_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE
+    )
+  `);
+  await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "GoogleCalendarConnection_userId_key" ON "GoogleCalendarConnection"("userId")`);
+  await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "InternalCalendarItem_googleOwnerId_googleCalendarId_googleEventId_key" ON "InternalCalendarItem"("googleOwnerId", "googleCalendarId", "googleEventId")`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "InternalCalendarItem_workspaceId_startAt_idx" ON "InternalCalendarItem"("workspaceId", "startAt")`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "InternalCalendarItem_workspaceId_visibility_startAt_idx" ON "InternalCalendarItem"("workspaceId", "visibility", "startAt")`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "InternalCalendarItem_assigneeId_status_idx" ON "InternalCalendarItem"("assigneeId", "status")`);

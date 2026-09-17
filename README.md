@@ -80,3 +80,23 @@ npm start
 - Formularul de contact folosește `mailto:` (deschide clientul de email al
   vizitatorului). Dacă vrei ulterior un formular care trimite direct
   (ex. prin Resend sau un endpoint API), pot să-l adaug separat.
+
+## 7. Sincronizare Google Calendar
+
+Calendarul intern din `/dashboard/calendar` poate fi conectat individual de
+fiecare utilizator la calendarul principal Google. Sincronizarea este
+bidirecțională: elementele create sau modificate în Next Level sunt propagate
+în Google, iar butonul **Sincronizează acum** importă schimbările făcute în
+Google în calendarul personal din Next Level.
+
+1. În Google Cloud Console activează **Google Calendar API**.
+2. În OAuth Client-ul de tip **Web application** adaugă redirect URI-ul
+   `https://DOMENIUL-TAU/api/calendar/google/callback` și varianta localhost
+   din `.env.example` pentru dezvoltare.
+3. Configurează în Vercel/local variabilele `GOOGLE_CLIENT_ID`,
+   `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALENDAR_REDIRECT_URI` și `ENCRYPTION_KEY`.
+4. Din calendar apasă **Conectează Google Calendar** și aprobă accesul la
+   evenimente. Tokenurile sunt criptate înainte de salvarea în baza de date.
+
+Integrarea solicită doar identitatea de bază a contului și acces la evenimente
+(`calendar.events`); nu cere acces la e-mailuri sau fișiere Drive.

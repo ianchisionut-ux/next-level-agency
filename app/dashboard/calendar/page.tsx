@@ -6,6 +6,8 @@ import { PageHeader } from "@/app/components/ui/page-header";
 import { CalendarView, CalendarViewMode } from "@/app/components/calendar/calendar-view";
 import { PlatformKey } from "@/lib/platform-meta";
 import { InternalTeamCalendar } from "@/app/components/calendar/internal-team-calendar";
+import { GoogleCalendarControls } from "@/app/components/calendar/google-calendar-controls";
+import { isGoogleCalendarConfigured } from "@/lib/google-calendar";
 
 export const dynamic = "force-dynamic";
 
@@ -35,9 +37,16 @@ const VIEW_DESCRIPTIONS: Record<CalendarViewMode, string> = {
 export default async function CalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; date?: string; month?: string }>;
+  searchParams: Promise<{
+    view?: string;
+    date?: string;
+    month?: string;
+    googleConnected?: string;
+    googleImported?: string;
+    googleError?: string;
+  }>;
 }) {
-  const { view, date, month } = await searchParams;
+  const { view, date, month, googleConnected, googleImported, googleError } = await searchParams;
   const [workspace, user] = await Promise.all([getActiveWorkspace(), getCurrentUser()]);
   if (!workspace || !user) redirect("/login");
 
@@ -85,7 +94,7 @@ export default async function CalendarPage({
   });
 
   await ensureInternalCalendarSchema();
-  const [internalItems, memberships] = await Promise.all([
+  const [internalItems, memberships, googleCalendar] = await Promise.all([
     prisma.internalCalendarItem.findMany({
       where: {
         workspaceId: workspace.id,
@@ -103,6 +112,7 @@ export default async function CalendarPage({
       include: { user: { select: { id: true, name: true } } },
       orderBy: { joinedAt: "asc" },
     }),
+    prisma.googleCalendarConnection.findUnique({ where: { userId: user.userId } }),
   ]);
   const calendarPosts = posts
     .filter((p) => p.scheduledAt)
@@ -117,6 +127,15 @@ export default async function CalendarPage({
   return (
     <div className="space-y-6">
       <PageHeader title="Calendar intern & editorial" description="Planificare comună pentru echipă, cu mod Personal pentru notițele, programările și deadline-urile tale private." />
+      <GoogleCalendarControls
+        configured={isGoogleCalendarConfigured()}
+        connected={Boolean(googleCalendar)}
+        accountEmail={googleCalendar?.accountEmail ?? null}
+        lastSyncedAt={googleCalendar?.lastSyncedAt?.toISOString() ?? null}
+        connectedMessage={googleConnected}
+        importedCount={googleImported}
+        errorMessage={googleError}
+      />
       <InternalTeamCalendar
         initialItems={internalItems.map((item) => ({ ...item, startAt: item.startAt.toISOString(), endAt: item.endAt?.toISOString() ?? null, createdAt: undefined, updatedAt: undefined }))}
         members={memberships.map((membership) => membership.user)}
