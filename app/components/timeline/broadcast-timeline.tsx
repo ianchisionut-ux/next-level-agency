@@ -31,7 +31,7 @@ export function BroadcastTimeline({ variants }: Props) {
   const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
 
   async function deletePost(postId: string) {
-    if (!confirm("Sigur vrei să ștergi această postare din Timeline? Acțiunea nu poate fi anulată.")) return;
+    if (!confirm("Sigur vrei să ștergi această postare din NextLevel? Dacă este deja publicată, va rămâne pe rețeaua socială.")) return;
 
     setDeletingPostId(postId);
     try {
@@ -142,16 +142,14 @@ export function BroadcastTimeline({ variants }: Props) {
                               </span>
                             </div>
                             <p className="text-xs text-mist-300 line-clamp-3">{item.content}</p>
-                            {item.postStatus !== "PUBLISHED" && item.postStatus !== "PUBLISHING" && (
-                              <button
-                                type="button"
-                                disabled={deletingPostId === item.postId}
-                                onClick={() => deletePost(item.postId)}
-                                className="mt-2.5 w-full rounded-lg border border-state-error/30 px-2.5 py-1.5 text-xs font-medium text-state-error transition hover:bg-state-error/10 disabled:cursor-wait disabled:opacity-50"
-                              >
-                                {deletingPostId === item.postId ? "Se șterge…" : "Șterge postarea"}
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              disabled={deletingPostId === item.postId}
+                              onClick={() => deletePost(item.postId)}
+                              className="mt-2.5 w-full rounded-lg border border-state-error/30 px-2.5 py-1.5 text-xs font-medium text-state-error transition hover:bg-state-error/10 disabled:cursor-wait disabled:opacity-50"
+                            >
+                              {deletingPostId === item.postId ? "Se șterge…" : "Șterge postarea"}
+                            </button>
                           </div>
                         )}
                       </div>

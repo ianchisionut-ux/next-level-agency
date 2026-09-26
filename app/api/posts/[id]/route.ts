@@ -44,14 +44,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const { post, error } = await assertAccess(user.userId, id);
     if (error) return error;
 
-    if (post!.status === "PUBLISHED" || post!.status === "PUBLISHING") {
-      return NextResponse.json(
-        { error: "Nu poți șterge o postare deja publicată sau în curs de publicare" },
-        { status: 409 }
-      );
-    }
-
-    await prisma.post.delete({ where: { id } });
+    // Postarile publicate raman pe platformele sociale. Aici stergem doar
+    // evidenta locala si datele analitice dependente din NextLevel.
+    await prisma.$transaction([
+      prisma.postSentiment.deleteMany({ where: { variant: { postId: id } } }),
+      prisma.platformInsight.deleteMany({ where: { variant: { postId: id } } }),
+      prisma.postVariant.deleteMany({ where: { postId: id } }),
+      prisma.post.delete({ where: { id } }),
+    ]);
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("Eroare la stergerea postarii:", err);

@@ -31,7 +31,7 @@ export function RecentPostsList({
   async function handleDelete(e: React.MouseEvent, postId: string) {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm("Sigur vrei să ștergi această postare? Nu poate fi anulat.")) return;
+    if (!confirm("Sigur vrei să ștergi această postare din NextLevel? Dacă este deja publicată, va rămâne pe rețeaua socială.")) return;
 
     setDeletingId(postId);
     try {
@@ -81,7 +81,6 @@ export function RecentPostsList({
   return (
     <>
       {items.map((post) => {
-        const canDelete = post.status !== "PUBLISHED" && post.status !== "PUBLISHING";
         return (
           <Link
             key={post.id}
@@ -112,23 +111,21 @@ export function RecentPostsList({
             <div className="flex items-center gap-3 shrink-0">
               <StatusBadge status={post.status} />
 
-              {canDelete && (
-                <button
-                  type="button"
-                  onClick={(e) => handleDelete(e, post.id)}
-                  disabled={deletingId === post.id}
-                  aria-label="Șterge"
-                  className="opacity-0 group-hover:opacity-100 rounded-lg p-1.5 text-mist-500 hover:text-state-error hover:bg-ink-700 transition disabled:opacity-50"
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <path
-                      d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={(e) => handleDelete(e, post.id)}
+                disabled={deletingId === post.id}
+                aria-label="Șterge"
+                className="opacity-0 group-hover:opacity-100 rounded-lg p-1.5 text-mist-500 hover:text-state-error hover:bg-ink-700 transition disabled:opacity-50"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path
+                    d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
             </div>
           </Link>
         );

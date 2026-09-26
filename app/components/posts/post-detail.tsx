@@ -136,7 +136,7 @@ export function PostDetail({ post: initialPost }: { post: DetailPost }) {
   }
 
   async function deletePost() {
-    if (!confirm("Sigur vrei să ștergi această postare? Nu poate fi anulat.")) return;
+    if (!confirm("Sigur vrei să ștergi această postare din NextLevel? Dacă este deja publicată, va rămâne pe rețeaua socială.")) return;
     setDeleting(true);
     try {
       const res = await fetch(`/api/posts/${post.id}`, { method: "DELETE" });
@@ -249,15 +249,13 @@ export function PostDetail({ post: initialPost }: { post: DetailPost }) {
               Editează
             </button>
           )}
-          {canEdit && (
-            <button
-              onClick={deletePost}
-              disabled={deleting}
-              className="rounded-lg border border-state-error/30 text-state-error hover:bg-state-error/10 text-sm px-3 py-2 transition-colors disabled:opacity-50"
-            >
-              {deleting ? "Se șterge…" : "Șterge"}
-            </button>
-          )}
+          <button
+            onClick={deletePost}
+            disabled={deleting}
+            className="rounded-lg border border-state-error/30 text-state-error hover:bg-state-error/10 text-sm px-3 py-2 transition-colors disabled:opacity-50"
+          >
+            {deleting ? "Se șterge…" : "Șterge"}
+          </button>
         </div>
       </header>
 
