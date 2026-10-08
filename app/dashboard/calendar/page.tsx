@@ -131,6 +131,7 @@ export default async function CalendarPage({
         configured={isGoogleCalendarConfigured()}
         connected={Boolean(googleCalendar)}
         accountEmail={googleCalendar?.accountEmail ?? null}
+        calendarId={googleCalendar?.calendarId ?? null}
         lastSyncedAt={googleCalendar?.lastSyncedAt?.toISOString() ?? null}
         connectedMessage={googleConnected}
         importedCount={googleImported}

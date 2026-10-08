@@ -12,6 +12,7 @@ import { StatCard, StatIconEye, StatIconCheck, StatIconCursor, StatIconPercent }
 import { StatCardChart } from "@/app/components/analytics/stat-card-chart";
 import { PlatformIcon } from "@/app/components/ui/platform-icon";
 import { PLATFORM_META, PlatformKey } from "@/lib/platform-meta";
+import { getBusinessPerformance } from "@/lib/google-business-performance";
 
 export const dynamic = "force-dynamic";
 
@@ -73,6 +74,11 @@ export default async function AnalyticsPage() {
     if (!latestPageSnapshotByAccount.has(s.accountId)) latestPageSnapshotByAccount.set(s.accountId, s);
   }
   const pageStatsCards = Array.from(latestPageSnapshotByAccount.values());
+
+  const businessAccounts = await prisma.connectedAccount.findMany({
+    where: { workspaceId: workspace.id, platform: "GOOGLE_BUSINESS", isActive: true },
+  });
+  const businessResults = await Promise.allSettled(businessAccounts.map(getBusinessPerformance));
 
   const prevImpressions = previousInsights.reduce((sum, i) => sum + i.impressions, 0);
   const prevEngagement = previousInsights.reduce((sum, i) => sum + i.likes + i.comments + i.shares + i.saves, 0);
@@ -416,6 +422,39 @@ export default async function AnalyticsPage() {
           </>
         }
       />
+
+      <section className="rounded-2xl border border-ink-700 bg-ink-800 p-5 shadow-card">
+        <h2 className="font-display font-semibold text-base">Google Business Profile</h2>
+        <p className="mt-1 text-xs text-mist-500">Afișări ale profilului, cereri de indicații, clickuri pe apel și pe site · ultimele 28 de zile încheiate</p>
+        {businessAccounts.length === 0 ? (
+          <p className="mt-4 text-sm text-mist-500">Conectează o locație Google Business din Conturi conectate.</p>
+        ) : (
+          <div className="mt-4 space-y-4">
+            {businessResults.map((result, index) => (
+              <div key={businessAccounts[index].id}>
+                <h3 className="mb-2 text-sm font-medium text-mist-100">{businessAccounts[index].accountName}</h3>
+                {result.status === "rejected" ? (
+                  <p className="text-sm text-state-error">Datele nu au putut fi încărcate: {result.reason instanceof Error ? result.reason.message : "eroare Google Business"}</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {[
+                      ["Afișări profil", result.value.impressions],
+                      ["Indicații către locație", result.value.directions],
+                      ["Clickuri pe telefon", result.value.calls],
+                      ["Clickuri pe site", result.value.websiteClicks],
+                    ].map(([label, value]) => (
+                      <div key={label} className="rounded-xl border border-ink-700 bg-ink-900 px-3.5 py-3">
+                        <p className="text-xs text-mist-500">{label}</p>
+                        <p className="mt-0.5 font-mono text-lg font-semibold">{Number(value).toLocaleString("ro-RO")}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCardChart

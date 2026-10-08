@@ -84,7 +84,7 @@ npm start
 ## 7. Sincronizare Google Calendar
 
 Calendarul intern din `/dashboard/calendar` poate fi conectat individual de
-fiecare utilizator la calendarul principal Google. Sincronizarea este
+fiecare utilizator la un calendar Google separat, numit „Next Level”. Sincronizarea este
 bidirecțională: elementele create sau modificate în Next Level sunt propagate
 în Google, iar butonul **Sincronizează acum** importă schimbările făcute în
 Google în calendarul personal din Next Level.
@@ -96,7 +96,12 @@ Google în calendarul personal din Next Level.
 3. Configurează în Vercel/local variabilele `GOOGLE_CLIENT_ID`,
    `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALENDAR_REDIRECT_URI` și `ENCRYPTION_KEY`.
 4. Din calendar apasă **Conectează Google Calendar** și aprobă accesul la
-   evenimente. Tokenurile sunt criptate înainte de salvarea în baza de date.
+   evenimente și crearea calendarului. Dacă ai o conexiune veche la calendarul
+   principal, apasă **Reconectează** pentru a activa noul calendar. Evenimentele
+   personale importate anterior rămân doar în aplicație; numai evenimentele
+   create de Next Level sunt copiate în calendarul nou. Tokenurile sunt
+   criptate înainte de salvarea în baza de date.
 
-Integrarea solicită doar identitatea de bază a contului și acces la evenimente
-(`calendar.events`); nu cere acces la e-mailuri sau fișiere Drive.
+Integrarea solicită identitatea de bază, acces la evenimente (`calendar.events`)
+și permisiunea de a crea calendare ale aplicației (`calendar.app.created`);
+nu cere acces la e-mailuri sau fișiere Drive.

@@ -12,6 +12,7 @@ const GOOGLE_CALENDAR_SCOPES = [
   "openid",
   "email",
   "https://www.googleapis.com/auth/calendar.events",
+  "https://www.googleapis.com/auth/calendar.app.created",
 ];
 
 type CalendarItemForGoogle = {
@@ -152,6 +153,32 @@ async function googleCalendarRequest(
   return response;
 }
 
+/** Create a calendar owned by Next Level; never use the account's primary calendar. */
+export async function ensureNextLevelCalendar(userId: string) {
+  const connection = await prisma.googleCalendarConnection.findUnique({ where: { userId } });
+  if (!connection) throw new Error("Conectează mai întâi Google Calendar.");
+  if (connection.calendarId && connection.calendarId !== "primary") return connection.calendarId;
+
+  const response = await googleCalendarRequest(userId, "/calendars", {
+    method: "POST",
+    body: JSON.stringify({
+      summary: "Next Level",
+      description: "Evenimentele din calendarul intern Next Level",
+      timeZone: BUCHAREST_TIME_ZONE,
+    }),
+  });
+  if (!response) throw new Error("Conexiunea Google Calendar nu mai există.");
+  const calendar = (await response.json()) as { id?: string };
+  if (!calendar.id || calendar.id === "primary") {
+    throw new Error("Google nu a returnat un calendar Next Level valid.");
+  }
+  await prisma.googleCalendarConnection.update({
+    where: { userId },
+    data: { calendarId: calendar.id, syncToken: null, lastSyncedAt: null },
+  });
+  return calendar.id;
+}
+
 function dateInBucharest(date: Date) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: BUCHAREST_TIME_ZONE,
@@ -206,9 +233,25 @@ export async function syncInternalItemToGoogle(itemId: string) {
   const connection = await prisma.googleCalendarConnection.findUnique({ where: { userId: item.authorId } });
   if (!connection) return { synced: false as const };
 
-  const calendarId = item.googleCalendarId || connection.calendarId;
+  const calendarId = await ensureNextLevelCalendar(item.authorId);
+  // Only migrate events originally created by Next Level. Entries imported
+  // from a shared primary calendar stay local and are never copied.
+  if (item.googleEventId && item.googleCalendarId !== calendarId) {
+    const oldResponse = await googleCalendarRequest(
+      item.authorId,
+      `/calendars/${encodeURIComponent(item.googleCalendarId || "primary")}/events/${encodeURIComponent(item.googleEventId)}`,
+      {},
+      true
+    );
+    if (!oldResponse?.ok) return { synced: false as const };
+    const oldEvent = (await oldResponse.json()) as GoogleEvent;
+    if (oldEvent.extendedProperties?.private?.nextLevelItemId !== item.id) {
+      return { synced: false as const };
+    }
+  }
   const payload = JSON.stringify(toGoogleEvent(item));
-  let eventId = item.googleOwnerId === item.authorId ? item.googleEventId : null;
+  let eventId = item.googleOwnerId === item.authorId && item.googleCalendarId === calendarId
+    ? item.googleEventId : null;
 
   if (eventId) {
     const response = await googleCalendarRequest(
@@ -223,7 +266,7 @@ export async function syncInternalItemToGoogle(itemId: string) {
 
   const response = await googleCalendarRequest(
     item.authorId,
-    `/calendars/${encodeURIComponent(connection.calendarId)}/events`,
+    `/calendars/${encodeURIComponent(calendarId)}/events`,
     { method: "POST", body: payload }
   );
   if (!response) return { synced: false as const };
@@ -233,7 +276,7 @@ export async function syncInternalItemToGoogle(itemId: string) {
     where: { id: item.id },
     data: {
       googleEventId: event.id,
-      googleCalendarId: connection.calendarId,
+      googleCalendarId: calendarId,
       googleOwnerId: item.authorId,
     },
   });
@@ -242,6 +285,8 @@ export async function syncInternalItemToGoogle(itemId: string) {
 
 export async function deleteInternalItemFromGoogle(item: CalendarItemForGoogle) {
   if (!item.googleEventId || !item.googleCalendarId || !item.googleOwnerId) return;
+  const connection = await prisma.googleCalendarConnection.findUnique({ where: { userId: item.googleOwnerId } });
+  if (!connection || item.googleCalendarId !== connection.calendarId || connection.calendarId === "primary") return;
   const response = await googleCalendarRequest(
     item.googleOwnerId,
     `/calendars/${encodeURIComponent(item.googleCalendarId)}/events/${encodeURIComponent(item.googleEventId)}`,
@@ -340,9 +385,28 @@ async function applyGoogleEvent(userId: string, workspaceId: string, calendarId:
 }
 
 export async function syncGoogleCalendarForUser(userId: string, workspaceId: string, fullSync = false) {
+  await ensureNextLevelCalendar(userId);
   const connection = await prisma.googleCalendarConnection.findUnique({ where: { userId } });
   if (!connection) throw new Error("Conectează mai întâi Google Calendar.");
   const calendarId = connection.calendarId;
+  if (!connection.syncToken) {
+    const legacyItems = await prisma.internalCalendarItem.findMany({
+      where: {
+        workspaceId,
+        authorId: userId,
+        googleEventId: { not: null },
+        googleCalendarId: { not: calendarId },
+      },
+      select: { id: true },
+    });
+    for (const item of legacyItems) {
+      try {
+        await syncInternalItemToGoogle(item.id);
+      } catch (error) {
+        console.error("Nu am putut migra un eveniment Next Level:", error);
+      }
+    }
+  }
   let pageToken: string | undefined;
   let nextSyncToken: string | undefined;
   let syncToken = fullSync ? null : connection.syncToken;

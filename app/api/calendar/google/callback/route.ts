@@ -52,6 +52,7 @@ export async function GET(req: NextRequest) {
         where: { userId: user.userId },
         update: {
           accountEmail: email,
+          calendarId: existing?.accountEmail && existing.accountEmail !== email ? "primary" : existing?.calendarId || "primary",
           accessToken: encrypt(tokens.access_token),
           refreshToken: tokens.refresh_token ? encrypt(tokens.refresh_token) : existing?.refreshToken,
           tokenExpiresAt: new Date(Date.now() + tokens.expires_in * 1000),
