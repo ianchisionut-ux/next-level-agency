@@ -212,3 +212,32 @@ body {
   pointer-events: none;
   user-select: none;
 }
+/* Simulare cromatică pentru pagina publică: structura și materialele rămân originale. */
+body:has(.public-marketing-header) {
+  --color-navy: #ffffff;
+  --color-ink: #ffffff;
+  --color-navy-soft: #f5f7fb;
+  --color-paper: #0a0f1e;
+  --color-paper-soft: #10182c;
+  --color-line-light: #26324b;
+  --color-ink-soft: #aebbd0;
+  --color-white: #0a0f1e;
+  --color-slate-900: #ffffff;
+  --color-blue-bright: #2563eb;
+  background: #ffffff;
+  color: #0a0f1e;
+}
+body:has(.public-marketing-header) [class~="bg-blue"] { color: #ffffff; }
+body:has(.public-marketing-header) [class~="bg-white"] { background: #ffffff; }
+body:has(.public-marketing-header) .client-logo-tile {
+  min-height: 180px;
+  padding: 18px;
+  border-radius: 18px;
+  background: #ffffff;
+}
+body:has(.public-marketing-header) [class~="text-white/70"],
+body:has(.public-marketing-header) [class~="text-white/60"] { color: #40516c; }
+body:has(.public-marketing-header) [class~="text-white/50"],
+body:has(.public-marketing-header) [class~="text-white/40"] { color: #596b83; }
+body:has(.public-marketing-header) [class~="text-white/30"],
+body:has(.public-marketing-header) [class~="text-white/20"] { color: #75849a; }

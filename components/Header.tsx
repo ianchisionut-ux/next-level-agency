@@ -13,7 +13,7 @@ const navItems = [
 
 export default function Header() {
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-navy/90 backdrop-blur">
+    <header className="public-marketing-header sticky top-0 z-40 border-b border-white/10 bg-navy/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         <Link href="/" className="flex items-center gap-3">
           <BrandMark className="h-9 w-9" />

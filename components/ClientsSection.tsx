@@ -20,7 +20,7 @@ export default function ClientsSection() {
               href={client.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex items-center justify-center transition hover:-translate-y-0.5"
+              className="client-logo-tile group flex items-center justify-center transition hover:-translate-y-0.5"
               aria-label={client.name}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
