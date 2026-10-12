@@ -13,7 +13,7 @@ export default function SimplePresentationQuestionnairePage() {
   return (
     <>
       <Header />
-      <main>
+      <main className="questionnaire-page">
         <section className="grain bg-navy py-9 text-center sm:py-12">
           <div className="mx-auto max-w-3xl px-6">
             <p className="eyebrow text-blue-bright">Site de prezentare</p>
