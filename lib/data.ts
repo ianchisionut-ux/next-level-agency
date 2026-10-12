@@ -208,13 +208,14 @@ export type WebProject = {
   title: string;
   url: string;
   thumbnail: string;
+  previewCrop?: boolean;
 };
 
 export const webProjects: WebProject[] = [
   // Exemplu - șterge-l și pune-le pe ale tale:
-   { title: "Daily Menu", url: "https://www.dailym.ro", thumbnail: "/web-projects/www.dailym.ro.png" },
+   { title: "Daily Menu", url: "https://www.dailym.ro/pentru-restaurante", thumbnail: "/web-projects/www.dailym.ro.png", previewCrop: true },
    { title: "PM Customs", url: "https://www.pmcustoms.us", thumbnail: "/web-projects/www.pmcustoms.us.png" },
    { title: "Dracula soil", url: "https://www.draculasoil.com", thumbnail: "/web-projects/www.draculasoil.com.png" },
-   { title: "Bookeasy", url: "https://www.bookeasy.ro", thumbnail: "/web-projects/www.bookeasy.ro.png" },
+   { title: "BookEasy", url: "https://www.bookeasy.ro/descopera", thumbnail: "/web-projects/www.bookeasy.ro.png", previewCrop: true },
    { title: "SC ELMONT S.A", url: "https://elmontz.vercel.app", thumbnail: "/web-projects/elmont.jfif" },
 ];
