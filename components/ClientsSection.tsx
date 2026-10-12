@@ -2,7 +2,7 @@ import { clients } from "@/lib/data";
 
 export default function ClientsSection() {
   return (
-    <section className="bg-paper py-20 text-slate-900">
+    <section className="client-showcase bg-paper py-20 text-slate-900">
       <div className="mx-auto max-w-7xl px-6">
         <div className="mb-14">
           <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">

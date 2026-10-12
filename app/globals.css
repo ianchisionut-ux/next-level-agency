@@ -229,6 +229,16 @@ body:has(.public-marketing-header) {
 }
 body:has(.public-marketing-header) [class~="bg-blue"] { color: #ffffff; }
 body:has(.public-marketing-header) [class~="bg-white"] { background: #ffffff; }
+body:has(.public-marketing-header) .client-showcase {
+  background: #ffffff;
+  color: #0a0f1e;
+}
+body:has(.public-marketing-header) .client-showcase .text-ink-soft {
+  color: #596b83;
+}
+body:has(.public-marketing-header) .client-showcase .client-logo-tile {
+  border: 1px solid #e5e9f2;
+}
 body:has(.public-marketing-header) .client-logo-tile {
   min-height: 180px;
   padding: 18px;
