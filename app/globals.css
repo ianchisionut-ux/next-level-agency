@@ -275,6 +275,28 @@ body:has(.public-marketing-header) .marketing-nav-link:focus-visible::after {
     transition: none;
   }
 }
+/* Formularele păstrează paleta lor originală pentru lizibilitatea câmpurilor și previzualizărilor. */
+body:has(.public-marketing-header) .questionnaire-page {
+  --color-navy: #0a0f1e;
+  --color-ink: #060a14;
+  --color-navy-soft: #10182c;
+  --color-paper: #ffffff;
+  --color-paper-soft: #f5f7fb;
+  --color-line-light: #e5e9f2;
+  --color-ink-soft: #64748b;
+  --color-white: #ffffff;
+  --color-slate-900: #0f172a;
+  --color-blue-bright: #60a5fa;
+}
+body:has(.public-marketing-header) .questionnaire-page > .grain.bg-navy {
+  color: #ffffff;
+}
+body:has(.public-marketing-header) .questionnaire-page [class~="text-white/70"] { color: rgba(255, 255, 255, 0.7); }
+body:has(.public-marketing-header) .questionnaire-page [class~="text-white/60"] { color: rgba(255, 255, 255, 0.6); }
+body:has(.public-marketing-header) .questionnaire-page [class~="text-white/50"] { color: rgba(255, 255, 255, 0.5); }
+body:has(.public-marketing-header) .questionnaire-page [class~="text-white/40"] { color: rgba(255, 255, 255, 0.4); }
+body:has(.public-marketing-header) .questionnaire-page [class~="text-white/30"] { color: rgba(255, 255, 255, 0.3); }
+body:has(.public-marketing-header) .questionnaire-page [class~="text-white/20"] { color: rgba(255, 255, 255, 0.2); }
 body:has(.public-marketing-header) .client-showcase {
   background: #ffffff;
   color: #0a0f1e;

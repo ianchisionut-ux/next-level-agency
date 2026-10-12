@@ -14,7 +14,7 @@ export default function ChestionarAuditPage() {
   return (
     <>
       <Header />
-      <main>
+      <main className="questionnaire-page">
         {/* HERO — dark, la fel ca restul paginilor site-ului */}
         <section className="grain bg-navy py-8 text-center sm:py-10">
           <div className="mx-auto max-w-3xl px-6">
