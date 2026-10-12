@@ -234,6 +234,8 @@ body:has(.public-marketing-header) .marketing-nav-link {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+  white-space: nowrap;
+  flex-shrink: 0;
   color: #40516c;
   transition: color 0.2s ease;
 }

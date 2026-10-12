@@ -15,8 +15,8 @@ const navItems = [
 export default function Header() {
   return (
     <header className="public-marketing-header sticky top-0 z-40 border-b border-white/10 bg-navy/90 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <Link href="/" className="flex items-center gap-3">
+      <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-4 lg:px-6">
+        <Link href="/" className="flex shrink-0 items-center gap-3">
           <BrandMark className="h-9 w-9" />
           <span className="leading-tight">
             <span className="block text-sm font-extrabold tracking-wide text-white">
@@ -28,7 +28,7 @@ export default function Header() {
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-8 md:flex">
+        <nav className="hidden min-w-0 items-center gap-4 xl:flex">
           {navItems.map((item) => (
             <Link
               key={item.href}
@@ -41,7 +41,7 @@ export default function Header() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-4 md:flex">
+        <div className="hidden shrink-0 items-center gap-4 xl:flex">
           <Link
             href="/login"
             className="marketing-nav-link text-sm font-semibold text-white/70"
@@ -49,7 +49,7 @@ export default function Header() {
             <LogIn className="marketing-nav-icon h-4 w-4" aria-hidden="true" />
             <span>Login</span>
           </Link>
-          <div className="hidden items-center gap-4 lg:flex">
+          <div className="hidden items-center gap-4 2xl:flex">
             <a
               href={siteConfig.socials.facebook}
               target="_blank"
@@ -94,7 +94,7 @@ export default function Header() {
           href={`https://wa.me/${siteConfig.whatsappNumber}?text=${encodeURIComponent(siteConfig.whatsappMessage)}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="hidden items-center gap-2 rounded-lg bg-blue px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-glow sm:flex"
+          className="hidden shrink-0 items-center gap-2 whitespace-nowrap rounded-lg bg-blue px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-glow sm:flex"
         >
           Programează o discuție
         </a>
@@ -112,7 +112,7 @@ export default function Header() {
       </div>
 
       {/* Mobile nav */}
-      <nav className="flex items-center justify-center gap-5 overflow-x-auto border-t border-white/10 px-4 py-2 md:hidden">
+      <nav className="flex items-center gap-5 overflow-x-auto whitespace-nowrap border-t border-white/10 px-4 py-2 xl:hidden">
         {navItems.map((item) => (
           <Link
             key={item.href}
