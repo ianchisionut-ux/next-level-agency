@@ -1,14 +1,15 @@
 import Link from "next/link";
+import { BriefcaseBusiness, BookOpenText, Images, LogIn, Mail, UsersRound, ClipboardList } from "lucide-react";
 import { BrandMark, IconWhatsapp, IconFacebook, IconInstagram, IconTiktok } from "./Icons";
 import { siteConfig } from "@/lib/data";
 
 const navItems = [
-  { href: "/servicii", label: "Servicii" },
-  { href: "/portofoliu", label: "Portofoliu" },
-  { href: "/despre-noi", label: "Despre noi" },
-  { href: "/blog", label: "Blog" },
-  { href: "/chestionar-audit", label: "Ofertă" },
-  { href: "/contact", label: "Contact" },
+  { href: "/servicii", label: "Servicii", icon: BriefcaseBusiness },
+  { href: "/portofoliu", label: "Portofoliu", icon: Images },
+  { href: "/despre-noi", label: "Despre noi", icon: UsersRound },
+  { href: "/blog", label: "Blog", icon: BookOpenText },
+  { href: "/chestionar-audit", label: "Ofertă", icon: ClipboardList },
+  { href: "/contact", label: "Contact", icon: Mail },
 ];
 
 export default function Header() {
@@ -32,9 +33,10 @@ export default function Header() {
             <Link
               key={item.href}
               href={item.href}
-              className="text-sm font-medium text-white/70 transition hover:text-white"
+              className="marketing-nav-link text-sm font-medium text-white/70"
             >
-              {item.label.toUpperCase()}
+              <item.icon className="marketing-nav-icon h-4 w-4" aria-hidden="true" />
+              <span>{item.label.toUpperCase()}</span>
             </Link>
           ))}
         </nav>
@@ -42,9 +44,10 @@ export default function Header() {
         <div className="hidden items-center gap-4 md:flex">
           <Link
             href="/login"
-            className="text-sm font-semibold text-white/70 transition hover:text-white"
+            className="marketing-nav-link text-sm font-semibold text-white/70"
           >
-            Login
+            <LogIn className="marketing-nav-icon h-4 w-4" aria-hidden="true" />
+            <span>Login</span>
           </Link>
           <div className="hidden items-center gap-4 lg:flex">
             <a
@@ -114,16 +117,18 @@ export default function Header() {
           <Link
             key={item.href}
             href={item.href}
-            className="whitespace-nowrap text-xs font-medium text-white/70 hover:text-white"
+            className="marketing-nav-link whitespace-nowrap text-xs font-medium text-white/70"
           >
-            {item.label.toUpperCase()}
+            <item.icon className="marketing-nav-icon h-4 w-4" aria-hidden="true" />
+            <span>{item.label.toUpperCase()}</span>
           </Link>
         ))}
         <Link
           href="/login"
-          className="whitespace-nowrap text-xs font-semibold text-blue-bright hover:text-white"
+          className="marketing-nav-link whitespace-nowrap text-xs font-semibold text-blue-bright"
         >
-          LOGIN
+          <LogIn className="marketing-nav-icon h-4 w-4" aria-hidden="true" />
+          <span>LOGIN</span>
         </Link>
       </nav>
     </header>

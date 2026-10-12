@@ -229,6 +229,50 @@ body:has(.public-marketing-header) {
 }
 body:has(.public-marketing-header) [class~="bg-blue"] { color: #ffffff; }
 body:has(.public-marketing-header) [class~="bg-white"] { background: #ffffff; }
+body:has(.public-marketing-header) .marketing-nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #40516c;
+  transition: color 0.2s ease;
+}
+body:has(.public-marketing-header) .marketing-nav-link:hover,
+body:has(.public-marketing-header) .marketing-nav-link:focus-visible {
+  color: #2563eb;
+}
+body:has(.public-marketing-header) .marketing-nav-icon {
+  color: #2563eb;
+  flex: none;
+  transition: transform 0.25s ease;
+}
+body:has(.public-marketing-header) .marketing-nav-link:hover .marketing-nav-icon,
+body:has(.public-marketing-header) .marketing-nav-link:focus-visible .marketing-nav-icon {
+  transform: translateY(-2px) rotate(-5deg);
+}
+body:has(.public-marketing-header) .marketing-nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 2px;
+  background: #2563eb;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s ease;
+}
+body:has(.public-marketing-header) .marketing-nav-link:hover::after,
+body:has(.public-marketing-header) .marketing-nav-link:focus-visible::after {
+  transform: scaleX(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  body:has(.public-marketing-header) .marketing-nav-link,
+  body:has(.public-marketing-header) .marketing-nav-icon,
+  body:has(.public-marketing-header) .marketing-nav-link::after {
+    transition: none;
+  }
+}
 body:has(.public-marketing-header) .client-showcase {
   background: #ffffff;
   color: #0a0f1e;
