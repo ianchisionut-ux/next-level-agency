@@ -212,3 +212,88 @@ body {
   pointer-events: none;
   user-select: none;
 }
+/* Simulare cromatică pentru pagina publică: structura și materialele rămân originale. */
+body:has(.public-marketing-header) {
+  --color-navy: #ffffff;
+  --color-ink: #ffffff;
+  --color-navy-soft: #f5f7fb;
+  --color-paper: #0a0f1e;
+  --color-paper-soft: #10182c;
+  --color-line-light: #26324b;
+  --color-ink-soft: #aebbd0;
+  --color-white: #0a0f1e;
+  --color-slate-900: #ffffff;
+  --color-blue-bright: #2563eb;
+  background: #ffffff;
+  color: #0a0f1e;
+}
+body:has(.public-marketing-header) [class~="bg-blue"] { color: #ffffff; }
+body:has(.public-marketing-header) [class~="bg-white"] { background: #ffffff; }
+body:has(.public-marketing-header) .marketing-nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  color: #40516c;
+  transition: color 0.2s ease;
+}
+body:has(.public-marketing-header) .marketing-nav-link:hover,
+body:has(.public-marketing-header) .marketing-nav-link:focus-visible {
+  color: #2563eb;
+}
+body:has(.public-marketing-header) .marketing-nav-icon {
+  color: #2563eb;
+  flex: none;
+  transition: transform 0.25s ease;
+}
+body:has(.public-marketing-header) .marketing-nav-link:hover .marketing-nav-icon,
+body:has(.public-marketing-header) .marketing-nav-link:focus-visible .marketing-nav-icon {
+  transform: translateY(-2px) rotate(-5deg);
+}
+body:has(.public-marketing-header) .marketing-nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 2px;
+  background: #2563eb;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s ease;
+}
+body:has(.public-marketing-header) .marketing-nav-link:hover::after,
+body:has(.public-marketing-header) .marketing-nav-link:focus-visible::after {
+  transform: scaleX(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  body:has(.public-marketing-header) .marketing-nav-link,
+  body:has(.public-marketing-header) .marketing-nav-icon,
+  body:has(.public-marketing-header) .marketing-nav-link::after {
+    transition: none;
+  }
+}
+body:has(.public-marketing-header) .client-showcase {
+  background: #ffffff;
+  color: #0a0f1e;
+}
+body:has(.public-marketing-header) .client-showcase .text-ink-soft {
+  color: #596b83;
+}
+body:has(.public-marketing-header) .client-showcase .client-logo-tile {
+  border: 1px solid #e5e9f2;
+}
+body:has(.public-marketing-header) .client-logo-tile {
+  min-height: 180px;
+  padding: 18px;
+  border-radius: 18px;
+  background: #ffffff;
+}
+body:has(.public-marketing-header) [class~="text-white/70"],
+body:has(.public-marketing-header) [class~="text-white/60"] { color: #40516c; }
+body:has(.public-marketing-header) [class~="text-white/50"],
+body:has(.public-marketing-header) [class~="text-white/40"] { color: #596b83; }
+body:has(.public-marketing-header) [class~="text-white/30"],
+body:has(.public-marketing-header) [class~="text-white/20"] { color: #75849a; }

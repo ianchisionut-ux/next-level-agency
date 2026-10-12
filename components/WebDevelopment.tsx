@@ -33,7 +33,7 @@ export default function WebDevelopment() {
                   <img
                     src={project.thumbnail}
                     alt={project.title}
-                    className="h-full w-full object-cover object-top transition duration-300 group-hover:scale-105"
+                    className={`h-full w-full object-cover transition duration-300 ${project.previewCrop ? "scale-[1.35] object-center group-hover:scale-[1.39]" : "object-top group-hover:scale-105"}`}
                   />
                 </div>
                 <div className="flex items-center justify-between p-5">
