@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useCallback, useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { StatusBadge } from "@/components/accounting/StatusBadge";
 import { EFacturaPanel } from "@/components/accounting/EFacturaPanel";
 import { InvoiceCorrection } from "@/components/accounting/InvoiceCorrection";
+import { InvoiceRefund } from "@/components/accounting/InvoiceRefund";
 import { ArrowLeft, Download, Trash2, Receipt as ReceiptIcon, RotateCcw } from "lucide-react";
 import { bucharestDate } from "@/lib/accounting/date";
 
@@ -47,15 +48,15 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [receiptBusy, setReceiptBusy] = useState(false);
 
-  function load() {
+  const load = useCallback(() => {
     fetch(`/api/accounting/invoices/${id}`)
       .then((r) => r.json())
       .then((d) => {
         setData(d);
         setPayAmount(Math.max(0, d.invoice.total - d.invoice.paidAmount));
       });
-  }
-  useEffect(load, [id]);
+  }, [id]);
+  useEffect(load, [load]);
 
   async function addPayment() {
     setPaymentBusy(true);
@@ -157,6 +158,13 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
       </div>
 
       <EFacturaPanel invoiceId={Number(id)} />
+      {invoice.status === "stornoed" && Number(invoice.paidAmount) > 0 && (
+        <InvoiceRefund
+          invoiceId={invoice.id}
+          remaining={Number(invoice.paidAmount)}
+          onSaved={load}
+        />
+      )}
       {!financialLocked && <InvoiceCorrection invoiceId={Number(id)} />}
 
       <div className="card-table mb-6">

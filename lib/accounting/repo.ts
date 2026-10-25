@@ -583,7 +583,7 @@ function computeTotals(items: InvoiceItemInput[], discountPercent = 0) {
   return { computed, subtotal: round2(subtotal), vatTotal: round2(vatTotal) };
 }
 
-export async function createInvoice(input: {
+type CreateInvoiceInput = {
   series: string;
   number?: number;
   clientId: number;
@@ -616,7 +616,16 @@ export async function createInvoice(input: {
   cashier?: string;
   integrationSource?: string;
   externalId?: string;
-}): Promise<number> {
+};
+
+export async function createInvoice(input: CreateInvoiceInput): Promise<number> {
+  return createInvoiceInTransaction(input);
+}
+
+async function createInvoiceInTransaction(
+  input: CreateInvoiceInput,
+  transactionClient?: PoolClient,
+): Promise<number> {
   const pool = await ready();
   const series = input.series.trim().toUpperCase();
   if (!series) throw new Error("Completează seria facturii.");
@@ -695,9 +704,10 @@ export async function createInvoice(input: {
     );
   }
 
-  const connection = await pool.connect();
+  const connection = transactionClient || await pool.connect();
+  const ownsTransaction = !transactionClient;
   try {
-    await connection.query("BEGIN");
+    if (ownsTransaction) await connection.query("BEGIN");
     const number = await takeInvoiceNumber(series, input.number, connection);
     const clientResult = await connection.query(
       `SELECT * FROM clients WHERE id=$1`,
@@ -830,13 +840,13 @@ export async function createInvoice(input: {
       );
     }
 
-    await connection.query("COMMIT");
+    if (ownsTransaction) await connection.query("COMMIT");
     return invoiceId;
   } catch (error) {
-    await connection.query("ROLLBACK");
+    if (ownsTransaction) await connection.query("ROLLBACK");
     throw error;
   } finally {
-    connection.release();
+    if (ownsTransaction) connection.release();
   }
 }
 
@@ -857,66 +867,100 @@ export async function createStornoInvoice(input: {
 }): Promise<number> {
   if (!String(input.reason || "").trim())
     throw new Error("Completează motivul stornării.");
-  const original = await getInvoiceFull(input.originalInvoiceId);
-  if (!original?.client) throw new Error("Factura selectată nu există.");
-  if (
-    original.invoice.invoiceType === "STORNO" ||
-    ["storno", "stornoed", "canceled"].includes(original.invoice.status)
-  ) {
-    throw new Error("Factura selectată nu poate fi stornată.");
-  }
   const pool = await ready();
-  const duplicate = await pool.query(
-    `SELECT id FROM invoices WHERE "originalInvoiceId"=$1 AND "invoiceType"='STORNO' LIMIT 1`,
-    [input.originalInvoiceId],
-  );
-  if (duplicate.rows[0])
-    throw new Error("Factura selectată are deja o factură storno.");
+  const connection = await pool.connect();
+  try {
+    await connection.query("BEGIN");
+    const invoice = (await connection.query(
+      `SELECT * FROM invoices WHERE id=$1 FOR UPDATE`,
+      [input.originalInvoiceId],
+    )).rows[0] as Invoice | undefined;
+    if (!invoice) throw new Error("Factura selectată nu există.");
+    if (
+      invoice.invoiceType === "STORNO" ||
+      ["storno", "stornoed", "canceled"].includes(invoice.status)
+    ) {
+      throw new Error("Factura selectată nu poate fi stornată.");
+    }
+    const duplicate = await connection.query(
+      `SELECT id FROM invoices WHERE "originalInvoiceId"=$1 AND "invoiceType"='STORNO' LIMIT 1`,
+      [input.originalInvoiceId],
+    );
+    if (duplicate.rows[0]) throw new Error("Factura selectată are deja o factură storno.");
 
-  const reference = `${original.invoice.series} ${String(original.invoice.number).padStart(4, "0")}`;
-  const id = await createInvoice({
-    series: (input.series || "STO").toUpperCase(),
-    clientId: original.invoice.clientId,
-    userId: original.invoice.userId,
-    issueDate: input.issueDate,
-    dueDate: input.issueDate,
-    currency: original.invoice.currency,
-    exchangeRate: original.invoice.exchangeRate,
-    notes: `Storno pentru factura ${reference}. Motiv: ${input.reason}`,
-    delegateName: original.invoice.delegateName,
-    delegateCI: original.invoice.delegateCI,
-    delegateCNP: original.invoice.delegateCNP,
-    discountPercent: original.invoice.discountPercent,
-    invoiceType: "STORNO",
-    originalInvoiceId: original.invoice.id,
-    stornoReason: input.reason.trim(),
-    invoiceTypeCode: "381",
-    paymentMeansCode: original.invoice.paymentMeansCode,
-    paymentTerms: original.invoice.paymentTerms,
-    taxPointDate: input.issueDate,
-    buyerReference: original.invoice.buyerReference,
-    sellerSnapshot: original.company,
-    clientSnapshot: original.client,
-    initialStatus: "storno",
-    items: original.items.map((item) => ({
-      productId: item.productId,
-      description: `STORNO - ${item.description}`,
-      um: item.um,
-      qty: Math.abs(item.qty),
-      unitPrice: -Math.abs(item.unitPrice),
-      vatRate: item.vatRate,
-      unitCode: item.unitCode,
-      vatCategoryCode: item.vatCategoryCode,
-      taxExemptionReasonCode: item.taxExemptionReasonCode,
-      taxExemptionReason: item.taxExemptionReason,
-    })),
-  });
-  await pool.query(`UPDATE invoices SET status='stornoed' WHERE id=$1`, [
-    original.invoice.id,
-  ]);
-  return id;
+    const [itemResult, clientResult, companyResult] = await Promise.all([
+      connection.query(`SELECT * FROM invoice_items WHERE "invoiceId"=$1 ORDER BY id`, [invoice.id]),
+      connection.query(`SELECT * FROM clients WHERE id=$1`, [invoice.clientId]),
+      connection.query(`SELECT * FROM company WHERE id=1`),
+    ]);
+    const items = itemResult.rows as InvoiceItem[];
+    const liveClient = clientResult.rows[0] as Client | undefined;
+    const liveCompany = companyResult.rows[0] as Company | undefined;
+    const clientSnapshot = Object.keys(invoice.clientSnapshot || {}).length
+      ? invoice.clientSnapshot as Client
+      : liveClient;
+    const sellerSnapshot = Object.keys(invoice.sellerSnapshot || {}).length
+      ? invoice.sellerSnapshot as Company
+      : liveCompany;
+    if (!clientSnapshot || !sellerSnapshot || items.length === 0) {
+      throw new Error("Factura originală nu are toate datele necesare stornării.");
+    }
+
+    const reference = `${invoice.series} ${String(invoice.number).padStart(4, "0")}`;
+    const id = await createInvoiceInTransaction({
+      series: (input.series || "STO").toUpperCase(),
+      clientId: invoice.clientId,
+      userId: invoice.userId,
+      issueDate: input.issueDate,
+      dueDate: input.issueDate,
+      currency: invoice.currency,
+      exchangeRate: invoice.exchangeRate,
+      notes: `Storno pentru factura ${reference}. Motiv: ${input.reason}`,
+      delegateName: invoice.delegateName,
+      delegateCI: invoice.delegateCI,
+      delegateCNP: invoice.delegateCNP,
+      discountPercent: invoice.discountPercent,
+      invoiceType: "STORNO",
+      originalInvoiceId: invoice.id,
+      stornoReason: input.reason.trim(),
+      invoiceTypeCode: "381",
+      paymentMeansCode: invoice.paymentMeansCode,
+      paymentTerms: invoice.paymentTerms,
+      taxPointDate: input.issueDate,
+      buyerReference: invoice.buyerReference,
+      sellerSnapshot,
+      clientSnapshot,
+      initialStatus: "storno",
+      items: items.map((item) => ({
+        productId: item.productId,
+        description: `STORNO - ${item.description}`,
+        um: item.um,
+        qty: Math.abs(item.qty),
+        unitPrice: -Math.abs(item.unitPrice),
+        vatRate: item.vatRate,
+        unitCode: item.unitCode,
+        vatCategoryCode: item.vatCategoryCode,
+        taxExemptionReasonCode: item.taxExemptionReasonCode,
+        taxExemptionReason: item.taxExemptionReason,
+      })),
+    }, connection);
+    await connection.query(`UPDATE invoices SET status='stornoed' WHERE id=$1`, [invoice.id]);
+    await connection.query("COMMIT");
+    return id;
+  } catch (error) {
+    await connection.query("ROLLBACK");
+    if (
+      (error as { code?: string }).code === "23505" &&
+      (error as { constraint?: string }).constraint === "invoices_one_storno_per_original"
+    ) {
+      throw new Error("Factura selectată are deja o factură storno.");
+    }
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
-export async function listInvoices(): Promise<
+export async function listInvoices(limit?: number): Promise<
   (Invoice & {
     clientName: string;
     userName: string | null;
@@ -934,6 +978,7 @@ export async function listInvoices(): Promise<
   const pool = await ready();
   const environment =
     process.env.ANAF_ENVIRONMENT === "production" ? "production" : "test";
+  const safeLimit = Number.isInteger(limit) && Number(limit) > 0 ? Number(limit) : null;
   const { rows } = await pool.query(
     `SELECT i.*, c.name as "clientName", u.name as "userName",
        ef.status as "eFacturaStatus", ef.message as "eFacturaMessage",
@@ -949,8 +994,9 @@ export async function listInvoices(): Promise<
         FROM efactura_submissions
        WHERE "invoiceId"=i.id AND environment=$1 ORDER BY id DESC LIMIT 1
      ) ef ON true
-     ORDER BY i."issueDate" DESC, i.id DESC`,
-    [environment],
+     ORDER BY i."issueDate" DESC, i.id DESC
+     ${safeLimit ? "LIMIT $2" : ""}`,
+    safeLimit ? [environment, safeLimit] : [environment],
   );
   return rows as (Invoice & {
     clientName: string;
@@ -1077,6 +1123,17 @@ export async function deleteInvoice(id: number) {
     }
 
     if (invoice.invoiceType === "STORNO") {
+      const refund = (
+        await connection.query(
+          `SELECT id FROM payments WHERE "invoiceId"=$1 AND amount<0 LIMIT 1`,
+          [invoice.originalInvoiceId],
+        )
+      ).rows[0];
+      if (refund) {
+        throw new Error(
+          "Factura storno are restituiri înregistrate. Ștergerea ar invalida soldul clientului.",
+        );
+      }
       await connection.query(`DELETE FROM receipts WHERE "invoiceId"=$1`, [id]);
       await connection.query(`DELETE FROM invoices WHERE id=$1`, [id]);
       if (invoice.originalInvoiceId) {
@@ -1124,6 +1181,7 @@ export async function addPayment(
   date: string,
   method: string,
   notes?: string,
+  refund = false,
 ) {
   const pool = await ready();
   const connection = await pool.connect();
@@ -1137,13 +1195,35 @@ export async function addPayment(
     if (
       !invoice ||
       invoice.invoiceType === "STORNO" ||
-      ["storno", "stornoed", "canceled"].includes(invoice.status)
+      (refund
+        ? invoice.status !== "stornoed"
+        : ["storno", "stornoed", "canceled"].includes(invoice.status))
     ) {
       throw new Error("Factura selectată nu acceptă încasări.");
     }
     if (!Number.isFinite(amount) || amount <= 0)
       throw new Error("Suma încasată trebuie să fie pozitivă.");
     if (!isIsoDate(date)) throw new Error("Data încasării nu este validă.");
+    if (
+      !["numerar", "cash", "bank", "banca", "bancă", "card", "transfer"].includes(
+        String(method).toLowerCase(),
+      )
+    ) {
+      throw new Error("Metoda de plată nu este validă.");
+    }
+    if (refund) {
+      const storno = (
+        await connection.query(
+          `SELECT "issueDate" FROM invoices WHERE "originalInvoiceId"=$1 AND "invoiceType"='STORNO'`,
+          [invoiceId],
+        )
+      ).rows[0];
+      if (!storno || date < storno.issueDate) {
+        throw new Error(
+          "Restituirea necesită factura storno și o dată ulterioară sau egală cu aceasta.",
+        );
+      }
+    }
 
     const alreadyPaid = round2(
       Number((await connection.query(
@@ -1151,11 +1231,16 @@ export async function addPayment(
         [invoiceId],
       )).rows[0].amount),
     );
-    const outstanding = round2(Number(invoice.total) - alreadyPaid);
+    const outstanding = refund
+      ? alreadyPaid
+      : round2(Number(invoice.total) - alreadyPaid);
     if (outstanding <= 0) throw new Error("Factura este deja achitată integral.");
     if (round2(amount) > outstanding)
       throw new Error(`Suma depășește restul de plată de ${outstanding.toFixed(2)} ${invoice.currency}.`);
     amount = round2(amount);
+    if (amount <= 0)
+      throw new Error("Suma încasată trebuie să fie de cel puțin 0,01.");
+    if (refund) amount = -amount;
 
     const { rows: paymentRows } = await connection.query(
       `INSERT INTO payments ("invoiceId", amount, date, method, notes) VALUES ($1,$2,$3,$4,$5) RETURNING id`,
@@ -1185,8 +1270,13 @@ export async function addPayment(
     );
 
     const paid = round2(alreadyPaid + amount);
-    const status: Invoice["status"] =
-      paid <= 0 ? "issued" : paid >= invoice.total ? "paid" : "partial";
+    const status: Invoice["status"] = refund
+      ? "stornoed"
+      : paid <= 0
+        ? "issued"
+        : paid >= invoice.total
+          ? "paid"
+          : "partial";
     await connection.query(
       `UPDATE invoices SET "paidAmount"=$1, status=$2 WHERE id=$3`,
       [paid, status, invoiceId],
@@ -1247,6 +1337,10 @@ export async function createReceipt(
     )).rows[0].amount));
     const available = round2(cashPaid - receipted);
     amount = round2(amount);
+    if (amount <= 0)
+      throw new Error(
+        "Valoarea chitanței trebuie să fie de cel puțin 0,01 RON.",
+      );
     if (available <= 0)
       throw new Error("Nu există o încasare în numerar fără chitanță pentru această factură.");
     if (amount > available)
@@ -1302,47 +1396,34 @@ export async function getReceipt(id: number) {
 // ---------- Dashboard stats ----------
 export async function getDashboardStats() {
   const pool = await ready();
-  const totalInvoices = Number(
-    (await pool.query(`SELECT COUNT(*) as c FROM invoices`)).rows[0].c,
-  );
-  const totalOutstanding = round2(
-    Number(
-      (
-        await pool.query(
-          `SELECT COALESCE(SUM(total - "paidAmount"),0) as s FROM invoices WHERE status IN ('issued','partial')`,
-        )
-      ).rows[0].s,
-    ),
-  );
-  const totalCollected = round2(
-    Number(
-      (
-        await pool.query(
-          `SELECT COALESCE(SUM("paidAmount"),0) as s FROM invoices`,
-        )
-      ).rows[0].s,
-    ),
-  );
   const thisMonth = new Date().toISOString().slice(0, 7);
-  const monthRevenue = round2(
-    Number(
-      (
-        await pool.query(
-          `SELECT COALESCE(SUM(total),0) as s FROM invoices WHERE substring("issueDate",1,7)=$1`,
-          [thisMonth],
-        )
-      ).rows[0].s,
-    ),
+  const environment =
+    process.env.ANAF_ENVIRONMENT === "production" ? "production" : "test";
+  const { rows } = await pool.query(
+    `WITH latest_efactura AS (
+       SELECT DISTINCT ON ("invoiceId") "invoiceId", status
+       FROM efactura_submissions
+       WHERE environment=$2
+       ORDER BY "invoiceId", id DESC
+     )
+     SELECT
+       COUNT(*)::int AS "totalInvoices",
+       COALESCE(SUM(total - "paidAmount") FILTER (WHERE status IN ('issued','partial')),0) AS "totalOutstanding",
+       COALESCE(SUM("paidAmount"),0) AS "totalCollected",
+       COALESCE(SUM(total) FILTER (WHERE substring("issueDate",1,7)=$1),0) AS "monthRevenue",
+       (SELECT COUNT(*)::int FROM clients) AS "totalClients",
+       (SELECT COUNT(*)::int FROM latest_efactura WHERE status IN ('REJECTED','ERROR')) AS "anafProblems"
+     FROM invoices`,
+    [thisMonth, environment],
   );
-  const totalClients = Number(
-    (await pool.query(`SELECT COUNT(*) as c FROM clients`)).rows[0].c,
-  );
+  const row = rows[0];
   return {
-    totalInvoices,
-    totalOutstanding,
-    totalCollected,
-    monthRevenue,
-    totalClients,
+    totalInvoices: Number(row.totalInvoices),
+    totalOutstanding: round2(Number(row.totalOutstanding)),
+    totalCollected: round2(Number(row.totalCollected)),
+    monthRevenue: round2(Number(row.monthRevenue)),
+    totalClients: Number(row.totalClients),
+    anafProblems: Number(row.anafProblems),
   };
 }
 

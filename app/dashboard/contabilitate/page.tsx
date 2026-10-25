@@ -26,11 +26,11 @@ function AnafCompactStatus({ status }: { status: string | null }) {
 }
 
 export default async function DashboardPage() {
-  const stats = await getDashboardStats();
-  const invoices = await listInvoices();
-  const recent = invoices.slice(0, 7);
+  const [stats, recent] = await Promise.all([
+    getDashboardStats(),
+    listInvoices(7),
+  ]);
   const anaf = getAnafPublicConfig();
-  const anafProblems = invoices.filter((invoice) => ["REJECTED", "ERROR"].includes(invoice.eFacturaStatus || "")).length;
 
   const cards = [
     { label: "Facturi emise", value: stats.totalInvoices.toString(), accent: "var(--cyan)" },
@@ -53,7 +53,7 @@ export default async function DashboardPage() {
       </div>
 
       {anaf.environment === "test" && <div className="ef-safety-warning mb-4"><TriangleAlert size={17}/><span><strong>ANAF Test este activ.</strong> Trimiterile nu au efect fiscal real. Activează Producție înainte de folosirea operațională.</span></div>}
-      {anafProblems > 0 && <Link href="/dashboard/contabilitate/invoices" className="ref-error ef-dashboard-alert"><TriangleAlert size={17}/><span><strong>{anafProblems} {anafProblems === 1 ? "factură necesită" : "facturi necesită"} atenție la e-Factura.</strong> Deschide registrul pentru detalii și retransmitere.</span></Link>}
+      {stats.anafProblems > 0 && <Link href="/dashboard/contabilitate/invoices" className="ref-error ef-dashboard-alert"><TriangleAlert size={17}/><span><strong>{stats.anafProblems} {stats.anafProblems === 1 ? "factură necesită" : "facturi necesită"} atenție la e-Factura.</strong> Deschide registrul pentru detalii și retransmitere.</span></Link>}
 
       <div className="stat-grid">
         {cards.map((c) => (

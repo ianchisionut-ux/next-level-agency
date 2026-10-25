@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Download, AlertTriangle, Search, Building2, Loader2 } from "lucide-react";
+import { Plus, Download, AlertTriangle, Search, RefreshCw, CheckCircle2 } from "lucide-react";
 
 type Client = {
   id: number; name: string; clientType: "PF" | "PJ"; regCom: string; cif: string; cnp: string;
@@ -28,7 +28,7 @@ export default function ClientsPage() {
   const [importing, setImporting] = useState(false);
   const [search, setSearch] = useState("");
   const [anafLoading, setAnafLoading] = useState(false);
-  const [anafError, setAnafError] = useState("");
+  const [anafNotice, setAnafNotice] = useState<{ ok: boolean; text: string } | null>(null);
 
   function load() {
     fetch("/api/accounting/clients").then((r) => r.json()).then(setClients);
@@ -54,25 +54,45 @@ export default function ClientsPage() {
 
   async function lookupAnaf() {
     const cui = form.cif.replace(/\D/g, "");
-    if (!cui) { setAnafError("Introdu mai întâi CUI-ul firmei."); return; }
-    setAnafLoading(true); setAnafError("");
-    const response = await fetch(`/api/accounting/anaf/company-lookup?cui=${encodeURIComponent(cui)}`);
-    const company = await response.json();
-    setAnafLoading(false);
-    if (!response.ok) { setAnafError(company.error || "Firma nu a fost găsită la ANAF."); return; }
-    setForm((current) => ({
-      ...current,
-      clientType: "PJ",
-      cif: company.cui || current.cif,
-      name: company.name || current.name,
-      address: company.address || current.address,
-      regCom: company.regCom || current.regCom,
-      phone: company.phone || current.phone,
-      postalCode: company.postalCode || current.postalCode,
-      judet: company.judet || current.judet,
-      city: company.city || current.city,
-      vatPayer: company.vatPayer ? 1 : 0,
-    }));
+    if (cui.length < 2) {
+      setAnafNotice({ ok: false, text: "Introdu mai întâi un CUI valid." });
+      return;
+    }
+    setAnafLoading(true);
+    setAnafNotice(null);
+    try {
+      const response = await fetch(`/api/accounting/anaf/company-lookup?cui=${encodeURIComponent(cui)}`);
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || "Firma nu a putut fi căutată.");
+      const company = body.company;
+      setForm((current) => ({
+        ...current,
+        clientType: "PJ",
+        cif: company.cif || cui,
+        name: company.name || current.name,
+        address: company.address || current.address,
+        regCom: company.regCom || current.regCom,
+        phone: company.phone || current.phone,
+        postalCode: company.postalCode || current.postalCode,
+        judet: company.judet || current.judet,
+        city: company.city || current.city,
+        countryCode: company.countryCode || "RO",
+        vatPayer: company.vatPayer ? 1 : 0,
+      }));
+      setAnafNotice({
+        ok: !company.inactive,
+        text: company.inactive
+          ? "Firma a fost găsită, dar figurează inactivă fiscal."
+          : "Datele firmei au fost completate din ANAF. Verifică-le înainte de salvare.",
+      });
+    } catch (error) {
+      setAnafNotice({
+        ok: false,
+        text: error instanceof Error ? error.message : "Completează datele manual.",
+      });
+    } finally {
+      setAnafLoading(false);
+    }
   }
   async function submit() {
     if (!form.name.trim()) return;
@@ -92,7 +112,7 @@ export default function ClientsPage() {
       vatPayer: c.vatPayer || 0, countryCode: c.countryCode || "RO", postalCode: c.postalCode || "",
       ciSeries: c.ciSeries, ciNumber: c.ciNumber,
     });
-    setEditingId(c.id); setShowForm(true);
+    setEditingId(c.id); setAnafNotice(null); setShowForm(true);
   }
 
   async function remove(id: number) {
@@ -122,7 +142,7 @@ export default function ClientsPage() {
           <h1 className="page-title">Clienți</h1>
           <p className="page-subtitle">{clients.length} beneficiari disponibili pentru facturare.</p>
         </div>
-        <button onClick={() => { setForm(emptyForm); setEditingId(null); setShowForm((s) => !s); }} className="btn-primary">
+        <button onClick={() => { setForm(emptyForm); setEditingId(null); setAnafNotice(null); setShowForm((s) => !s); }} className="btn-primary">
           {showForm ? "Închide" : <><Plus size={15}/> Client nou</>}
         </button>
       </div>
@@ -138,12 +158,13 @@ export default function ClientsPage() {
           </div>
           <div className="col-span-2"><label className="field-label">Denumire firmă / Nume și prenume</label><input className="input" value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})}/></div>
           {form.clientType === "PJ" ? <>
-            <div><label className="field-label">CIF / CUI</label><div className="flex gap-2"><input className="input" value={form.cif} onChange={(e)=>{setForm({...form,cif:e.target.value});setAnafError("");}}/><button type="button" onClick={lookupAnaf} disabled={anafLoading} className="btn-secondary whitespace-nowrap">{anafLoading?<Loader2 size={14} className="animate-spin"/>:<Building2 size={14}/>} Caută ANAF</button></div>{anafError&&<p className="text-xs mt-1" style={{color:"var(--red)"}}>{anafError}</p>}</div>
+            <div><label className="field-label">CIF / CUI</label><div className="flex gap-2"><input className="input" value={form.cif} onChange={(e)=>{setForm({...form,cif:e.target.value});setAnafNotice(null);}} onKeyDown={(e)=>{if(e.key==="Enter"){e.preventDefault();void lookupAnaf();}}} placeholder="Ex. RO12345678"/><button type="button" onClick={lookupAnaf} disabled={anafLoading} className="btn-secondary whitespace-nowrap">{anafLoading?<RefreshCw size={14} className="animate-spin"/>:<Search size={14}/>} {anafLoading ? "Se caută..." : "Caută ANAF"}</button></div></div>
             <div><label className="field-label">Nr. Registrul Comerțului</label><input className="input" value={form.regCom} onChange={(e)=>setForm({...form,regCom:e.target.value})}/></div>
           </> : <>
             <div><label className="field-label">CNP</label><input className="input" value={form.cnp} onChange={(e)=>setForm({...form,cnp:e.target.value})}/></div>
             <div className="grid grid-cols-2 gap-2"><div><label className="field-label">Serie CI</label><input className="input" value={form.ciSeries} onChange={(e)=>setForm({...form,ciSeries:e.target.value})}/></div><div><label className="field-label">Număr CI</label><input className="input" value={form.ciNumber} onChange={(e)=>setForm({...form,ciNumber:e.target.value})}/></div></div>
           </>}
+          {form.clientType === "PJ" && anafNotice && <div className={`col-span-2 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold ${anafNotice.ok ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>{anafNotice.ok?<CheckCircle2 size={16}/>:<AlertTriangle size={16}/>} {anafNotice.text}</div>}
           <div className="col-span-2"><label className="field-label">Adresă completă</label><input className="input" value={form.address} onChange={(e)=>setForm({...form,address:e.target.value})}/></div>
           <div><label className="field-label">Județ</label><input className="input" value={form.judet} onChange={(e)=>setForm({...form,judet:e.target.value})}/></div>
           <div><label className="field-label">Localitate</label><input className="input" value={form.city} onChange={(e)=>setForm({...form,city:e.target.value})}/></div>
