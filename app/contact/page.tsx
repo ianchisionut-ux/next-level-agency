@@ -1,13 +1,10 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { siteConfig } from "@/lib/data";
 
-export const metadata: Metadata = {
-  title: "Contact | Next Level Advertising Agency",
-  description: "Hai să discutăm despre proiectul tău. Telefon, WhatsApp, email și locație.",
-};
+export const metadata = pageMetadata("Contact Next Level | Marketing și web design Zalău", "Discută cu Next Level despre site-ul sau promovarea afacerii tale. Contact prin telefon, WhatsApp și email; agenție din Sălaj, proiecte în România.", "/contact");
 
 export default function ContactPage() {
   const waHref = `https://wa.me/${siteConfig.whatsappNumber}?text=${encodeURIComponent(siteConfig.whatsappMessage)}`;
@@ -86,20 +83,28 @@ export default function ContactPage() {
                   encType="text/plain"
                   className="mt-6 space-y-4"
                 >
+                  <label className="sr-only" htmlFor="contact-name">Numele tău</label>
                   <input
+                    id="contact-name"
+                    autoComplete="name"
                     name="Nume"
                     placeholder="Numele tău"
                     required
                     className="w-full rounded-lg border border-line-light bg-white px-4 py-3 text-sm outline-none focus:border-blue"
                   />
+                  <label className="sr-only" htmlFor="contact-email">Adresa de email</label>
                   <input
+                    id="contact-email"
+                    autoComplete="email"
                     name="Email"
                     type="email"
                     placeholder="Adresa de email"
                     required
                     className="w-full rounded-lg border border-line-light bg-white px-4 py-3 text-sm outline-none focus:border-blue"
                   />
+                  <label className="sr-only" htmlFor="contact-message">Mesajul tău</label>
                   <textarea
+                    id="contact-message"
                     name="Mesaj"
                     placeholder="Spune-ne despre proiectul tău"
                     rows={5}

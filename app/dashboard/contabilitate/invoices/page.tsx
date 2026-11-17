@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { StatusBadge } from "@/components/accounting/StatusBadge";
-import { Plus, Download, Eye, Pencil, RotateCcw, Trash2, TriangleAlert } from "lucide-react";
+import { Plus, Download, Eye, Pencil, RotateCcw, TriangleAlert } from "lucide-react";
+import { subtractMoney } from "@/lib/accounting/money";
 
 type InvoiceRow = {
   id: number;
@@ -14,6 +15,7 @@ type InvoiceRow = {
   issueDate: string;
   total: number;
   paidAmount: number;
+  currency: string;
   status: string;
   invoiceType: "STANDARD" | "STORNO";
   originalInvoiceId: number | null;
@@ -62,18 +64,6 @@ export default function InvoicesPage() {
       setAnafEnvironment(anaf?.environment || null);
     });
   }, []);
-
-  async function removeInvoice(invoice: InvoiceRow) {
-    const relationWarning = invoice.invoiceType === "STORNO"
-      ? " Factura inițială va redeveni activă."
-      : invoice.status === "stornoed" ? " Se va șterge și factura storno legată." : "";
-    if (!confirm(`Ștergi definitiv factura ${invoice.series} ${String(invoice.number).padStart(4, "0")}?${relationWarning}`)) return;
-    const response = await fetch(`/api/accounting/invoices/${invoice.id}`, { method: "DELETE" });
-    const result = await response.json();
-    if (!response.ok) return alert(result.error || "Factura nu a putut fi ștearsă.");
-    const updated = await fetch("/api/accounting/invoices").then((result) => result.json()) as InvoiceRow[];
-    setInvoices(updated);
-  }
 
   const anafGroup = (status: string | null): "pending" | "processing" | "validated" | "problems" => !status ? "pending" : ["UPLOADING", "PROCESSING"].includes(status) ? "processing" : status === "VALIDATED" ? "validated" : "problems";
   const filtered = invoices.filter((i) => (filter === "all" || i.status === filter) && (anafFilter === "all" || anafGroup(i.eFacturaStatus) === anafFilter));
@@ -178,8 +168,8 @@ export default function InvoicesPage() {
                 <td>{inv.clientName}</td>
                 <td className="text-neutral-400">{inv.userName ?? "—"}</td>
                 <td className="num">{new Date(inv.issueDate).toLocaleDateString("ro-RO")}</td>
-                <td className="text-right num">{fmt(inv.total)} RON</td>
-                <td className="text-right num">{inv.invoiceType === "STORNO" || inv.status === "stornoed" ? "—" : `${fmt(Math.max(0, inv.total - inv.paidAmount))} RON`}</td>
+                <td className="text-right num">{fmt(inv.total)} {inv.currency}</td>
+                <td className="text-right num">{inv.invoiceType === "STORNO" || inv.status === "stornoed" ? "—" : `${fmt(Math.max(0, subtractMoney(inv.total, inv.paidAmount)))} ${inv.currency}`}</td>
                 <td>
                   <StatusBadge status={inv.status} />
                 </td>
@@ -188,7 +178,6 @@ export default function InvoicesPage() {
                   <span className="ef-row-actions">
                     <Link href={`/dashboard/contabilitate/invoices/${inv.id}#editare-factura`} className="link-action" title="Editează factura"><Pencil size={15}/></Link>
                     <Link href={`/dashboard/contabilitate/invoices/${inv.id}#e-factura`} className="link-action" title="Vezi statusul și identificatorii ANAF"><Eye size={15}/></Link>
-                    {(!inv.eFacturaStatus || (inv.eFacturaStatus === "ERROR" && !inv.eFacturaUploadId)) && <button type="button" onClick={() => removeInvoice(inv)} className="link-danger" title="Șterge factura"><Trash2 size={15}/></button>}
                   </span>
                 </td>
               </tr>

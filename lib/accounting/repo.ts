@@ -2,6 +2,8 @@ import { ready } from "./db";
 import { createRefIncomeForPayment } from "./ref";
 import type { PoolClient } from "pg";
 import { bucharestDate } from "./date";
+import { createHash } from "node:crypto";
+import { addMoney, assertInvoiceArithmetic, calculateInvoiceTotals, convertMoney, roundMoney, subtractMoney } from "./money";
 
 export type User = {
   id: number;
@@ -134,11 +136,35 @@ export type Invoice = {
   autoEfactura: number;
   integrationSource: string | null;
   externalId: string | null;
+  issuanceKey?: string | null;
+  issuanceHash?: string | null;
   createdAt: string;
 };
 
 function round2(n: number) {
-  return Math.round(n * 100) / 100;
+  return roundMoney(n);
+}
+
+async function recordInvoiceEvent(connection: PoolClient, eventType: string, invoiceId: number, details: Record<string, unknown>) {
+  await connection.query(
+    `INSERT INTO accounting_audit_events ("eventType", "invoiceId", details) VALUES ($1,$2,$3::jsonb)`,
+    [eventType, invoiceId, JSON.stringify(details)],
+  );
+}
+
+function financialOperationKey(value?: string): string | null {
+  if (value == null) return null;
+  if (typeof value !== "string" || !/^[A-Za-z0-9:_-]{16,160}$/.test(value)) throw new Error("Identificatorul unic al operațiunii este invalid.");
+  return value;
+}
+
+async function replayFinancialOperation(connection: PoolClient, table: "payments" | "receipts", invoiceId: number, key: string | null, hash: string): Promise<number | undefined> {
+  if (!key) return undefined;
+  await connection.query(`SELECT pg_advisory_xact_lock($1,hashtext($2))`, [73003, `${table}:${key}`]);
+  const existing = (await connection.query(`SELECT id,"invoiceId","operationHash" FROM ${table} WHERE "operationKey"=$1`, [key])).rows[0];
+  if (!existing) return undefined;
+  if (Number(existing.invoiceId) !== invoiceId || existing.operationHash !== hash) throw new Error("Identificatorul operațiunii a fost deja folosit pentru alte date. Verifică operațiunea existentă.");
+  return Number(existing.id);
 }
 
 function isIsoDate(value: string | null | undefined) {
@@ -522,11 +548,12 @@ export async function deleteProduct(id: number) {
 export async function peekNextNumber(series: string): Promise<number> {
   const pool = await ready();
   const normalized = series.trim().toUpperCase() || "FAC";
+  const documents = normalized === "CH1" ? "receipts" : "invoices";
   const { rows } = await pool.query(
-    `SELECT "lastNumber" FROM counters WHERE series=$1`,
+    `SELECT GREATEST(COALESCE((SELECT "lastNumber" FROM counters WHERE series=$1),0), COALESCE((SELECT MAX(number) FROM ${documents} WHERE series=$1),0)) AS "lastNumber"`,
     [normalized],
   );
-  return (rows[0]?.lastNumber ?? 0) + 1;
+  return Number(rows[0]?.lastNumber ?? 0) + 1;
 }
 
 async function takeNextNumber(
@@ -534,14 +561,15 @@ async function takeNextNumber(
   client?: PoolClient,
 ): Promise<number> {
   const pool = client || (await ready());
+  const documents = series === "CH1" ? "receipts" : "invoices";
   // Atomic upsert-and-increment so two concurrent requests never collide.
   const { rows } = await pool.query(
-    `INSERT INTO counters (series, "lastNumber") VALUES ($1, 1)
-     ON CONFLICT (series) DO UPDATE SET "lastNumber" = counters."lastNumber" + 1
+    `INSERT INTO counters (series, "lastNumber") VALUES ($1, COALESCE((SELECT MAX(number) FROM ${documents} WHERE series=$1),0) + 1)
+     ON CONFLICT (series) DO UPDATE SET "lastNumber" = GREATEST(counters."lastNumber", COALESCE((SELECT MAX(number) FROM ${documents} WHERE series=$1),0)) + 1
      RETURNING "lastNumber"`,
     [series],
   );
-  return rows[0].lastNumber as number;
+  return Number(rows[0].lastNumber);
 }
 
 async function takeInvoiceNumber(
@@ -554,6 +582,11 @@ async function takeInvoiceNumber(
     throw new Error("Numărul facturii trebuie să fie un număr întreg pozitiv.");
   }
   const pool = client || (await ready());
+  await pool.query(`INSERT INTO counters (series, "lastNumber") VALUES ($1,0) ON CONFLICT (series) DO NOTHING`, [series]);
+  const allocated = await pool.query(`SELECT GREATEST("lastNumber", COALESCE((SELECT MAX(number) FROM invoices WHERE series=$1),0)) AS "lastNumber" FROM counters WHERE series=$1 FOR UPDATE`, [series]);
+  if (requested <= Number(allocated.rows[0]?.lastNumber || 0)) {
+    throw new Error("Numărul a fost deja alocat sau este anterior ultimului număr al seriei. Numerele consumate nu se reutilizează.");
+  }
   const duplicate = await pool.query(
     `SELECT id FROM invoices WHERE series=$1 AND number=$2 LIMIT 1`,
     [series, requested],
@@ -570,17 +603,7 @@ async function takeInvoiceNumber(
 
 // ---------- Invoices ----------
 function computeTotals(items: InvoiceItemInput[], discountPercent = 0) {
-  let subtotal = 0;
-  let vatTotal = 0;
-  const factor = 1 - (discountPercent || 0) / 100;
-  const computed = items.map((it) => {
-    const valoare = round2(it.qty * it.unitPrice * factor);
-    const vatValue = round2((valoare * it.vatRate) / 100);
-    subtotal += valoare;
-    vatTotal += vatValue;
-    return { ...it, valoare, vatValue };
-  });
-  return { computed, subtotal: round2(subtotal), vatTotal: round2(vatTotal) };
+  return calculateInvoiceTotals(items, discountPercent);
 }
 
 type CreateInvoiceInput = {
@@ -616,41 +639,62 @@ type CreateInvoiceInput = {
   cashier?: string;
   integrationSource?: string;
   externalId?: string;
+  issuanceKey?: string;
 };
 
 export async function createInvoice(input: CreateInvoiceInput): Promise<number> {
+  if (input.invoiceType && input.invoiceType !== "STANDARD") throw new Error("Factura storno se emite doar prin fluxul dedicat.");
+  if (input.originalInvoiceId != null || input.sellerSnapshot != null || input.clientSnapshot != null || input.stornoReason || (input.initialStatus != null && input.initialStatus !== "issued")) {
+    throw new Error("Câmpurile interne ale documentului nu pot fi furnizate la emitere.");
+  }
   return createInvoiceInTransaction(input);
 }
 
 async function createInvoiceInTransaction(
   input: CreateInvoiceInput,
   transactionClient?: PoolClient,
+  reversal?: { items: InvoiceItem[]; subtotal: number; vatTotal: number; total: number },
 ): Promise<number> {
   const pool = await ready();
-  const series = input.series.trim().toUpperCase();
+  const series = typeof input.series === "string" ? input.series.trim().toUpperCase() : "";
+  for (const field of ["notes", "delegateName", "delegateCI", "delegateCNP", "vehiclePlate", "deliveryDate", "deliveryTime", "paymentTerms", "buyerReference", "cashier", "integrationSource", "externalId", "issuanceKey"] as const) {
+    if (input[field] != null && (typeof input[field] !== "string" || input[field].length > 10000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(input[field]))) throw new Error(`Câmpul ${field} este invalid.`);
+  }
+  if (input.userId != null && (!Number.isInteger(input.userId) || input.userId <= 0)) throw new Error("Emitentul selectat este invalid.");
+  if (input.paidOnSpot != null && typeof input.paidOnSpot !== "boolean") throw new Error("Opțiunea încasării pe loc este invalidă.");
   if (!series) throw new Error("Completează seria facturii.");
+  if (series === "CH1") throw new Error("Seria CH1 este rezervată chitanțelor.");
   if (!/^[A-Z0-9._/-]{1,20}$/.test(series))
     throw new Error("Seria poate conține maximum 20 de caractere: litere, cifre, punct, cratimă, / sau _.");
   if (!Number.isInteger(Number(input.clientId)) || Number(input.clientId) <= 0)
     throw new Error("Selectează un client valid.");
   if (!isIsoDate(input.issueDate)) throw new Error("Data emiterii nu este validă.");
+  if (input.issueDate > bucharestDate()) throw new Error("Data emiterii nu poate fi în viitor.");
   if (input.dueDate && !isIsoDate(input.dueDate))
     throw new Error("Data scadenței nu este validă.");
   if (input.dueDate && input.dueDate < input.issueDate)
     throw new Error("Data scadenței nu poate fi anterioară datei emiterii.");
   if (input.taxPointDate && !isIsoDate(input.taxPointDate))
     throw new Error("Data exigibilității TVA nu este validă.");
-  if (!Array.isArray(input.items) || input.items.length === 0)
+  if (!Array.isArray(input.items) || input.items.length === 0 || input.items.length > 1000)
     throw new Error("Factura trebuie să conțină cel puțin o poziție.");
   const discountPercent = input.discountPercent ?? 0;
   if (!Number.isFinite(discountPercent) || discountPercent < 0 || discountPercent > 100)
     throw new Error("Discountul trebuie să fie între 0% și 100%.");
   const invoiceType = input.invoiceType ?? "STANDARD";
+  if (!["STANDARD", "STORNO"].includes(invoiceType)) throw new Error("Tip de document invalid.");
+  if (input.initialStatus != null && input.initialStatus !== (invoiceType === "STORNO" ? "storno" : "issued")) throw new Error("Statusul inițial al documentului este invalid.");
+  if (invoiceType === "STORNO" && (!reversal || !transactionClient || !input.originalInvoiceId)) throw new Error("Factura storno necesită documentul original blocat în tranzacție.");
+  if (input.invoiceTypeCode && input.invoiceTypeCode !== (invoiceType === "STORNO" ? "381" : "380")) throw new Error("Codul tipului de factură nu corespunde documentului.");
+  if (input.currency != null && typeof input.currency !== "string") throw new Error("Moneda facturii nu este validă.");
   const currency = String(input.currency || "RON").trim().toUpperCase();
   if (!/^[A-Z]{3}$/.test(currency)) throw new Error("Moneda facturii nu este validă.");
+  if (currency !== "RON" && !reversal) throw new Error("Emiterile noi sunt disponibile momentan numai în RON. Documentele istorice în valută se păstrează nemodificate.");
   const exchangeRate = Number(input.exchangeRate ?? 1);
-  if (!Number.isFinite(exchangeRate) || exchangeRate <= 0)
-    throw new Error("Cursul de schimb trebuie să fie pozitiv.");
+  if (!Number.isFinite(exchangeRate) || exchangeRate <= 0 || exchangeRate >= 1_000_000)
+    throw new Error("Cursul de schimb trebuie să fie pozitiv și mai mic de 1.000.000.");
+  convertMoney(0, exchangeRate); // Shared decimal precision bound (maximum 9 places).
+  if (currency === "RON" && exchangeRate !== 1) throw new Error("Cursul unei facturi în RON trebuie să fie 1.");
   const integrationSource = input.integrationSource?.trim().toLowerCase() || null;
   const externalId = input.externalId?.trim() || null;
   if ((integrationSource && !externalId) || (!integrationSource && externalId))
@@ -659,10 +703,22 @@ async function createInvoiceInTransaction(
     throw new Error("Sursa integrării nu este validă.");
   if (externalId && (externalId.length > 160 || /[\u0000-\u001f]/.test(externalId)))
     throw new Error("Identificatorul extern nu este valid.");
+  const issuanceKey = typeof input.issuanceKey === "string" ? input.issuanceKey.trim() : "";
+  if (!reversal && !integrationSource && !/^[A-Za-z0-9:_-]{16,160}$/.test(issuanceKey)) throw new Error("Identificatorul unic al emiterii lipsește sau este invalid. Reîncarcă formularul.");
+  if (input.paymentMeansCode != null && !["10", "30", "42", "48", "ZZZ"].includes(input.paymentMeansCode)) throw new Error("Modalitatea de plată este invalidă.");
+  if (!input.dueDate && !String(input.paymentTerms || "").trim() && !input.paidOnSpot) throw new Error("Completează scadența sau termenii de plată înainte de emitere.");
+  const categories = new Set<string>();
+  const exemptionReasons = new Map<string, string>();
   input.items.forEach((item, index) => {
     const line = index + 1;
-    if (!String(item.description || "").trim())
+    if (!item || typeof item !== "object" || typeof item.description !== "string" || !item.description.trim() || item.description.length > 2000 || /[\u0000-\u001f]/.test(item.description))
       throw new Error(`Poziția ${line}: completează denumirea.`);
+    if (typeof item.um !== "string" || item.um.length > 30) throw new Error(`Poziția ${line}: unitatea de măsură este invalidă.`);
+    if (item.unitCode != null && (typeof item.unitCode !== "string" || !/^[A-Z0-9]{1,3}$/.test(item.unitCode.trim().toUpperCase()))) throw new Error(`Poziția ${line}: codul unității este invalid.`);
+    for (const field of ["taxExemptionReasonCode", "taxExemptionReason"] as const) {
+      if (item[field] != null && (typeof item[field] !== "string" || item[field].length > 1000 || /[\u0000-\u001f]/.test(item[field]))) throw new Error(`Poziția ${line}: motivul scutirii este invalid.`);
+    }
+    if (item.productId != null && (!Number.isInteger(item.productId) || item.productId <= 0)) throw new Error(`Poziția ${line}: produs invalid.`);
     if (!Number.isFinite(item.qty) || item.qty <= 0)
       throw new Error(`Poziția ${line}: cantitatea trebuie să fie pozitivă.`);
     if (!Number.isFinite(item.unitPrice))
@@ -672,7 +728,8 @@ async function createInvoiceInTransaction(
     if (!Number.isFinite(item.vatRate) || item.vatRate < 0 || item.vatRate > 100)
       throw new Error(`Poziția ${line}: cota TVA nu este validă.`);
     const category = String(item.vatCategoryCode || (item.vatRate === 0 ? "Z" : "S")).toUpperCase();
-    if (!/^[A-Z]{1,3}$/.test(category))
+    categories.add(category);
+    if (!["S", "Z", "E", "AE", "K", "G", "O"].includes(category))
       throw new Error(`Poziția ${line}: categoria TVA nu este validă.`);
     if (category === "S" && item.vatRate <= 0)
       throw new Error(`Poziția ${line}: categoria TVA S necesită o cotă pozitivă.`);
@@ -680,12 +737,20 @@ async function createInvoiceInTransaction(
       throw new Error(`Poziția ${line}: o categorie TVA diferită de S trebuie să aibă cota 0%.`);
     if (["E", "AE", "K", "G", "O"].includes(category) && !String(item.taxExemptionReasonCode || item.taxExemptionReason || "").trim())
       throw new Error(`Poziția ${line}: completează motivul sau codul scutirii de TVA.`);
+    const fiscalKey = `${category}|${item.vatRate}`;
+    const reason = `${String(item.taxExemptionReasonCode || "").trim()}|${String(item.taxExemptionReason || "").trim()}`;
+    if (exemptionReasons.has(fiscalKey) && exemptionReasons.get(fiscalKey) !== reason) throw new Error("Pozițiile din aceeași categorie și cotă TVA trebuie să folosească același motiv de scutire.");
+    exemptionReasons.set(fiscalKey, reason);
   });
-  const { computed, subtotal, vatTotal } = computeTotals(
-    input.items,
-    discountPercent,
-  );
-  const total = round2(subtotal + vatTotal);
+  if (categories.has("O") && categories.size > 1) throw new Error("Categoria O nu poate fi combinată cu alte categorii TVA.");
+  const totals = reversal
+    ? {
+        computed: input.items.map((item, index) => ({ ...item, valoare: -Number(reversal.items[index].valoare), vatValue: -Number(reversal.items[index].vatValue) })),
+        subtotal: -Number(reversal.subtotal), vatTotal: -Number(reversal.vatTotal), total: -Number(reversal.total),
+      }
+    : computeTotals(input.items, discountPercent);
+  const { computed, subtotal, vatTotal, total } = totals;
+  if (![subtotal, vatTotal, total].every(value => Number.isFinite(value) && Math.abs(value) <= 999999999999.99)) throw new Error("Valorile calculate ale facturii depășesc limitele acceptate.");
   if (invoiceType === "STANDARD" && total <= 0)
     throw new Error("Totalul unei facturi normale trebuie să fie pozitiv.");
   if (input.paidOnSpot && invoiceType !== "STANDARD") {
@@ -708,6 +773,27 @@ async function createInvoiceInTransaction(
   const ownsTransaction = !transactionClient;
   try {
     if (ownsTransaction) await connection.query("BEGIN");
+    const semanticHash = createHash("sha256").update(JSON.stringify({
+      series, number: input.number ?? null, clientId: Number(input.clientId), userId: input.userId ?? null,
+      issueDate: input.issueDate, dueDate: input.dueDate || null, notes: input.notes || "",
+      delegateName: input.delegateName || "", delegateCI: input.delegateCI || "", delegateCNP: input.delegateCNP || "",
+      vehiclePlate: input.vehiclePlate || "", deliveryDate: input.deliveryDate || "", deliveryTime: input.deliveryTime || "",
+      discountPercent, currency, exchangeRate, paymentTerms: input.paymentTerms || "", paymentMeansCode: input.paymentMeansCode || "30",
+      taxPointDate: input.taxPointDate || input.issueDate, buyerReference: input.buyerReference || "", paidOnSpot: input.paidOnSpot === true, cashier: input.cashier || "",
+      items: input.items.map(item => ({ productId: item.productId ?? null, description: String(item.description).trim(), um: String(item.um || "buc").trim(), qty: item.qty, unitPrice: item.unitPrice, vatRate: item.vatRate, unitCode: String(item.unitCode || "H87").trim().toUpperCase(), vatCategoryCode: String(item.vatCategoryCode || (item.vatRate === 0 ? "Z" : "S")).trim().toUpperCase(), taxExemptionReasonCode: item.taxExemptionReasonCode || "", taxExemptionReason: item.taxExemptionReason || "" })),
+    })).digest("hex");
+    if (!reversal) {
+      const reference = integrationSource ? `integration:${integrationSource}:${externalId}` : `issuance:${issuanceKey}`;
+      await connection.query(`SELECT pg_advisory_xact_lock($1,hashtext($2))`, [73002, reference]);
+      const existing = integrationSource
+        ? await connection.query(`SELECT id,"issuanceHash" FROM invoices WHERE "integrationSource"=$1 AND "externalId"=$2`, [integrationSource, externalId])
+        : await connection.query(`SELECT id,"issuanceHash" FROM invoices WHERE "issuanceKey"=$1`, [issuanceKey]);
+      if (existing.rows[0]) {
+        if (existing.rows[0].issuanceHash && existing.rows[0].issuanceHash !== semanticHash) throw new Error("Identificatorul emiterii a fost deja folosit pentru alte date. Verifică documentul existent.");
+        if (ownsTransaction) await connection.query("COMMIT");
+        return Number(existing.rows[0].id);
+      }
+    }
     const number = await takeInvoiceNumber(series, input.number, connection);
     const clientResult = await connection.query(
       `SELECT * FROM clients WHERE id=$1`,
@@ -719,6 +805,7 @@ async function createInvoiceInTransaction(
     if (!clientResult.rows[0]) throw new Error("Clientul selectat nu există.");
     const seller = (input.sellerSnapshot || companyResult.rows[0] || {}) as Company;
     const buyer = (input.clientSnapshot || clientResult.rows[0] || {}) as Client;
+    if ([seller, buyer].some(party => Object.values(party).some(value => typeof value === "string" && /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value)))) throw new Error("Datele de identificare conțin caractere nepermise în documentele fiscale.");
     if (!seller.name || !seller.cif || !seller.address || !seller.city || !seller.county)
       throw new Error("Completează denumirea, CIF-ul și adresa completă în secțiunea Firma înainte de emitere.");
     if (!buyer.name || !buyer.address || !buyer.city || !buyer.judet)
@@ -759,6 +846,7 @@ async function createInvoiceInTransaction(
     );
 
     const invoiceId = rows[0].id as number;
+    await connection.query(`UPDATE invoices SET "issuanceKey"=$2,"issuanceHash"=$3 WHERE id=$1`, [invoiceId, issuanceKey || null, semanticHash]);
     await connection.query(`UPDATE invoices SET "anafSendAfter"=(((now() AT TIME ZONE 'Europe/Bucharest')::date + 1)::timestamp + interval '6 hours') AT TIME ZONE 'UTC', "anafApprovedEnvironment"=$2 WHERE id=$1`, [invoiceId, process.env.ANAF_ENVIRONMENT === 'production' ? 'production' : 'test']);
     await connection.query(
       `UPDATE invoices SET "invoiceType"=$1, "originalInvoiceId"=$2, "stornoReason"=$3, status=$4,
@@ -820,6 +908,8 @@ async function createInvoiceInTransaction(
           series,
           number,
           clientName: String(clientResult.rows[0].name || "Client"),
+          currency,
+          exchangeRate,
         },
         connection,
       );
@@ -840,6 +930,7 @@ async function createInvoiceInTransaction(
       );
     }
 
+    await recordInvoiceEvent(connection, invoiceType === "STORNO" ? "STORNO_ISSUED" : "INVOICE_ISSUED", invoiceId, { series, number, currency, subtotal, vatTotal, total, originalInvoiceId: input.originalInvoiceId ?? null });
     if (ownsTransaction) await connection.query("COMMIT");
     return invoiceId;
   } catch (error) {
@@ -865,28 +956,40 @@ export async function createStornoInvoice(input: {
   issueDate: string;
   reason: string;
 }): Promise<number> {
-  if (!String(input.reason || "").trim())
+  if (!Number.isInteger(input.originalInvoiceId) || input.originalInvoiceId <= 0) throw new Error("Factura originală este invalidă.");
+  if (input.series != null && typeof input.series !== "string") throw new Error("Seria storno este invalidă.");
+  if (typeof input.reason !== "string" || !input.reason.trim() || input.reason.length > 10000)
     throw new Error("Completează motivul stornării.");
   const pool = await ready();
   const connection = await pool.connect();
   try {
     await connection.query("BEGIN");
+    await connection.query(`SELECT pg_advisory_xact_lock($1,$2)`, [73001, input.originalInvoiceId]);
     const invoice = (await connection.query(
       `SELECT * FROM invoices WHERE id=$1 FOR UPDATE`,
       [input.originalInvoiceId],
     )).rows[0] as Invoice | undefined;
     if (!invoice) throw new Error("Factura selectată nu există.");
+    if (!isIsoDate(input.issueDate) || input.issueDate < invoice.issueDate) throw new Error("Data stornării nu poate fi anterioară facturii inițiale.");
+    if (input.issueDate > bucharestDate()) throw new Error("Data stornării nu poate fi în viitor.");
+    const duplicate = await connection.query(
+      `SELECT id,series,"issueDate","stornoReason" FROM invoices WHERE "originalInvoiceId"=$1 AND "invoiceType"='STORNO' LIMIT 1`,
+      [input.originalInvoiceId],
+    );
+    if (duplicate.rows[0]) {
+      const previous = duplicate.rows[0];
+      if (previous.series === String(input.series || "STO").trim().toUpperCase() && previous.issueDate === input.issueDate && previous.stornoReason === input.reason.trim()) {
+        await connection.query("COMMIT");
+        return Number(previous.id);
+      }
+      throw new Error("Factura selectată are deja o factură storno cu alte date. Verifică documentul existent.");
+    }
     if (
       invoice.invoiceType === "STORNO" ||
       ["storno", "stornoed", "canceled"].includes(invoice.status)
     ) {
       throw new Error("Factura selectată nu poate fi stornată.");
     }
-    const duplicate = await connection.query(
-      `SELECT id FROM invoices WHERE "originalInvoiceId"=$1 AND "invoiceType"='STORNO' LIMIT 1`,
-      [input.originalInvoiceId],
-    );
-    if (duplicate.rows[0]) throw new Error("Factura selectată are deja o factură storno.");
 
     const [itemResult, clientResult, companyResult] = await Promise.all([
       connection.query(`SELECT * FROM invoice_items WHERE "invoiceId"=$1 ORDER BY id`, [invoice.id]),
@@ -905,6 +1008,7 @@ export async function createStornoInvoice(input: {
     if (!clientSnapshot || !sellerSnapshot || items.length === 0) {
       throw new Error("Factura originală nu are toate datele necesare stornării.");
     }
+    assertInvoiceArithmetic({ invoice, items });
 
     const reference = `${invoice.series} ${String(invoice.number).padStart(4, "0")}`;
     const id = await createInvoiceInTransaction({
@@ -943,8 +1047,9 @@ export async function createStornoInvoice(input: {
         taxExemptionReasonCode: item.taxExemptionReasonCode,
         taxExemptionReason: item.taxExemptionReason,
       })),
-    }, connection);
+    }, connection, { items, subtotal: Number(invoice.subtotal), vatTotal: Number(invoice.vatTotal), total: Number(invoice.total) });
     await connection.query(`UPDATE invoices SET status='stornoed' WHERE id=$1`, [invoice.id]);
+    await recordInvoiceEvent(connection, "INVOICE_STORNOED", invoice.id, { stornoId: id, originalTotal: Number(invoice.total), reversedTotal: -Number(invoice.total) });
     await connection.query("COMMIT");
     return id;
   } catch (error) {
@@ -1030,21 +1135,29 @@ export async function getInvoiceItems(
   return rows as InvoiceItem[];
 }
 
-export async function getInvoiceFull(id: number) {
-  const invoice = await getInvoice(id);
+export async function getInvoiceFull(id: number, transactionClient?: PoolClient) {
+  const executor = transactionClient || await ready();
+  const invoice = (await executor.query(`SELECT * FROM invoices WHERE id=$1`, [id])).rows[0] as Invoice | undefined;
   if (!invoice) return undefined;
-  const [items, liveClient, liveCompany, receipts, payments, user, originalInvoice] =
+  const [itemResult, clientResult, companyResult, receiptResult, paymentResult, userResult, originalResult] =
     await Promise.all([
-      getInvoiceItems(id),
-      getClient(invoice.clientId),
-      getCompany(),
-      listReceiptsForInvoice(id),
-      listPaymentsForInvoice(id),
-      invoice.userId ? getUser(invoice.userId) : Promise.resolve(undefined),
+      executor.query(`SELECT * FROM invoice_items WHERE "invoiceId"=$1 ORDER BY id`, [id]),
+      executor.query(`SELECT * FROM clients WHERE id=$1`, [invoice.clientId]),
+      executor.query(`SELECT * FROM company WHERE id=1`),
+      executor.query(`SELECT * FROM receipts WHERE "invoiceId"=$1 ORDER BY id`, [id]),
+      executor.query(`SELECT * FROM payments WHERE "invoiceId"=$1 ORDER BY date,id`, [id]),
+      invoice.userId ? executor.query(`SELECT * FROM users WHERE id=$1`, [invoice.userId]) : Promise.resolve({ rows: [] }),
       invoice.originalInvoiceId
-        ? getInvoice(invoice.originalInvoiceId)
-        : Promise.resolve(undefined),
+        ? executor.query(`SELECT * FROM invoices WHERE id=$1`, [invoice.originalInvoiceId])
+        : Promise.resolve({ rows: [] }),
     ]);
+  const items = itemResult.rows as InvoiceItem[];
+  const liveClient = clientResult.rows[0] as Client | undefined;
+  const liveCompany = companyResult.rows[0] as Company;
+  const receipts = receiptResult.rows as Awaited<ReturnType<typeof listReceiptsForInvoice>>;
+  const payments = paymentResult.rows as Awaited<ReturnType<typeof listPaymentsForInvoice>>;
+  const user = userResult.rows[0] as User | undefined;
+  const originalInvoice = originalResult.rows[0] as Invoice | undefined;
   const client = Object.keys(invoice.clientSnapshot || {}).length
     ? (invoice.clientSnapshot as Client)
     : liveClient;
@@ -1055,8 +1168,8 @@ export async function getInvoiceFull(id: number) {
 }
 
 export async function setInvoiceStatus(id: number, status: Invoice["status"]) {
-  const pool = await ready();
-  await pool.query(`UPDATE invoices SET status=$1 WHERE id=$2`, [status, id]);
+  void id; void status;
+  throw new Error("Statusul unei facturi emise se modifică numai prin încasare sau storno, cu jurnal de audit.");
 }
 
 export async function correctUnsentInvoice(id: number, input: { clientId?: number; dueDate: string; paymentTerms: string; notes: string; items: { id: number; description: string; qty?: number; unitPrice?: number }[] }) {
@@ -1070,6 +1183,8 @@ export async function correctUnsentInvoice(id: number, input: { clientId?: numbe
     if (locked) throw new Error("Factura a fost transmisă sau este în procesare. Editarea este blocată.");
     if (typeof input.dueDate !== 'string' || typeof input.paymentTerms !== 'string' || typeof input.notes !== 'string' || !Array.isArray(input.items)) throw new Error("Date de corecție invalide.");
     if (input.dueDate && (!/^\d{4}-\d{2}-\d{2}$/.test(input.dueDate) || !Number.isFinite(Date.parse(input.dueDate)) || new Date(input.dueDate).toISOString().slice(0,10) !== input.dueDate)) throw new Error("Scadență invalidă.");
+    if (input.dueDate && input.dueDate < invoice.issueDate) throw new Error("Scadența nu poate fi anterioară datei emiterii.");
+    if (!input.dueDate && !input.paymentTerms.trim() && Number(invoice.total) - Number(invoice.paidAmount) > 0) throw new Error("Completează scadența sau termenii de plată pentru soldul pozitiv.");
     const existing = (await connection.query(`SELECT * FROM invoice_items WHERE "invoiceId"=$1 ORDER BY id`, [id])).rows;
     if (input.items.length !== existing.length || new Set(input.items.map(i => i.id)).size !== existing.length || input.items.some(i => !existing.some(e => e.id === i.id) || typeof i.description !== 'string' || !i.description.trim())) throw new Error("Pozițiile facturii sunt invalide.");
     const changedMoney = input.items.some(i => { const old = existing.find(e => e.id === i.id)!; return (i.qty !== undefined && Number(i.qty) !== Number(old.qty)) || (i.unitPrice !== undefined && Number(i.unitPrice) !== Number(old.unitPrice)); });
@@ -1084,11 +1199,13 @@ export async function correctUnsentInvoice(id: number, input: { clientId?: numbe
     if (changedMoney) {
       const values = existing.map(old => { const item = input.items.find(i => i.id === old.id)!; const qty = Number(item.qty ?? old.qty), unitPrice = Number(item.unitPrice ?? old.unitPrice); if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(unitPrice) || unitPrice < 0) throw new Error('Cantitate sau preț invalid.'); return { ...old, qty, unitPrice }; });
       const totals = computeTotals(values, Number(invoice.discountPercent));
+      if (totals.total <= 0) throw new Error("Totalul unei facturi normale trebuie să fie pozitiv.");
       for (let i=0;i<existing.length;i++) { const item=totals.computed[i]; await connection.query(`UPDATE invoice_items SET qty=$1,"unitPrice"=$2,valoare=$3,"vatValue"=$4 WHERE id=$5`, [item.qty,item.unitPrice,item.valoare,item.vatValue,existing[i].id]); }
-      await connection.query(`UPDATE invoices SET subtotal=$2,"vatTotal"=$3,total=$4 WHERE id=$1`, [id,totals.subtotal,totals.vatTotal,round2(totals.subtotal+totals.vatTotal)]);
+      await connection.query(`UPDATE invoices SET subtotal=$2,"vatTotal"=$3,total=$4 WHERE id=$1`, [id,totals.subtotal,totals.vatTotal,totals.total]);
     }
     await connection.query(`UPDATE invoices SET "dueDate"=$1,"paymentTerms"=$2,notes=$3 WHERE id=$4`, [input.dueDate || null, input.paymentTerms, input.notes, id]);
     for (const item of input.items) await connection.query(`UPDATE invoice_items SET description=$1 WHERE id=$2 AND "invoiceId"=$3`, [item.description.trim(), item.id, id]);
+    await recordInvoiceEvent(connection, "INVOICE_CORRECTED", id, { before: { clientId: invoice.clientId, dueDate: invoice.dueDate, subtotal: Number(invoice.subtotal), vatTotal: Number(invoice.vatTotal), total: Number(invoice.total), items: existing.map(item => ({ id: item.id, description: item.description, qty: Number(item.qty), unitPrice: Number(item.unitPrice), valoare: Number(item.valoare), vatValue: Number(item.vatValue) })) }, changes: input });
     // Preserve payments, receipts, amounts, fiscal classification and transmission history.
     await connection.query("COMMIT");
   } catch (error) { await connection.query("ROLLBACK"); throw error; }
@@ -1096,82 +1213,10 @@ export async function correctUnsentInvoice(id: number, input: { clientId?: numbe
 }
 
 export async function deleteInvoice(id: number) {
-  const pool = await ready();
-  const connection = await pool.connect();
-  try {
-    await connection.query("BEGIN");
-    const { rows } = await connection.query(
-      `SELECT id, status, "invoiceType", "originalInvoiceId", total, "paidAmount" FROM invoices WHERE id=$1 FOR UPDATE`,
-      [id],
-    );
-    const invoice = rows[0] as Invoice | undefined;
-    if (!invoice) throw new Error("Factura nu există.");
-    const transmitted = (
-      await connection.query(
-        `SELECT id,status,"uploadId" FROM efactura_submissions
-          WHERE ("invoiceId"=$1 OR "invoiceId" IN (SELECT id FROM invoices WHERE "originalInvoiceId"=$1))
-            AND environment='production'
-            AND ("uploadId"<>'' OR status IN ('UPLOADING','PROCESSING','VALIDATED','REJECTED','UNCERTAIN'))
-          LIMIT 1`,
-        [id],
-      )
-    ).rows[0];
-    if (transmitted) {
-      throw new Error(
-        "Factura a fost transmisă către ANAF și nu mai poate fi ștearsă. Folosește factura storno pentru corecție.",
-      );
-    }
-
-    if (invoice.invoiceType === "STORNO") {
-      const refund = (
-        await connection.query(
-          `SELECT id FROM payments WHERE "invoiceId"=$1 AND amount<0 LIMIT 1`,
-          [invoice.originalInvoiceId],
-        )
-      ).rows[0];
-      if (refund) {
-        throw new Error(
-          "Factura storno are restituiri înregistrate. Ștergerea ar invalida soldul clientului.",
-        );
-      }
-      await connection.query(`DELETE FROM receipts WHERE "invoiceId"=$1`, [id]);
-      await connection.query(`DELETE FROM invoices WHERE id=$1`, [id]);
-      if (invoice.originalInvoiceId) {
-        const original = (
-          await connection.query(
-            `SELECT total, "paidAmount" FROM invoices WHERE id=$1`,
-            [invoice.originalInvoiceId],
-          )
-        ).rows[0];
-        if (original) {
-          const paid = Number(original.paidAmount || 0);
-          const total = Number(original.total || 0);
-          const status: Invoice["status"] =
-            paid <= 0 ? "issued" : paid >= total ? "paid" : "partial";
-          await connection.query(`UPDATE invoices SET status=$1 WHERE id=$2`, [
-            status,
-            invoice.originalInvoiceId,
-          ]);
-        }
-      }
-    } else {
-      await connection.query(
-        `DELETE FROM receipts WHERE "invoiceId"=$1 OR "invoiceId" IN (SELECT id FROM invoices WHERE "originalInvoiceId"=$1)`,
-        [id],
-      );
-      await connection.query(
-        `DELETE FROM invoices WHERE "originalInvoiceId"=$1`,
-        [id],
-      );
-      await connection.query(`DELETE FROM invoices WHERE id=$1`, [id]);
-    }
-    await connection.query("COMMIT");
-  } catch (error) {
-    await connection.query("ROLLBACK");
-    throw error;
-  } finally {
-    connection.release();
-  }
+  if (!Number.isInteger(id) || id <= 0) throw new Error("Identificator de factură invalid.");
+  // Issuance is a financial event, even before ANAF upload. Never remove its
+  // number, payments, receipts or transmitted evidence through cascading deletes.
+  throw new Error("Facturile emise și documentele storno nu se șterg. Folosește storno pentru corecția unei facturi; încasările, chitanțele și istoricul rămân protejate.");
 }
 
 // ---------- Payments ----------
@@ -1182,16 +1227,35 @@ export async function addPayment(
   method: string,
   notes?: string,
   refund = false,
+  operationKey?: string,
 ) {
+  const key = financialOperationKey(operationKey);
+  if (!Number.isInteger(invoiceId) || invoiceId <= 0) throw new Error("Factura selectată este invalidă.");
+  if (typeof refund !== "boolean") throw new Error("Tipul operațiunii de încasare este invalid.");
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("Suma încasată trebuie să fie pozitivă.");
+  amount = round2(amount);
+  if (amount <= 0) throw new Error("Suma încasată trebuie să fie de cel puțin 0,01.");
+  if (!isIsoDate(date)) throw new Error("Data încasării nu este validă.");
+  if (typeof method !== "string" || !["numerar", "cash", "bank", "banca", "bancă", "card", "transfer"].includes(method.trim().toLowerCase())) throw new Error("Metoda de plată nu este validă.");
+  method = method.trim().toLowerCase();
+  if (notes != null && (typeof notes !== "string" || notes.length > 10000)) throw new Error("Observațiile încasării sunt invalide.");
+  const operationHash = createHash("sha256").update(JSON.stringify({ invoiceId, amount, date, method, notes: notes || "", refund })).digest("hex");
   const pool = await ready();
   const connection = await pool.connect();
   try {
     await connection.query("BEGIN");
+    await connection.query(`SELECT pg_advisory_xact_lock($1,$2)`, [73001, invoiceId]);
     const { rows: invoiceRows } = await connection.query(
       `SELECT * FROM invoices WHERE id=$1 FOR UPDATE`,
       [invoiceId],
     );
     const invoice = invoiceRows[0] as Invoice | undefined;
+    if (!invoice) throw new Error("Factura selectată nu există.");
+    const replay = await replayFinancialOperation(connection, "payments", invoiceId, key, operationHash);
+    if (replay !== undefined) {
+      await connection.query("COMMIT");
+      return replay;
+    }
     if (
       !invoice ||
       invoice.invoiceType === "STORNO" ||
@@ -1201,16 +1265,7 @@ export async function addPayment(
     ) {
       throw new Error("Factura selectată nu acceptă încasări.");
     }
-    if (!Number.isFinite(amount) || amount <= 0)
-      throw new Error("Suma încasată trebuie să fie pozitivă.");
-    if (!isIsoDate(date)) throw new Error("Data încasării nu este validă.");
-    if (
-      !["numerar", "cash", "bank", "banca", "bancă", "card", "transfer"].includes(
-        String(method).toLowerCase(),
-      )
-    ) {
-      throw new Error("Metoda de plată nu este validă.");
-    }
+    if (date < invoice.issueDate || date > bucharestDate()) throw new Error("Data încasării trebuie să fie între data emiterii și ziua curentă.");
     if (refund) {
       const storno = (
         await connection.query(
@@ -1233,7 +1288,8 @@ export async function addPayment(
     );
     const outstanding = refund
       ? alreadyPaid
-      : round2(Number(invoice.total) - alreadyPaid);
+      : subtractMoney(Number(invoice.total), alreadyPaid);
+    if (subtractMoney(Number(invoice.paidAmount), alreadyPaid) !== 0) throw new Error("Soldul facturii nu corespunde încasărilor înregistrate. Este necesară reconcilierea înainte de o plată nouă.");
     if (outstanding <= 0) throw new Error("Factura este deja achitată integral.");
     if (round2(amount) > outstanding)
       throw new Error(`Suma depășește restul de plată de ${outstanding.toFixed(2)} ${invoice.currency}.`);
@@ -1243,8 +1299,8 @@ export async function addPayment(
     if (refund) amount = -amount;
 
     const { rows: paymentRows } = await connection.query(
-      `INSERT INTO payments ("invoiceId", amount, date, method, notes) VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-      [invoiceId, amount, date, method, notes ?? ""],
+      `INSERT INTO payments ("invoiceId", amount, date, method, notes, "operationKey", "operationHash") VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+      [invoiceId, amount, date, method, notes ?? "", key, operationHash],
     );
     const { rows: clientRows } = await connection.query(
       `SELECT * FROM clients WHERE id=$1`,
@@ -1265,11 +1321,14 @@ export async function addPayment(
         series: invoice.series,
         number: invoice.number,
         clientName: client?.name || "Client",
+        currency: invoice.currency,
+        exchangeRate: Number(invoice.exchangeRate),
+        paidAmountBefore: alreadyPaid,
       },
       connection,
     );
 
-    const paid = round2(alreadyPaid + amount);
+    const paid = addMoney(alreadyPaid, amount);
     const status: Invoice["status"] = refund
       ? "stornoed"
       : paid <= 0
@@ -1281,7 +1340,9 @@ export async function addPayment(
       `UPDATE invoices SET "paidAmount"=$1, status=$2 WHERE id=$3`,
       [paid, status, invoiceId],
     );
+    await recordInvoiceEvent(connection, refund ? "PAYMENT_REFUNDED" : "PAYMENT_RECEIVED", invoiceId, { paymentId: Number(paymentRows[0].id), operationKey: key, amount, currency: invoice.currency, exchangeRate: Number(invoice.exchangeRate), date, method, paidAmount: paid });
     await connection.query("COMMIT");
+    return Number(paymentRows[0].id);
   } catch (error) {
     await connection.query("ROLLBACK");
     throw error;
@@ -1311,31 +1372,45 @@ export async function createReceipt(
   issueDate: string,
   amount: number,
   cashier?: string,
+  operationKey?: string,
 ): Promise<number> {
+  const key = financialOperationKey(operationKey);
+  if (!Number.isInteger(invoiceId) || invoiceId <= 0) throw new Error("Factura selectată este invalidă.");
+  if (!isIsoDate(issueDate)) throw new Error("Data chitanței nu este validă.");
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("Valoarea chitanței trebuie să fie pozitivă.");
+  amount = round2(amount);
+  if (amount <= 0) throw new Error("Valoarea chitanței trebuie să fie de cel puțin 0,01 RON.");
+  if (cashier != null && (typeof cashier !== "string" || cashier.length > 10000)) throw new Error("Numele casierului este invalid.");
+  const operationHash = createHash("sha256").update(JSON.stringify({ invoiceId, issueDate, amount, cashier: cashier || "" })).digest("hex");
   const pool = await ready();
   const connection = await pool.connect();
   try {
     await connection.query("BEGIN");
+    await connection.query(`SELECT pg_advisory_xact_lock($1,$2)`, [73001, invoiceId]);
     const invoice = (await connection.query(
       `SELECT * FROM invoices WHERE id=$1 FOR UPDATE`,
       [invoiceId],
     )).rows[0] as Invoice | undefined;
+    if (!invoice) throw new Error("Factura selectată nu există.");
+    const replay = await replayFinancialOperation(connection, "receipts", invoiceId, key, operationHash);
+    if (replay !== undefined) {
+      await connection.query("COMMIT");
+      return replay;
+    }
     if (!invoice || invoice.invoiceType === "STORNO" || ["storno", "stornoed", "canceled"].includes(invoice.status))
       throw new Error("Pentru această factură nu se poate emite chitanță.");
     if (invoice.currency !== "RON")
       throw new Error("Chitanța poate fi emisă doar pentru o factură în RON.");
-    if (!isIsoDate(issueDate)) throw new Error("Data chitanței nu este validă.");
-    if (!Number.isFinite(amount) || amount <= 0)
-      throw new Error("Valoarea chitanței trebuie să fie pozitivă.");
+    if (issueDate < invoice.issueDate || issueDate > bucharestDate()) throw new Error("Data chitanței trebuie să fie între data emiterii facturii și ziua curentă.");
     const cashPaid = round2(Number((await connection.query(
-      `SELECT COALESCE(SUM(amount),0) AS amount FROM payments WHERE "invoiceId"=$1 AND lower(method) IN ('numerar','cash')`,
-      [invoiceId],
+      `SELECT COALESCE(SUM(amount),0) AS amount FROM payments WHERE "invoiceId"=$1 AND date<=$2 AND lower(method) IN ('numerar','cash')`,
+      [invoiceId, issueDate],
     )).rows[0].amount));
     const receipted = round2(Number((await connection.query(
       `SELECT COALESCE(SUM(amount),0) AS amount FROM receipts WHERE "invoiceId"=$1`,
       [invoiceId],
     )).rows[0].amount));
-    const available = round2(cashPaid - receipted);
+    const available = subtractMoney(cashPaid, receipted);
     amount = round2(amount);
     if (amount <= 0)
       throw new Error(
@@ -1347,9 +1422,10 @@ export async function createReceipt(
       throw new Error(`Chitanța depășește suma încasată în numerar rămasă neacoperită: ${available.toFixed(2)} RON.`);
     const number = await takeNextNumber("CH1", connection);
     const { rows } = await connection.query(
-      `INSERT INTO receipts (series, number, "invoiceId", "issueDate", amount, cashier) VALUES ('CH1',$1,$2,$3,$4,$5) RETURNING id`,
-      [number, invoiceId, issueDate, amount, cashier ?? ""],
+      `INSERT INTO receipts (series, number, "invoiceId", "issueDate", amount, cashier, "operationKey", "operationHash") VALUES ('CH1',$1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+      [number, invoiceId, issueDate, amount, cashier ?? "", key, operationHash],
     );
+    await recordInvoiceEvent(connection, "RECEIPT_ISSUED", invoiceId, { receiptId: Number(rows[0].id), operationKey: key, series: "CH1", number, issueDate, amount, currency: "RON" });
     await connection.query("COMMIT");
     return rows[0].id as number;
   } catch (error) {
@@ -1396,7 +1472,7 @@ export async function getReceipt(id: number) {
 // ---------- Dashboard stats ----------
 export async function getDashboardStats() {
   const pool = await ready();
-  const thisMonth = new Date().toISOString().slice(0, 7);
+  const thisMonth = bucharestDate().slice(0, 7);
   const environment =
     process.env.ANAF_ENVIRONMENT === "production" ? "production" : "test";
   const { rows } = await pool.query(
@@ -1408,9 +1484,9 @@ export async function getDashboardStats() {
      )
      SELECT
        COUNT(*)::int AS "totalInvoices",
-       COALESCE(SUM(total - "paidAmount") FILTER (WHERE status IN ('issued','partial')),0) AS "totalOutstanding",
-       COALESCE(SUM("paidAmount"),0) AS "totalCollected",
-       COALESCE(SUM(total) FILTER (WHERE substring("issueDate",1,7)=$1),0) AS "monthRevenue",
+       COALESCE(SUM((ROUND(total::numeric * "exchangeRate"::numeric,2) - ROUND("paidAmount"::numeric * "exchangeRate"::numeric,2))) FILTER (WHERE status IN ('issued','partial')),0) AS "totalOutstanding",
+       COALESCE(SUM(ROUND("paidAmount"::numeric * "exchangeRate"::numeric,2)),0) AS "totalCollected",
+       COALESCE(SUM(ROUND(total::numeric * "exchangeRate"::numeric,2)) FILTER (WHERE substring("issueDate",1,7)=$1),0) AS "monthRevenue",
        (SELECT COUNT(*)::int FROM clients) AS "totalClients",
        (SELECT COUNT(*)::int FROM latest_efactura WHERE status IN ('REJECTED','ERROR')) AS "anafProblems"
      FROM invoices`,
@@ -1435,6 +1511,9 @@ function dateFilter(
   col: string,
   startIndex: number,
 ) {
+  if (range?.from && !isIsoDate(range.from)) throw new Error("Data de început a raportului este invalidă.");
+  if (range?.to && !isIsoDate(range.to)) throw new Error("Data de sfârșit a raportului este invalidă.");
+  if (range?.from && range?.to && range.from > range.to) throw new Error("Intervalul raportului este inversat.");
   const clauses: string[] = [];
   const params: string[] = [];
   let idx = startIndex;
@@ -1456,11 +1535,13 @@ export async function getSalesByProduct(range?: DateRange) {
   const pool = await ready();
   const { where, params } = dateFilter(range, `i."issueDate"`, 1);
   const { rows } = await pool.query(
-    `SELECT it.description as name, SUM(it.qty) as qty, SUM(it.valoare) as total, SUM(it."vatValue") as vat
+    `SELECT CASE WHEN i."invoiceType"='STORNO' AND it.description LIKE 'STORNO - %' THEN substring(it.description FROM 10) ELSE it.description END as name,
+            SUM(CASE WHEN i."invoiceType"='STORNO' THEN -it.qty ELSE it.qty END) as qty,
+            SUM(ROUND(it.valoare::numeric*i."exchangeRate"::numeric,2)) as total, SUM(ROUND(it."vatValue"::numeric*i."exchangeRate"::numeric,2)) as vat
      FROM invoice_items it
      JOIN invoices i ON i.id = it."invoiceId"
      WHERE i.status != 'canceled' ${where}
-     GROUP BY it.description
+     GROUP BY 1
      ORDER BY total DESC`,
     params,
   );
@@ -1481,14 +1562,16 @@ export async function getProfitByProduct(range?: DateRange) {
   const pool = await ready();
   const { where, params } = dateFilter(range, `i."issueDate"`, 1);
   const { rows } = await pool.query(
-    `SELECT it.description as name, SUM(it.qty) as qty, SUM(it.valoare) as revenue,
-            SUM(it.qty * COALESCE(p.cost, 0)) as cost,
-            (SUM(it.valoare) - SUM(it.qty * COALESCE(p.cost, 0))) as profit
+    `SELECT CASE WHEN i."invoiceType"='STORNO' AND it.description LIKE 'STORNO - %' THEN substring(it.description FROM 10) ELSE it.description END as name,
+            SUM(CASE WHEN i."invoiceType"='STORNO' THEN -it.qty ELSE it.qty END) as qty,
+            SUM(ROUND(it.valoare::numeric*i."exchangeRate"::numeric,2)) as revenue,
+            SUM(ROUND((CASE WHEN i."invoiceType"='STORNO' THEN -it.qty ELSE it.qty END)::numeric * COALESCE(p.cost, 0)::numeric,2)) as cost,
+            (SUM(ROUND(it.valoare::numeric*i."exchangeRate"::numeric,2)) - SUM(ROUND((CASE WHEN i."invoiceType"='STORNO' THEN -it.qty ELSE it.qty END)::numeric * COALESCE(p.cost, 0)::numeric,2))) as profit
      FROM invoice_items it
      JOIN invoices i ON i.id = it."invoiceId"
      LEFT JOIN products p ON p.id = it."productId"
      WHERE i.status != 'canceled' ${where}
-     GROUP BY it.description
+     GROUP BY 1
      ORDER BY profit DESC`,
     params,
   );
@@ -1512,7 +1595,7 @@ export async function getSalesByAgent(range?: DateRange) {
   const { where, params } = dateFilter(range, `i."issueDate"`, 1);
   const { rows } = await pool.query(
     `SELECT COALESCE(u.name, 'Fara utilizator') as name, COUNT(i.id) as "invoiceCount",
-            SUM(i.total) as total, SUM(i."paidAmount") as collected
+            SUM(ROUND(i.total::numeric*i."exchangeRate"::numeric,2)) as total, SUM(ROUND(i."paidAmount"::numeric*i."exchangeRate"::numeric,2)) as collected
      FROM invoices i
      LEFT JOIN users u ON u.id = i."userId"
      WHERE i.status != 'canceled' ${where}
@@ -1549,12 +1632,12 @@ export async function getOverdueInvoices() {
 export async function getOutstandingByClient() {
   const pool = await ready();
   const { rows } = await pool.query(
-    `SELECT c.id, c.name, c.flagged, ROUND(CAST(SUM(i.total - i."paidAmount") AS numeric), 2) as outstanding, COUNT(i.id) as "invoiceCount"
+    `SELECT c.id, c.name, c.flagged, SUM((ROUND(i.total::numeric*i."exchangeRate"::numeric,2) - ROUND(i."paidAmount"::numeric*i."exchangeRate"::numeric,2))) as outstanding, COUNT(i.id) as "invoiceCount"
      FROM invoices i
      JOIN clients c ON c.id = i."clientId"
      WHERE i.status IN ('issued','partial')
      GROUP BY c.id
-     HAVING SUM(i.total - i."paidAmount") > 0
+     HAVING SUM((ROUND(i.total::numeric*i."exchangeRate"::numeric,2) - ROUND(i."paidAmount"::numeric*i."exchangeRate"::numeric,2))) > 0
      ORDER BY outstanding DESC`,
   );
   return rows.map((r) => ({

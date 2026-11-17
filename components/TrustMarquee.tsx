@@ -8,6 +8,7 @@ export default function TrustMarquee({ items }: { items: string[] }) {
         {loop.map((name, i) => (
           <span
             key={`${name}-${i}`}
+            aria-hidden={i >= items.length ? true : undefined}
             className="whitespace-nowrap text-sm font-bold tracking-wide text-white/50"
           >
             {name}

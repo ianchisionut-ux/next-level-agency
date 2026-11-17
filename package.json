@@ -7,6 +7,8 @@
     "build": "prisma generate && prisma db execute --file prisma/website-brief-offers.sql --schema prisma/schema.prisma && prisma db execute --file prisma/document-register.sql --schema prisma/schema.prisma && next build",
     "test:accounting-xml": "node scripts/test-accounting-xml.cjs",
     "test:invoicing-core": "node scripts/test-invoicing-core.cjs",
+    "audit:invoicing": "node scripts/audit-invoicing.cjs",
+    "check:public-site": "node scripts/check-public-site.cjs",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
@@ -17,7 +19,7 @@
   "dependencies": {
     "@prisma/client": "^6.1.0",
     "@react-pdf/renderer": "^4.1.6",
-    "@vercel/blob": "^0.27.0",
+    "@vercel/blob": "2.4.0",
     "bcryptjs": "^2.4.3",
     "date-fns": "^3.6.0",
     "fast-xml-parser": "^5.11.1",
@@ -29,15 +31,21 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^2.12.7",
-    "resend": "^4.0.1"
+    "resend": "^4.0.1",
+    "three": "0.187.0"
+  },
+  "overrides": {
+    "deepmerge-ts": "8.0.2"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.16",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.0.0",
     "@types/pg": "^8.23.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/three": "0.187.0",
     "prisma": "^6.1.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.6.0"

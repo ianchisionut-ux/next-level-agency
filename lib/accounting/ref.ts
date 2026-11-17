@@ -1,5 +1,6 @@
 import type { PoolClient } from "pg";
 import { ready } from "@/lib/accounting/db";
+import { addMoney, convertMoney, prorateMoney, roundMoney, subtractMoney } from "./money";
 
 export type RefTransactionType = "INCOME" | "EXPENSE";
 export type RefFiscalCategory =
@@ -61,7 +62,7 @@ export type RefTransactionInput = {
 };
 
 function round2(value: number) {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
+  return roundMoney(value);
 }
 
 function mapTransaction(row: Record<string, unknown>): RefTransaction {
@@ -93,7 +94,7 @@ export function calculateRefFiscalAmount(input: {
 }) {
   const gross = round2(input.grossAmount);
   const vat = round2(input.vatAmount);
-  const net = round2(gross - vat);
+  const net = subtractMoney(gross, vat);
   const base = input.vatPayer ? net : gross;
 
   if (input.type === "INCOME") {
@@ -101,13 +102,17 @@ export function calculateRefFiscalAmount(input: {
   }
   if (input.category === "NON_DEDUCTIBLE_EXPENSE") return 0;
   const percent = input.category === "PARTIAL_EXPENSE"
-    ? Math.min(100, Math.max(0, Number(input.deductibilityPercent ?? 50)))
+    ? Number(input.deductibilityPercent ?? 50)
     : 100;
-  return round2(base * percent / 100);
+  if (!Number.isFinite(percent) || percent < 0 || percent > 100) throw new Error("Procentul de deductibilitate este invalid.");
+  return prorateMoney(base, percent, 100);
 }
 
 function validateInput(input: RefTransactionInput) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) throw new Error("Data înregistrării este obligatorie.");
+  const parsedDate = new Date(`${input.date}T00:00:00Z`);
+  if (!Number.isFinite(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== input.date) throw new Error("Data înregistrării nu este validă.");
+  if (!["INCOME", "EXPENSE"].includes(input.type)) throw new Error("Tipul înregistrării este invalid.");
   if (!input.documentType.trim()) throw new Error("Tipul documentului este obligatoriu.");
   if (!input.explanation.trim()) throw new Error("Explicația este obligatorie.");
   if (!Number.isFinite(input.grossAmount) || input.grossAmount <= 0) throw new Error("Suma brută trebuie să fie pozitivă.");
@@ -115,6 +120,7 @@ function validateInput(input: RefTransactionInput) {
   if (!Number.isFinite(vat) || vat < 0 || vat > input.grossAmount) throw new Error("Valoarea TVA este invalidă.");
   if (input.vatRate != null && (![0,5,9,11,19,20,21,24].includes(Number(input.vatRate)))) throw new Error("Cota TVA nu este acceptată de formularele ANAF.");
   if (input.partnerCountryCode && !/^[A-Za-z]{2}$/.test(input.partnerCountryCode.trim())) throw new Error("Codul țării partenerului trebuie să aibă două litere.");
+  if (input.deductibilityPercent != null && (!Number.isFinite(Number(input.deductibilityPercent)) || Number(input.deductibilityPercent) < 0 || Number(input.deductibilityPercent) > 100)) throw new Error("Procentul de deductibilitate trebuie să fie între 0 și 100.");
   const incomeCategories = ["TAXABLE_INCOME", "NON_TAXABLE_INCOME"];
   const expenseCategories = ["DEDUCTIBLE_EXPENSE", "PARTIAL_EXPENSE", "NON_DEDUCTIBLE_EXPENSE"];
   if (input.type === "INCOME" && !incomeCategories.includes(input.fiscalCategory)) throw new Error("Categoria fiscală nu corespunde unui venit.");
@@ -127,10 +133,11 @@ export async function createRefTransaction(input: RefTransactionInput): Promise<
   const vatPayer = await getRefVatPayer();
   const gross = round2(Number(input.grossAmount));
   const vat = round2(Number(input.vatAmount || 0));
-  const net = round2(gross - vat);
+  if (gross <= 0) throw new Error("Suma brută trebuie să fie de cel puțin 0,01 RON.");
+  const net = subtractMoney(gross, vat);
   const vatRate = input.vatRate == null ? null : Number(input.vatRate);
   if (vat > 0 && vatRate == null) throw new Error("Cota TVA este obligatorie când documentul conține TVA.");
-  if (vatRate != null && Math.abs(vat - round2(net * vatRate / 100)) > Math.max(1, net * 0.01)) throw new Error("TVA-ul nu corespunde cotei selectate și bazei documentului.");
+  if (vatRate != null && vat !== prorateMoney(net, vatRate, 100)) throw new Error("TVA-ul nu corespunde exact cotei selectate și bazei documentului.");
   const percent = input.fiscalCategory === "PARTIAL_EXPENSE"
     ? Math.min(100, Math.max(0, Number(input.deductibilityPercent ?? 50)))
     : input.fiscalCategory === "NON_DEDUCTIBLE_EXPENSE" ? 0 : 100;
@@ -161,19 +168,31 @@ export async function createRefIncomeForPayment(input: {
   amount: number;
   invoiceTotal: number;
   invoiceSubtotal: number;
+  currency?: string;
+  exchangeRate?: number;
+  paidAmountBefore?: number;
   series: string;
   number: number;
   clientName: string;
 }, client?: PoolClient) {
   const executor = client || await ready();
-  const companyResult = await executor.query(`SELECT "vatPayer" FROM company WHERE id=1`);
-  const vatPayer = Boolean(Number(companyResult.rows[0]?.vatPayer || 0));
-  const gross = round2(input.amount);
-  const net = vatPayer && input.invoiceTotal > 0
-    ? round2(gross * input.invoiceSubtotal / input.invoiceTotal)
-    : gross;
-  const vat = round2(gross - net);
-  const fiscalAmount = vatPayer ? net : gross;
+  if (!Number.isFinite(input.invoiceTotal) || input.invoiceTotal <= 0) throw new Error("Totalul facturii pentru încasare este invalid.");
+  if (!Number.isFinite(input.invoiceSubtotal) || input.invoiceSubtotal < 0 || input.invoiceSubtotal > input.invoiceTotal) throw new Error("Baza facturii pentru încasare este invalidă.");
+  const currency = input.currency || "RON";
+  const exchangeRate = input.exchangeRate ?? 1;
+  if (!/^[A-Z]{3}$/.test(currency) || !Number.isFinite(exchangeRate) || exchangeRate <= 0 || exchangeRate >= 1_000_000 || (currency === "RON" && exchangeRate !== 1)) throw new Error("Moneda sau cursul încasării este invalid.");
+  // Allocate the difference of cumulative balances, so the final payment or
+  // refund closes every cent, even across many partial payments. Historical VAT
+  // derives from the issued invoice, never from today's company VAT setting.
+  const before = round2(input.paidAmountBefore ?? 0);
+  const after = addMoney(before, input.amount);
+  if (before < 0 || before > input.invoiceTotal || after < 0 || after > input.invoiceTotal || round2(input.amount) === 0) throw new Error("Soldurile încasării sunt în afara limitelor facturii.");
+  const gross = subtractMoney(convertMoney(after, exchangeRate), convertMoney(before, exchangeRate));
+  const netBefore = prorateMoney(before, input.invoiceSubtotal, input.invoiceTotal);
+  const netAfter = prorateMoney(after, input.invoiceSubtotal, input.invoiceTotal);
+  const net = subtractMoney(convertMoney(netAfter, exchangeRate), convertMoney(netBefore, exchangeRate));
+  const vat = subtractMoney(gross, net);
+  const fiscalAmount = net;
   await executor.query(
     `INSERT INTO ref_transactions
       (type, date, "documentType", "documentNumber", explanation, "grossAmount", "vatAmount", "netAmount",
@@ -197,11 +216,11 @@ export async function listRefTransactions(year: number): Promise<RefTransaction[
 export function summarizeRefTransactions(rows: RefTransaction[]): RefSummary {
   const summary = rows.reduce((acc, row) => {
     if (row.type === "INCOME") {
-      acc.totalIncome += row.grossAmount;
-      acc.taxableIncome += row.fiscalAmount;
+      acc.totalIncome = addMoney(acc.totalIncome, row.grossAmount);
+      acc.taxableIncome = addMoney(acc.taxableIncome, row.fiscalAmount);
     } else {
-      acc.totalExpenses += row.grossAmount;
-      acc.deductibleExpenses += row.fiscalAmount;
+      acc.totalExpenses = addMoney(acc.totalExpenses, row.grossAmount);
+      acc.deductibleExpenses = addMoney(acc.deductibleExpenses, row.fiscalAmount);
     }
     return acc;
   }, { totalIncome: 0, taxableIncome: 0, totalExpenses: 0, deductibleExpenses: 0 });
@@ -210,7 +229,7 @@ export function summarizeRefTransactions(rows: RefTransaction[]): RefSummary {
     taxableIncome: round2(summary.taxableIncome),
     totalExpenses: round2(summary.totalExpenses),
     deductibleExpenses: round2(summary.deductibleExpenses),
-    fiscalResult: round2(summary.taxableIncome - summary.deductibleExpenses),
+    fiscalResult: subtractMoney(summary.taxableIncome, summary.deductibleExpenses),
   };
 }
 

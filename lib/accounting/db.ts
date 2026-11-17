@@ -1,6 +1,8 @@
-import { Pool } from "pg";
+import { Pool, types, type PoolClient } from "pg";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 
-const ACCOUNTING_SCHEMA_VERSION = 12;
+const ACCOUNTING_SCHEMA_VERSION = 13;
 
 declare global {
   // eslint-disable-next-line no-var
@@ -19,12 +21,17 @@ function createPool(): Pool {
   return new Pool({
     connectionString,
     // Neon (si majoritatea furnizorilor Postgres gazduiti) cer SSL.
-    ssl: connectionString.includes("localhost") ? false : { rejectUnauthorized: false },
+    ssl: /localhost|127\.0\.0\.1/.test(connectionString) ? false : { rejectUnauthorized: true },
     max: 5,
+    connectionTimeoutMillis: 10_000,
+    idleTimeoutMillis: 30_000,
+    statement_timeout: 30_000,
+    idle_in_transaction_session_timeout: 60_000,
+    types: { getTypeParser(oid, format) { return oid === 1700 ? Number : types.getTypeParser(oid, format); } },
   });
 }
 
-async function ensureSchema(pool: Pool) {
+async function ensureSchema(pool: Pool | PoolClient) {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS company (
       id INTEGER PRIMARY KEY DEFAULT 1,
@@ -389,37 +396,43 @@ async function ensureSchema(pool: Pool) {
 }
 
 async function ensureSchemaVersion(pool: Pool) {
+  // The cheap read avoids DDL/locking in every serverless request. Each upgrade
+  // is serialized across processes and committed together with its version.
   try {
     const { rows } = await pool.query(`SELECT version FROM accounting_schema_meta WHERE id=1`);
     if (Number(rows[0]?.version || 0) >= ACCOUNTING_SCHEMA_VERSION) return;
-    if (Number(rows[0]?.version) === 10) {
-      // Additive upgrade only: do not rerun historical financial backfills.
-      await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "anafSendAfter" TIMESTAMPTZ;`);
-      await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "anafApprovedEnvironment" TEXT;`);
-      await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "integrationSource" TEXT;`);
-      await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "externalId" TEXT;`);
-      await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS "invoices_integration_reference_key" ON invoices ("integrationSource", "externalId") WHERE "integrationSource" IS NOT NULL AND "externalId" IS NOT NULL;`);
-      await pool.query(`UPDATE accounting_schema_meta SET version=$1 WHERE id=1 AND version=10`, [ACCOUNTING_SCHEMA_VERSION]);
-      return;
-    }
-    if (Number(rows[0]?.version) === 11) {
-      await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "integrationSource" TEXT;`);
-      await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "externalId" TEXT;`);
-      await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS "invoices_integration_reference_key" ON invoices ("integrationSource", "externalId") WHERE "integrationSource" IS NOT NULL AND "externalId" IS NOT NULL;`);
-      await pool.query(`UPDATE accounting_schema_meta SET version=$1 WHERE id=1 AND version=11`, [ACCOUNTING_SCHEMA_VERSION]);
-      return;
-    }
   } catch (error) {
     if ((error as { code?: string }).code !== "42P01") throw error;
   }
-
-  await ensureSchema(pool);
-  await pool.query(`CREATE TABLE IF NOT EXISTS accounting_schema_meta (id INTEGER PRIMARY KEY, version INTEGER NOT NULL);`);
-  await pool.query(
-    `INSERT INTO accounting_schema_meta (id, version) VALUES (1, $1)
-     ON CONFLICT (id) DO UPDATE SET version=EXCLUDED.version`,
-    [ACCOUNTING_SCHEMA_VERSION]
-  );
+  const connection = await pool.connect();
+  try {
+    await connection.query("BEGIN");
+    await connection.query("SET LOCAL lock_timeout='5s'");
+    await connection.query("SELECT pg_advisory_xact_lock(73000,1)");
+    await connection.query(`CREATE TABLE IF NOT EXISTS accounting_schema_meta (id INTEGER PRIMARY KEY, version INTEGER NOT NULL)`);
+    const current = Number((await connection.query(`SELECT version FROM accounting_schema_meta WHERE id=1`)).rows[0]?.version || 0);
+    if (current < ACCOUNTING_SCHEMA_VERSION) {
+      if (current < 10) await ensureSchema(connection);
+      else {
+        // Only additive upgrades for existing installations: never rerun the
+        // historical REF backfill while upgrading an issued invoice database.
+        await connection.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "anafSendAfter" TIMESTAMPTZ`);
+        await connection.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "anafApprovedEnvironment" TEXT`);
+        await connection.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "integrationSource" TEXT`);
+        await connection.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "externalId" TEXT`);
+        await connection.query(`CREATE UNIQUE INDEX IF NOT EXISTS invoices_integration_reference_key ON invoices ("integrationSource","externalId") WHERE "integrationSource" IS NOT NULL AND "externalId" IS NOT NULL`);
+      }
+      const safetySql = await readFile(path.join(process.cwd(), "prisma", "accounting-safety-v13.sql"), "utf8");
+      await connection.query(safetySql);
+      await connection.query(`INSERT INTO accounting_schema_meta (id,version) VALUES (1,$1) ON CONFLICT (id) DO UPDATE SET version=EXCLUDED.version`, [ACCOUNTING_SCHEMA_VERSION]);
+    }
+    await connection.query("COMMIT");
+  } catch (error) {
+    await connection.query("ROLLBACK");
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 
 export function getPool(): Pool {

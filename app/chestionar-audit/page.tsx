@@ -1,14 +1,10 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import AuditForm from "./AuditForm";
 
-export const metadata: Metadata = {
-  title: "Chestionar & Audit Proiect Site Web | Next Level Advertising Agency",
-  description:
-    "Completează chestionarul de audit pentru proiectul tău de site web. Ne ajută să înțelegem afacerea ta și să pregătim o propunere personalizată.",
-};
+export const metadata = pageMetadata("Cere o ofertă pentru site web | Audit Next Level", "Completează brief-ul proiectului tău: obiective, pagini, design și buget. Echipa Next Level pregătește o propunere pentru afacerea ta.", "/chestionar-audit");
 
 export default function ChestionarAuditPage() {
   return (

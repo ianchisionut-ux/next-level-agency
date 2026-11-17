@@ -7,10 +7,19 @@ const compiled = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 const loaded = { exports: {} };
+function pureModule(file) {
+  const exports = {};
+  new Function('exports', 'require', ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText)(exports, id => { throw new Error(`Unexpected pure-module dependency ${id}`); });
+  return exports;
+}
+const money = pureModule('lib/accounting/money.ts');
+const date = pureModule('lib/accounting/date.ts');
 function mockRequire(id) {
   if (id.endsWith("/crypto")) return { encrypt: String, decrypt: String };
   if (id.endsWith("/db")) return { ready: async () => { throw new Error("DB access is not allowed in the XML self-test."); } };
   if (id.endsWith("/repo")) return { getInvoiceFull: async () => undefined };
+  if (id.endsWith('/money')) return money;
+  if (id.endsWith('/date')) return date;
   return require(id);
 }
 new Function("require", "module", "exports", "process", "Buffer", "AbortSignal", compiled)(

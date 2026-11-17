@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { process, stats } from "@/lib/data";
@@ -18,10 +18,7 @@ const processIcons = {
   growth: IconGrowth,
 };
 
-export const metadata: Metadata = {
-  title: "Despre noi | Next Level Advertising Agency",
-  description: "Cine suntem, cum lucrăm și de ce alegem rezultate în locul promisiunilor.",
-};
+export const metadata = pageMetadata("Despre Next Level | Agenție de marketing în Sălaj", "Cunoaște Next Level Advertising Agency: strategie, creație și automatizări pentru branduri. Află cum lucrăm cu afacerile din Zalău și România.", "/despre-noi");
 
 export default function DespreNoiPage() {
   return (

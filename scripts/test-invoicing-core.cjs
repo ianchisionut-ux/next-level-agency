@@ -15,6 +15,8 @@ function loadTypeScript(file, mocks, globals = {}) {
     for (const [suffix, value] of Object.entries(mocks)) {
       if (id.endsWith(suffix)) return value;
     }
+    if (id === "./money") return loadTypeScript("lib/accounting/money.ts", {});
+    if (id !== "node:crypto") throw new Error(`Dependency was not mocked: ${id}`);
     return require(id);
   };
   new Function(
@@ -33,7 +35,7 @@ function loadTypeScript(file, mocks, globals = {}) {
     process,
     Buffer,
     globals.AbortSignal || AbortSignal,
-    globals.fetch || fetch,
+    globals.fetch || (() => { throw new Error("Network is forbidden in isolated invoicing tests."); }),
   );
   return loaded.exports;
 }
@@ -91,9 +93,17 @@ async function testAnafLookup() {
 async function testRefundAndReceiptGuards() {
   let state;
   const refs = [];
+  const operations = { payments: new Map(), receipts: new Map() };
   const connection = {
     async query(sql, args = []) {
       if (["BEGIN", "COMMIT", "ROLLBACK"].includes(sql)) return { rows: [] };
+      if (sql.includes("pg_advisory_xact_lock")) return { rows: [] };
+      if (sql.includes("INSERT INTO accounting_audit_events")) { state.auditEvents = (state.auditEvents || 0) + 1; return { rows: [] }; }
+      if (sql.includes('WHERE "operationKey"=$1')) {
+        const table = sql.includes("FROM payments") ? "payments" : "receipts";
+        const existing = operations[table].get(args[0]);
+        return { rows: existing ? [existing] : [] };
+      }
       if (sql.includes("SELECT * FROM invoices WHERE id=$1 FOR UPDATE")) {
         return { rows: [state.invoice] };
       }
@@ -108,6 +118,8 @@ async function testRefundAndReceiptGuards() {
       }
       if (sql.includes("INSERT INTO payments")) {
         state.insertedPayment = args;
+        state.paid += args[1];
+        if (args[5]) operations.payments.set(args[5], { id: 77, invoiceId: args[0], operationHash: args[6] });
         return { rows: [{ id: 77 }] };
       }
       if (sql.includes("SELECT * FROM clients")) {
@@ -115,13 +127,17 @@ async function testRefundAndReceiptGuards() {
       }
       if (sql.includes('UPDATE invoices SET "paidAmount"')) {
         state.updatedInvoice = args;
+        state.invoice.paidAmount = args[0];
         return { rows: [] };
       }
       if (sql.includes("INSERT INTO counters")) {
+        state.allocations = (state.allocations || 0) + 1;
         return { rows: [{ lastNumber: 1 }] };
       }
       if (sql.includes("INSERT INTO receipts")) {
         state.insertedReceipt = args;
+        state.receipted = (state.receipted || 0) + args[3];
+        if (args[5]) operations.receipts.set(args[5], { id: 10, invoiceId: args[1], operationHash: args[6] });
         return { rows: [{ id: 10 }] };
       }
       throw new Error(`Unexpected SQL in isolated test: ${sql}`);
@@ -148,6 +164,9 @@ async function testRefundAndReceiptGuards() {
       status: "stornoed",
       invoiceType: "STANDARD",
       currency: "RON",
+      exchangeRate: 1,
+      paidAmount: 100,
+      issueDate: "2026-10-10",
       total: 121,
       subtotal: 100,
       series: "NXT",
@@ -159,6 +178,8 @@ async function testRefundAndReceiptGuards() {
   assert.equal(state.insertedPayment[1], -40);
   assert.deepEqual(state.updatedInvoice, [60, "stornoed", 1]);
   assert.equal(refs[0].amount, -40);
+  assert.equal(refs[0].paidAmountBefore, 100);
+  assert.equal(refs[0].exchangeRate, 1);
 
   state.paid = 60;
   await assert.rejects(
@@ -183,6 +204,9 @@ async function testRefundAndReceiptGuards() {
       status: "partial",
       invoiceType: "STANDARD",
       currency: "RON",
+      exchangeRate: 1,
+      paidAmount: 100,
+      issueDate: "2026-10-10",
       total: 121,
       clientSnapshot: {},
     },
@@ -192,6 +216,51 @@ async function testRefundAndReceiptGuards() {
     /cel puțin 0,01 RON/,
   );
   assert.equal(state.insertedReceipt, undefined);
+  await assert.rejects(
+    () => repo.addPayment(2, 1, "2026-10-26", "bank"),
+    /ziua curentă/,
+  );
+  state.invoice.paidAmount = 99;
+  await assert.rejects(
+    () => repo.addPayment(2, 1, "2026-10-21", "bank"),
+    /reconcilierea/,
+  );
+
+  state.paid = 0;
+  state.invoice.paidAmount = 0;
+  state.invoice.subtotal = 100;
+  state.invoice.series = "NXT";
+  state.invoice.number = 6;
+  const paymentKey = "a7a2e38e-88bf-4fed-851f-ea18b66157e7";
+  const paymentId = await repo.addPayment(2, 60.5, "2026-10-21", "bank", "same request", false, paymentKey);
+  const refsAfterFirstPayment = refs.length;
+  const paymentAuditCount = state.auditEvents;
+  assert.equal(await repo.addPayment(2, 60.5, "2026-10-21", "bank", "same request", false, paymentKey), paymentId);
+  assert.equal(state.paid, 60.5);
+  assert.equal(refs.length, refsAfterFirstPayment);
+  assert.equal(state.auditEvents, paymentAuditCount);
+  await assert.rejects(() => repo.addPayment(2, 60.51, "2026-10-21", "bank", "same request", false, paymentKey), /alte date/);
+  state.invoice.status = "stornoed";
+  assert.equal(await repo.addPayment(2, 60.5, "2026-10-21", "bank", "same request", false, paymentKey), paymentId, "Retry is resolved before changed status/balance guards");
+  const refundKey = "2bc80c5d-dd54-4a5a-8e19-738858c86ecf";
+  const refundId = await repo.addPayment(2, 10, "2026-10-21", "bank", "", true, refundKey);
+  assert.equal(await repo.addPayment(2, 10, "2026-10-21", "bank", "", true, refundKey), refundId);
+  assert.equal(state.paid, 50.5, "Refund retry cannot refund a second time");
+  await assert.rejects(() => repo.addPayment(2, 10, "2026-10-21", "bank", "", false, refundKey), /alte date/);
+
+  state.invoice.status = "partial";
+  state.invoice.paidAmount = state.paid = 100;
+  state.receipted = 0;
+  const receiptKey = "c549de8a-3637-4463-9779-28bf51e08440";
+  const receiptId = await repo.createReceipt(2, "2026-10-21", 20, "Casier", receiptKey);
+  const allocations = state.allocations;
+  const receiptAuditCount = state.auditEvents;
+  state.invoice.status = "stornoed";
+  assert.equal(await repo.createReceipt(2, "2026-10-21", 20, "Casier", receiptKey), receiptId);
+  assert.equal(state.receipted, 20);
+  assert.equal(state.allocations, allocations, "Receipt retry must not consume another number");
+  assert.equal(state.auditEvents, receiptAuditCount);
+  await assert.rejects(() => repo.createReceipt(2, "2026-10-21", 20, "Alt casier", receiptKey), /alte date/);
 }
 
 (async () => {

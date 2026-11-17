@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAnafChoice } from "@/components/accounting/useAnafChoice";
 import { useRouter } from "next/navigation";
 import { CURRENT_USER_KEY } from "@/components/accounting/CurrentUserBox";
 import { Plus, X, Cable, RefreshCw, FileText } from "lucide-react";
 import { bucharestDate } from "@/lib/accounting/date";
+import { calculateInvoiceTotals, subtractMoney } from "@/lib/accounting/money";
+
+const ISSUANCE_KEY_STORAGE = "nextlevel.accounting.pending-issuance";
 
 type Client = { id: number; name: string; clientType: "PF" | "PJ"; cif: string; cnp: string; address: string; judet: string; city: string; countryCode: string; postalCode: string; phone: string; sourceNib: string };
 type ConnectionBeneficiary = { id: string; nib: string; beneficiary: string; identifier: string; address: string; phone: string };
@@ -61,8 +64,7 @@ export default function NewInvoicePage() {
   const [paymentTerms, setPaymentTerms] = useState("");
   const [buyerReference, setBuyerReference] = useState("");
   const [discountPercent, setDiscountPercent] = useState(0);
-  const [currency, setCurrency] = useState("RON");
-  const [exchangeRate, setExchangeRate] = useState(1);
+  const currency = "RON";
   const [items, setItems] = useState<Item[]>([newItem()]);
   const [delegateName, setDelegateName] = useState("");
   const [delegateCI, setDelegateCI] = useState("");
@@ -80,11 +82,47 @@ export default function NewInvoicePage() {
   const [offerImporting, setOfferImporting] = useState(false);
   const [offerParts, setOfferParts] = useState({ execution: true, project: true, panel: true });
   const [companyVatPayer, setCompanyVatPayer] = useState(true);
+  const [companyLoaded, setCompanyLoaded] = useState(false);
+  const [recovering, setRecovering] = useState(true);
+  const [recoveryError, setRecoveryError] = useState("");
+  const issuanceKey = useRef<string | null>(null);
+  const submitLock = useRef(false);
+
+  useEffect(() => {
+    let canceled = false;
+    async function recover() {
+      try {
+        const key = sessionStorage.getItem(ISSUANCE_KEY_STORAGE) || crypto.randomUUID();
+        sessionStorage.setItem(ISSUANCE_KEY_STORAGE, key);
+        issuanceKey.current = key;
+        const response = await fetch(`/api/accounting/invoices?issuanceKey=${encodeURIComponent(key)}`, { cache: "no-store" });
+        if (!response.ok) throw new Error("Verificarea emiterii anterioare a eșuat.");
+        const result = await response.json();
+        if (canceled) return;
+        if (Number.isSafeInteger(result.id) && result.id > 0) {
+          sessionStorage.removeItem(ISSUANCE_KEY_STORAGE);
+          router.replace(`/dashboard/contabilitate/invoices/${result.id}`);
+          return;
+        }
+        setRecovering(false);
+      } catch {
+        if (!canceled) {
+          setRecoveryError("Nu am putut verifica emiterea anterioară. Reîncarcă pagina înainte de a emite o factură.");
+          setRecovering(false);
+        }
+      }
+    }
+    void recover();
+    return () => { canceled = true; };
+  }, [router]);
 
   useEffect(() => {
     fetch("/api/accounting/clients").then((r) => r.json()).then(setClients);
     fetch("/api/accounting/products").then((r) => r.json()).then(setProducts);
-    fetch("/api/accounting/company").then((r) => r.json()).then((company: Company) => {
+    fetch("/api/accounting/company").then((r) => {
+      if (!r.ok) throw new Error("Datele firmei nu sunt disponibile.");
+      return r.json();
+    }).then((company: Company) => {
       const vatPayer = Boolean(company.vatPayer);
       setCompanyVatPayer(vatPayer);
       if (!vatPayer) {
@@ -92,7 +130,8 @@ export default function NewInvoicePage() {
           ? item
           : { ...item, vatRate: 0, vatCategoryCode: "O", taxExemptionReason: "Neînregistrat în scopuri de TVA conform art. 316 din Codul fiscal." }));
       }
-    });
+      setCompanyLoaded(true);
+    }).catch(() => setRecoveryError("Datele fiscale ale firmei nu s-au încărcat. Reîncarcă pagina înainte de emitere."));
     fetch("/api/accounting/users").then((r) => r.json()).then((list: UserT[]) => {
       setUsers(list);
       const saved = localStorage.getItem(CURRENT_USER_KEY);
@@ -102,9 +141,14 @@ export default function NewInvoicePage() {
   }, []);
 
   useEffect(() => {
-    fetch(`/api/accounting/invoices/next-number?series=${series}`)
+    const abort = new AbortController();
+    setNextNumber(null);
+    setInvoiceNumber("");
+    fetch(`/api/accounting/invoices/next-number?series=${encodeURIComponent(series)}`, { signal: abort.signal })
       .then((r) => r.json())
-      .then((d) => { setNextNumber(d.number); setInvoiceNumber(String(d.number)); });
+      .then((d) => { if (!abort.signal.aborted && Number.isSafeInteger(d.number) && d.number > 0) { setNextNumber(d.number); setInvoiceNumber(String(d.number)); } })
+      .catch(() => {});
+    return () => abort.abort();
   }, [series]);
 
   async function importConnectionBeneficiary() {
@@ -177,8 +221,6 @@ export default function NewInvoicePage() {
     });
     setItems((current) => current.length === 1 && !current[0].description && current[0].unitPrice === 0 ? imported : [...current, ...imported]);
     setNotes((current) => current.includes(selected.offerNumber) ? current : [current, `Poziții preluate din oferta ${selected.offerNumber}.`].filter(Boolean).join("\n"));
-    setCurrency("RON");
-    setExchangeRate(1);
     setOfferImporting(false);
   }
 
@@ -213,16 +255,28 @@ export default function NewInvoicePage() {
     updateItem(key, { productId: p.id, description: p.name, um: p.um, unitPrice: p.price, vatRate: companyVatPayer ? p.vatRate : 0, unitCode: p.unitCode || "H87", vatCategoryCode: companyVatPayer ? (p.vatCategoryCode || "S") : "O", taxExemptionReasonCode: companyVatPayer ? (p.taxExemptionReasonCode || "") : "", taxExemptionReason: companyVatPayer ? (p.taxExemptionReason || "") : "Neînregistrat în scopuri de TVA conform art. 316 din Codul fiscal." });
   }
 
-  const rawSubtotal = items.reduce((s, it) => s + it.qty * it.unitPrice, 0);
-  const discountFactor = 1 - (discountPercent || 0) / 100;
-  const subtotal = rawSubtotal * discountFactor;
-  const vatTotal = items.reduce((s, it) => s + (it.qty * it.unitPrice * discountFactor * it.vatRate) / 100, 0);
-  const total = subtotal + vatTotal;
-  const discountAmount = rawSubtotal - subtotal;
+  let calculationError = "";
+  let preview: ReturnType<typeof calculateInvoiceTotals<Item>> | null = null;
+  let rawSubtotal = 0;
+  let discountAmount = 0;
+  try {
+    preview = calculateInvoiceTotals(items, discountPercent);
+    rawSubtotal = calculateInvoiceTotals(items).subtotal;
+    discountAmount = subtractMoney(rawSubtotal, preview.subtotal);
+  } catch (error) {
+    calculationError = error instanceof Error ? error.message : "Verifică valorile liniilor facturii.";
+  }
+  const subtotal = preview?.subtotal ?? 0;
+  const vatTotal = preview?.vatTotal ?? 0;
+  const total = preview?.total ?? 0;
   const selectedClient = clients.find((client) => client.id === clientId);
   const selectedOffer = offers.find((offer) => offer.id === offerId);
 
   async function submit() {
+    if (submitLock.current || recovering || recoveryError || !companyLoaded || !issuanceKey.current) return;
+    submitLock.current = true;
+    setSaving(true);
+    try {
     if (!clientId) {
       alert("Selecteaza un client.");
       return;
@@ -236,19 +290,18 @@ export default function NewInvoicePage() {
       alert("Numărul facturii trebuie să fie un număr întreg pozitiv.");
       return;
     }
-    if (paidOnSpot && currency !== "RON") {
-      alert("Factura achitată pe loc și chitanța pot fi emise doar în RON.");
+    if (calculationError || total <= 0 || items.some((item) => item.unitPrice < 0)) {
+      alert(calculationError || "Factura trebuie să aibă un total pozitiv. Pentru anulări folosește factura storno.");
       return;
     }
     const choice = await ask();
     if (!choice) return;
-    setSaving(true);
-    try {
     const res = await fetch("/api/accounting/invoices", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...choice,
+        issuanceKey: issuanceKey.current,
         series,
         number: selectedNumber,
         clientId,
@@ -264,7 +317,7 @@ export default function NewInvoicePage() {
         buyerReference,
         discountPercent,
         currency,
-        exchangeRate: currency === "RON" ? 1 : exchangeRate,
+        exchangeRate: 1,
         delegateName,
         delegateCI,
         delegateCNP,
@@ -287,11 +340,25 @@ export default function NewInvoicePage() {
       }),
     });
     const data = await res.json();
-    setSaving(false);
     if (!res.ok) return alert(data.error || "Factura nu a putut fi emisă.");
+    if (!Number.isSafeInteger(data.id) || data.id <= 0) throw new Error("Răspuns de emitere incomplet.");
+    sessionStorage.removeItem(ISSUANCE_KEY_STORAGE);
+    issuanceKey.current = null;
     router.push(`/dashboard/contabilitate/invoices/${data.id}`);
-    } catch { alert('Răspunsul serverului nu a putut fi citit. Verifică lista facturilor înainte de a reîncerca emiterea.'); }
-    finally { setSaving(false); }
+    } catch {
+      try {
+        const response = await fetch(`/api/accounting/invoices?issuanceKey=${encodeURIComponent(issuanceKey.current || "")}`, { cache: "no-store" });
+        const result = await response.json();
+        if (response.ok && Number.isSafeInteger(result.id) && result.id > 0) {
+          sessionStorage.removeItem(ISSUANCE_KEY_STORAGE);
+          issuanceKey.current = null;
+          router.push(`/dashboard/contabilitate/invoices/${result.id}`);
+          return;
+        }
+      } catch { /* The same key is retained for a safe retry or reload. */ }
+      alert("Răspunsul serverului nu a putut fi confirmat. Poți reîncerca în acest formular sau reîncărca pagina; verificăm aceeași emitere pentru a evita dublarea.");
+    }
+    finally { submitLock.current = false; setSaving(false); }
   }
 
   return (
@@ -354,6 +421,9 @@ export default function NewInvoicePage() {
           <label className="field-label">Discount (%)</label>
           <input
             type="number"
+            min={0}
+            max={100}
+            step="0.000001"
             className="input"
             value={discountPercent}
             onChange={(e) => setDiscountPercent(Number(e.target.value))}
@@ -361,22 +431,10 @@ export default function NewInvoicePage() {
         </div>
         <div>
           <label className="field-label">Moneda</label>
-          <select className="input" value={currency} onChange={(e) => setCurrency(e.target.value)}>
-            <option value="RON">RON</option>
-            <option value="EUR">EUR</option>
-            <option value="USD">USD</option>
-          </select>
+          <input className="input" value={currency} readOnly />
         </div>
         <div>
-          <label className="field-label">Curs de schimb (1 {currency} = ? RON)</label>
-          <input
-            type="number"
-            step="0.0001"
-            className="input"
-            value={exchangeRate}
-            disabled={currency === "RON"}
-            onChange={(e) => setExchangeRate(Number(e.target.value))}
-          />
+          <p className="text-xs mt-6" style={{ color: "var(--text-faint)" }}>Facturile noi sunt emise în RON.</p>
         </div>
       </div>
 
@@ -461,6 +519,9 @@ export default function NewInvoicePage() {
                 <td>
                   <input
                     type="number"
+                    min="0.000001"
+                    max={1000000000}
+                    step="0.000001"
                     className="input text-right num"
                     value={it.qty}
                     onChange={(e) => updateItem(it.key, { qty: Number(e.target.value) })}
@@ -469,6 +530,9 @@ export default function NewInvoicePage() {
                 <td>
                   <input
                     type="number"
+                    min={0}
+                    max={1000000000}
+                    step="0.000000001"
                     className="input text-right num"
                     value={it.unitPrice}
                     onChange={(e) => updateItem(it.key, { unitPrice: Number(e.target.value) })}
@@ -483,7 +547,7 @@ export default function NewInvoicePage() {
                   {it.vatCategoryCode !== "S" && <><input className="input mt-1" value={it.taxExemptionReasonCode} onChange={(e)=>updateItem(it.key,{taxExemptionReasonCode:e.target.value})} placeholder="Cod motiv"/><input className="input mt-1" value={it.taxExemptionReason} onChange={(e)=>updateItem(it.key,{taxExemptionReason:e.target.value})} placeholder="Motiv / temei legal"/></>}
                 </td>
                 <td className="text-right num" style={{ padding: "0 16px" }}>
-                  {fmt(it.qty * it.unitPrice)}
+                  {preview ? fmt(preview.computed[idx].valoare) : "—"}
                 </td>
                 <td className="text-right">
                   <button onClick={() => removeItem(it.key)} className="link-danger">
@@ -507,7 +571,7 @@ export default function NewInvoicePage() {
       <div className="flex justify-end mb-8">
         <div style={{ width: 260 }} className="text-sm space-y-1">
           <div className="flex justify-between" style={{ color: "var(--text-dim)" }}>
-            <span>Subtotal</span>
+            <span>Valoare înainte de discount</span>
             <span className="num">{fmt(rawSubtotal)} {currency}</span>
           </div>
           {discountPercent > 0 && (
@@ -516,6 +580,10 @@ export default function NewInvoicePage() {
               <span className="num">-{fmt(discountAmount)} {currency}</span>
             </div>
           )}
+          <div className="flex justify-between" style={{ color: "var(--text-dim)" }}>
+            <span>Subtotal net</span>
+            <span className="num">{preview ? fmt(subtotal) : "—"} {currency}</span>
+          </div>
           <div className="flex justify-between" style={{ color: "var(--text-dim)" }}>
             <span>TVA</span>
             <span className="num">{fmt(vatTotal)} {currency}</span>
@@ -529,12 +597,6 @@ export default function NewInvoicePage() {
               {fmt(total)} {currency}
             </span>
           </div>
-          {currency !== "RON" && exchangeRate > 0 && (
-            <div className="flex justify-between text-xs" style={{ color: "var(--text-faint)" }}>
-              <span>Echivalent</span>
-              <span className="num">{fmt(total * exchangeRate)} RON</span>
-            </div>
-          )}
         </div>
       </div>
 
@@ -576,8 +638,9 @@ export default function NewInvoicePage() {
       </div>
 
       {dialog}
-      <button onClick={submit} disabled={saving} className="btn-primary" style={{ padding: "11px 22px" }}>
-        {saving ? "Se salveaza..." : "Emite factura"}
+      {(calculationError || recoveryError) && <p role="alert" className="mb-3 text-sm" style={{ color: "var(--red)" }}>{recoveryError || calculationError}</p>}
+      <button onClick={submit} disabled={saving || recovering || !companyLoaded || Boolean(recoveryError || calculationError) || total <= 0} className="btn-primary" style={{ padding: "11px 22px" }}>
+        {recovering ? "Se verifică emiterea anterioară…" : saving ? "Se salvează…" : "Emite factura"}
       </button>
     </div>
   );

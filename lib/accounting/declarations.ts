@@ -1,5 +1,6 @@
 import { ready } from "./db";
 import { getOfficialAnafForms } from "./anaf-official-forms";
+import { addMoney, prorateMoney, roundMoney, subtractMoney } from "./money";
 
 export type DeclarationStatus = "DRAFT" | "REVIEW" | "APPROVED" | "FILED";
 export type DeclarationType = "D300" | "D394" | "D390";
@@ -10,8 +11,14 @@ const EU_COUNTRIES = new Set([
   "HU", "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PL", "PT", "SE", "SI", "SK",
 ]);
 
-function round2(value: number) {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
+function round2(value: number | string) {
+  return roundMoney(value);
+}
+
+// Declaration XML uses whole lei. Convert only after each reported group has
+// been added in exact cents, retaining the shared symmetric rounding rule.
+function wholeLei(value: number) {
+  return Math.round(prorateMoney(value, 1, 100) * 100);
 }
 
 function periodBounds(year: number, month: number) {
@@ -64,8 +71,8 @@ export async function getDeclarationPeriod(year: number, month: number) {
     pool.query(`SELECT name,cif,address,phone,email,bank,iban,"vatPayer", "vatIncasare" FROM company WHERE id=1`),
     pool.query(
       `SELECT ii."vatRate" as "vatRate", COUNT(DISTINCT i.id)::int as "documentCount",
-              COALESCE(SUM(ii.valoare * i."exchangeRate"),0) as "taxableBase",
-              COALESCE(SUM(ii."vatValue" * i."exchangeRate"),0) as vat
+              ROUND(COALESCE(SUM(ii.valoare * i."exchangeRate"),0),2) as "taxableBase",
+              ROUND(COALESCE(SUM(ii."vatValue" * i."exchangeRate"),0),2) as vat
          FROM invoices i JOIN invoice_items ii ON ii."invoiceId"=i.id
         WHERE i."issueDate"::date >= $1::date AND i."issueDate"::date < $2::date AND i.status<>'canceled'
         GROUP BY ii."vatRate" ORDER BY ii."vatRate" DESC`,
@@ -76,9 +83,9 @@ export async function getDeclarationPeriod(year: number, month: number) {
               UPPER(COALESCE(NULLIF(i."clientSnapshot"->>'cif',''),c.cif,'')) as "partnerCif",
               UPPER(COALESCE(NULLIF(i."clientSnapshot"->>'countryCode',''),c."countryCode",'RO')) as "countryCode",
               COUNT(*)::int as "documentCount",
-              COALESCE(SUM(i.subtotal*i."exchangeRate"),0) as "taxableBase",
-              COALESCE(SUM(i."vatTotal"*i."exchangeRate"),0) as vat,
-              COALESCE(SUM(i.total*i."exchangeRate"),0) as gross
+              ROUND(COALESCE(SUM(i.subtotal*i."exchangeRate"),0),2) as "taxableBase",
+              ROUND(COALESCE(SUM(i."vatTotal"*i."exchangeRate"),0),2) as vat,
+              ROUND(COALESCE(SUM(i.total*i."exchangeRate"),0),2) as gross
          FROM invoices i JOIN clients c ON c.id=i."clientId"
         WHERE i."issueDate"::date >= $1::date AND i."issueDate"::date < $2::date AND i.status<>'canceled'
         GROUP BY 1,2,3 ORDER BY 1`,
@@ -88,8 +95,8 @@ export async function getDeclarationPeriod(year: number, month: number) {
       `SELECT i.id, COALESCE(NULLIF(i."clientSnapshot"->>'name',''),c.name) as "partnerName",
               UPPER(COALESCE(NULLIF(i."clientSnapshot"->>'cif',''),c.cif,'')) as "partnerCif",
               UPPER(COALESCE(NULLIF(i."clientSnapshot"->>'countryCode',''),c."countryCode",'RO')) as "countryCode",
-              i.subtotal*i."exchangeRate" as "taxableBase", i."vatTotal"*i."exchangeRate" as vat,
-              i.total*i."exchangeRate" as gross
+              ROUND(i.subtotal*i."exchangeRate",2) as "taxableBase", ROUND(i."vatTotal"*i."exchangeRate",2) as vat,
+              ROUND(i.total*i."exchangeRate",2) as gross
          FROM invoices i JOIN clients c ON c.id=i."clientId"
         WHERE i."issueDate"::date >= $1::date AND i."issueDate"::date < $2::date AND i.status<>'canceled'
         ORDER BY i."issueDate",i.id`,
@@ -135,7 +142,7 @@ export async function getDeclarationPeriod(year: number, month: number) {
     countryCode: String(row.partnerCountryCode || "RO"), documentType: String(row.documentType), documentNumber: String(row.documentNumber || ""),
     gross: round2(Number(row.grossAmount)), net: round2(Number(row.netAmount)), vat: round2(Number(row.vatAmount)),
     vatRate: row.vatRate == null ? null : Number(row.vatRate),
-    deductibleVat: row.fiscalCategory === "NON_DEDUCTIBLE_EXPENSE" ? 0 : round2(Number(row.vatAmount) * Number(row.deductibilityPercent) / 100),
+    deductibleVat: row.fiscalCategory === "NON_DEDUCTIBLE_EXPENSE" ? 0 : prorateMoney(row.vatAmount, row.deductibilityPercent, 100),
   }));
   const domesticSales = salesPartners.filter((row) => row.countryCode === "RO");
   const intraEuSales = salesPartners.filter((row) => row.countryCode !== "RO" && EU_COUNTRIES.has(normalizeEuCountry(row.countryCode)));
@@ -157,9 +164,9 @@ export async function getDeclarationPeriod(year: number, month: number) {
   });
   const missingPurchasePartners = domesticPurchases.filter((row) => !row.partnerName || !row.partnerCif).length;
   const vatOnCashAccounting = Boolean(Number(companyResult.rows[0]?.vatIncasare || 0));
-  const invoicedOutputVat = round2(vatRows.reduce((sum, row) => sum + row.vat, 0));
+  const invoicedOutputVat = vatRows.reduce((sum, row) => addMoney(sum, row.vat), 0);
   const outputVat = vatOnCashAccounting ? round2(Number(incomeResult.rows[0]?.collectedVat || 0)) : invoicedOutputVat;
-  const inputVat = round2(expenses.reduce((sum, row) => sum + row.deductibleVat, 0));
+  const inputVat = expenses.reduce((sum, row) => addMoney(sum, row.deductibleVat), 0);
   const ef = efResult.rows[0] || { total: 0, validated: 0, errors: 0 };
   const warnings: string[] = [];
   if (!Number(companyResult.rows[0]?.vatPayer || 0)) warnings.push("Firma nu este marcată ca plătitoare de TVA.");
@@ -171,7 +178,13 @@ export async function getDeclarationPeriod(year: number, month: number) {
   const company = companyResult.rows[0] || {};
   const companyCui = String(company.cif || "").toUpperCase().replace(/^RO/, "").replace(/\D/g, "");
   const invalidD390Company = !/^[1-9]\d{1,9}$/.test(companyCui) || !String(company.name || "").trim() || !String(company.address || "").trim();
-  const invalidD390Operations = d390Operations.filter((row) => !row.partnerName.trim() || Math.round(row.taxableBase) <= 0 || (row.direction === "SALE" && !vatNumberWithoutCountry(row.partnerCif, row.countryCode))).length;
+  const d390GroupedBases = new Map<string, number>();
+  for (const row of d390Operations) {
+    const key = `${row.operationCode}:${row.countryCode}:${vatNumberWithoutCountry(row.partnerCif, row.countryCode)}:${row.partnerName.trim().toUpperCase()}`;
+    d390GroupedBases.set(key, addMoney(d390GroupedBases.get(key) || 0, row.taxableBase));
+  }
+  const invalidD390Operations = d390Operations.filter((row) => !row.partnerName.trim() || row.taxableBase <= 0 || (row.direction === "SALE" && !vatNumberWithoutCountry(row.partnerCif, row.countryCode))).length
+    + [...d390GroupedBases.values()].filter(base => wholeLei(base) <= 0).length;
   const d300Blockers: string[] = [];
   if (year < 2026) d300Blockers.push("XML D300 este implementat pe structura ANAF v12 numai pentru perioade din 2026.");
   if (!Number(company.vatPayer || 0)) d300Blockers.push("Firma nu este configurată ca plătitoare de TVA.");
@@ -218,7 +231,7 @@ export async function getDeclarationPeriod(year: number, month: number) {
     basis: { vatPayer: Boolean(Number(companyResult.rows[0]?.vatPayer || 0)), vatOnCashAccounting },
     d300: {
       dueDate: indicativeDueDate(year, month, 25), outputVat, invoicedOutputVat, inputVat,
-      vatPayable: Math.max(0, round2(outputVat - inputVat)), vatRefundable: Math.max(0, round2(inputVat - outputVat)), vatRows,
+      vatPayable: Math.max(0, subtractMoney(outputVat, inputVat)), vatRefundable: Math.max(0, subtractMoney(inputVat, outputVat)), vatRows,
       ready: d300Blockers.length === 0,
       blockers: d300Blockers,
     },
@@ -317,7 +330,7 @@ export async function generateOfficialD390Xml(year: number, month: number, recti
   if (!String(entity.name || "").trim() || !String(entity.address || "").trim()) throw new Error("Denumirea și adresa firmei sunt obligatorii pentru D390.");
   const rawOperations = report.d390.operations.map((row) => ({
     ...row,
-    baza: Math.round(row.taxableBase),
+    baza: row.taxableBase,
     codO: vatNumberWithoutCountry(row.partnerCif, row.countryCode),
   }));
   for (const row of rawOperations) {
@@ -329,10 +342,11 @@ export async function generateOfficialD390Xml(year: number, month: number, recti
   for (const row of rawOperations) {
     const key = `${row.operationCode}:${row.countryCode}:${row.codO}:${row.partnerName.trim().toUpperCase()}`;
     const current = grouped.get(key);
-    if (current) current.baza += row.baza;
+    if (current) current.baza = addMoney(current.baza, row.baza);
     else grouped.set(key, { ...row });
   }
-  const operations = Array.from(grouped.values());
+  const operations = Array.from(grouped.values()).map(row => ({ ...row, baza: wholeLei(row.baza) }));
+  if (operations.some(row => row.baza <= 0)) throw new Error("Baza D390 agregată trebuie să fie pozitivă după rotunjirea la leu.");
   const bases = { L:0,T:0,A:0,P:0,S:0,R:0 } as Record<D390OperationCode, number>;
   for (const row of operations) bases[row.operationCode as D390OperationCode] += row.baza;
   const totalBase = Object.values(bases).reduce((sum, value) => sum + value, 0);
@@ -367,25 +381,28 @@ export async function generateOfficialD300Xml(year:number,month:number) {
   const company=companyResult.rows[0]||{}, settings=report.declarationSettings;
   const cui=String(company.cif||"").toUpperCase().replace(/^RO/,"").replace(/\D/g,"");
   if(!/^[1-9]\d{1,9}$/.test(cui)) throw new Error("CUI-ul firmei nu este valid pentru D300.");
-  const sales=new Map(report.d300.vatRows.map(row=>[Number(row.vatRate),{base:Math.round(row.taxableBase),vat:Math.round(row.vat),count:row.documentCount}]));
+  const sales=new Map(report.d300.vatRows.map(row=>[Number(row.vatRate),{base:wholeLei(row.taxableBase),vat:wholeLei(row.vat),count:row.documentCount}]));
   const purchases=report.d394.purchases as Array<{net:number;vat:number;vatRate:number|null;deductibleVat:number}>;
-  const purchaseRate=(rate:number)=>purchases.filter(row=>Number(row.vatRate)===rate).reduce((acc,row)=>({base:acc.base+Math.round(row.net),vat:acc.vat+Math.round(row.vat),deductible:acc.deductible+Math.round(row.deductibleVat)}),{base:0,vat:0,deductible:0});
+  const purchaseRate=(rate:number)=>{
+    const totals=purchases.filter(row=>Number(row.vatRate)===rate).reduce((acc,row)=>({base:addMoney(acc.base,row.net),vat:addMoney(acc.vat,row.vat),deductible:addMoney(acc.deductible,row.deductibleVat)}),{base:0,vat:0,deductible:0});
+    return {base:wholeLei(totals.base),vat:wholeLei(totals.vat),deductible:wholeLei(totals.deductible)};
+  };
   const p21=purchaseRate(21),p11=purchaseRate(11);
   const s21=sales.get(21)||{base:0,vat:0,count:0},s11=sales.get(11)||{base:0,vat:0,count:0};
   const collectedBase=s21.base+s11.base, collectedVat=s21.vat+s11.vat;
   const purchaseBase=p21.base+p11.base, deductibleVat=p21.vat+p11.vat;
   const taxDeducted=p21.deductible+p11.deductible;
-  const adjustedDeducted=taxDeducted+Math.round(settings.refundedForeignVat)+Math.round(settings.deductibleAdjustments);
+  const adjustedDeducted=taxDeducted+wholeLei(settings.refundedForeignVat)+wholeLei(settings.deductibleAdjustments);
   const negativePeriod=Math.max(adjustedDeducted-collectedVat,0), payablePeriod=Math.max(collectedVat-adjustedDeducted,0);
-  const payableCumulative=payablePeriod+Math.round(settings.priorVatPayable)+Math.round(settings.inspectionVatPayable);
-  const negativeCumulative=negativePeriod+Math.round(settings.priorVatRefundable)+Math.round(settings.inspectionVatRefundable);
+  const payableCumulative=payablePeriod+wholeLei(settings.priorVatPayable)+wholeLei(settings.inspectionVatPayable);
+  const negativeCumulative=negativePeriod+wholeLei(settings.priorVatRefundable)+wholeLei(settings.inspectionVatRefundable);
   const finalPayable=Math.max(payableCumulative-negativeCumulative,0), finalRefundable=Math.max(negativeCumulative-payableCumulative,0);
   const fields:Record<string,number>={
     R9_1:s21.base,R9_2:s21.vat,R10_1:s11.base,R10_2:s11.vat,R17_1:collectedBase,R17_2:collectedVat,
     R22_1:p21.base,R22_2:p21.vat,R23_1:p11.base,R23_2:p11.vat,
-    R27_1:purchaseBase,R27_2:deductibleVat,R28_2:taxDeducted,R29_2:Math.round(settings.refundedForeignVat),R31_2:Math.round(settings.deductibleAdjustments),R32_2:adjustedDeducted,
-    R33_2:negativePeriod,R34_2:payablePeriod,R35_2:Math.round(settings.priorVatPayable),R36_2:Math.round(settings.inspectionVatPayable),R37_2:payableCumulative,
-    R38_2:Math.round(settings.priorVatRefundable),R39_2:Math.round(settings.inspectionVatRefundable),R40_2:negativeCumulative,R41_2:finalPayable,R42_2:finalRefundable,
+    R27_1:purchaseBase,R27_2:deductibleVat,R28_2:taxDeducted,R29_2:wholeLei(settings.refundedForeignVat),R31_2:wholeLei(settings.deductibleAdjustments),R32_2:adjustedDeducted,
+    R33_2:negativePeriod,R34_2:payablePeriod,R35_2:wholeLei(settings.priorVatPayable),R36_2:wholeLei(settings.inspectionVatPayable),R37_2:payableCumulative,
+    R38_2:wholeLei(settings.priorVatRefundable),R39_2:wholeLei(settings.inspectionVatRefundable),R40_2:negativeCumulative,R41_2:finalPayable,R42_2:finalRefundable,
     nr_facturi:report.d300.vatRows.reduce((sum,row)=>sum+row.documentCount,0),baza:collectedBase,tva:collectedVat,nr_facturi_primite:purchases.length,baza_primite:purchaseBase,tva_primite:deductibleVat,
   };
   const numericAttrs=Object.entries(fields).filter(([,value])=>value!==0).map(([key,value])=>`${key}="${value}"`);

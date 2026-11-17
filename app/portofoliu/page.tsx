@@ -1,14 +1,11 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ClientsSection from "@/components/ClientsSection";
 import OurWork from "@/components/OurWork";
 import WebDevelopment from "@/components/WebDevelopment";
 
-export const metadata: Metadata = {
-  title: "Portofoliu | Next Level Advertising Agency",
-  description: "Brandurile alături de care lucrăm și rezultatele pe care le construim împreună.",
-};
+export const metadata = pageMetadata("Portofoliu web design și marketing digital | Next Level", "Explorează proiecte de web design, identitate vizuală și marketing digital realizate de Next Level pentru afaceri locale și online.", "/portofoliu");
 
 export default function PortofoliuPage() {
   return (

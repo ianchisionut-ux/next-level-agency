@@ -5,8 +5,12 @@ import ClientsSection from "@/components/ClientsSection";
 import OurWork from "@/components/OurWork";
 import WebDevelopment from "@/components/WebDevelopment";
 import TrustMarquee from "@/components/TrustMarquee";
+import HomeHero from "@/components/HomeHero";
+import HomeMotion from "@/components/HomeMotion";
+import JsonLd from "@/components/JsonLd";
+import { businessSchema, DEFAULT_DESCRIPTION, pageMetadata } from "@/lib/seo";
+import "./home-motion.css";
 import {
-  BrandMark,
   IconTarget,
   IconChart,
   IconCode,
@@ -15,7 +19,6 @@ import {
   IconStar,
 } from "@/components/Icons";
 import {
-  stats,
   trustedBy,
   services,
   differentiators,
@@ -31,80 +34,19 @@ const serviceIcons = {
   search: IconSearch,
 };
 
+export const metadata = pageMetadata("Marketing digital și web design Zalău | Next Level", DEFAULT_DESCRIPTION, "/");
+
 export default function HomePage() {
   return (
-    <>
+    <HomeMotion>
+      <JsonLd data={businessSchema} />
+      <a className="nl-skip" href="#main-content">Sari la conținut</a>
       <Header />
-      <main>
+      <main id="main-content">
         {/* ---------------------------------------------------------------- */}
         {/* HERO — dark, video de fundal în buclă (stil disruptiveadvertising.com) */}
         {/* ---------------------------------------------------------------- */}
-        <section className="relative isolate overflow-hidden bg-navy">
-          {/* Fundal video în buclă, central, pe tot ecranul. Pune propriul
-              fișier la /public/video/hero-bg.mp4 (mp4, h264, fără sunet,
-              ideal sub 8-10MB). Dacă fișierul lipsește, rămâne vizibil
-              gradientul de mai jos, deci nimic nu se strică. */}
-          <div className="absolute inset-0 bg-gradient-to-br from-navy via-ink to-navy" />
-          <video
-            className="absolute inset-0 h-full w-full object-cover opacity-50"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="none"
-          >
-            <source src="/video/hero-bg.mp4" type="video/mp4" />
-          </video>
-          <div className="absolute inset-0 bg-gradient-to-b from-navy/90 via-navy/70 to-navy" />
-          <div className="grain absolute inset-0" />
-
-          <div className="relative mx-auto max-w-4xl px-6 py-20 text-center lg:py-24">
-            <div className="relative mx-auto flex h-32 w-32 items-center justify-center sm:h-40 sm:w-40">
-              <div className="absolute inset-0 rounded-full bg-blue/25 blur-3xl" />
-              <BrandMark className="relative h-full w-full drop-shadow-[0_0_40px_rgba(59,130,246,0.45)]" />
-            </div>
-
-            <p className="eyebrow mt-6 text-blue-bright">Creăm. Optimizăm. Scalăm.</p>
-            <h1 className="mt-5 text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
-              NEXT LEVEL
-              <br />
-              <span className="text-blue-bright">ADVERTISING</span>
-              <br />
-              AGENCY
-            </h1>
-            <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-white/60">
-              Transformăm afaceri în branduri puternice și generăm rezultate
-              reale prin marketing digital, design și automatizări
-              inteligente.
-            </p>
-
-            <div className="mt-8 flex flex-wrap justify-center gap-4">
-              <a
-                href={`https://wa.me/${siteConfig.whatsappNumber}?text=${encodeURIComponent(siteConfig.whatsappMessage)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-lg bg-blue px-6 py-3.5 text-sm font-bold tracking-wide text-white transition hover:bg-blue-glow"
-              >
-                PROGRAMEAZĂ O DISCUȚIE
-              </a>
-              <Link
-                href="/portofoliu"
-                className="rounded-lg border border-white/25 px-6 py-3.5 text-sm font-bold tracking-wide text-white transition hover:border-white/50"
-              >
-                VEZI PORTOFOLIUL
-              </Link>
-            </div>
-
-            <div className="mx-auto mt-14 grid max-w-2xl grid-cols-2 gap-6 sm:grid-cols-4">
-              {stats.map((s) => (
-                <div key={s.label}>
-                  <div className="text-2xl font-extrabold text-white">{s.value}</div>
-                  <div className="mt-1 text-xs text-white/50">{s.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+        <HomeHero />
 
         {/* ---------------------------------------------------------------- */}
         {/* TRUST BAR — dark                                                  */}
@@ -112,7 +54,7 @@ export default function HomePage() {
         <section className="border-y border-white/10 bg-navy py-8">
           <div className="mx-auto max-w-7xl px-6">
             <p className="mb-5 text-center text-xs font-semibold tracking-widest text-white/40">
-              AU ÎNCREDERE ÎN NOI
+              PLATFORME CU CARE LUCRĂM
             </p>
             <TrustMarquee items={trustedBy} />
           </div>
@@ -121,7 +63,7 @@ export default function HomePage() {
         {/* ---------------------------------------------------------------- */}
         {/* SERVICES — dark                                                   */}
         {/* ---------------------------------------------------------------- */}
-        <section className="bg-navy py-24">
+        <section id="servicii" className="bg-navy py-24 scroll-mt-24">
           <div className="mx-auto max-w-7xl px-6">
             <div className="mb-14 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
               <div>
@@ -142,6 +84,7 @@ export default function HomePage() {
                 return (
                   <div
                     key={service.title}
+                    data-spotlight data-reveal
                     className="rounded-2xl border border-white/10 bg-navy-soft p-6 transition hover:border-blue/40"
                   >
                     <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue/15 text-blue-bright">
@@ -180,7 +123,7 @@ export default function HomePage() {
             </div>
             <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
               {differentiators.map((d) => (
-                <div key={d.step} className="rounded-2xl border border-white/10 bg-navy-soft p-8">
+                <div key={d.step} data-spotlight data-reveal className="rounded-2xl border border-white/10 bg-navy-soft p-8">
                   <span className="text-4xl font-extrabold text-blue/40">{d.step}</span>
                   <h3 className="mt-4 text-lg font-bold">{d.title}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-white/50">
@@ -221,6 +164,7 @@ export default function HomePage() {
               {testimonials.map((t) => (
                 <div
                   key={t.name}
+                  data-spotlight data-reveal
                   className="rounded-2xl border border-white/10 bg-navy-soft p-6"
                 >
                   <div className="flex gap-1 text-blue-bright">
@@ -243,6 +187,17 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
+          </div>
+        </section>
+
+        <section className="nl-faq bg-navy pb-24" aria-labelledby="faq-title">
+          <div className="mx-auto max-w-4xl px-6">
+            <p className="eyebrow text-blue-bright">Înainte să începem</p>
+            <h2 id="faq-title" className="mt-3 mb-9 text-3xl font-extrabold tracking-tight">Întrebări despre proiectul tău digital</h2>
+            <details><summary>Ce servicii oferă Next Level?</summary><p>Conectăm strategia de brand, campaniile de marketing digital, web designul, SEO și automatizările. Vezi <Link href="/servicii">serviciile noastre</Link> și alegem împreună ce susține obiectivele afacerii tale.</p></details>
+            <details><summary>Lucrați doar cu afaceri din Zalău și Sălaj?</summary><p>Suntem în Sălaj și colaborăm și la distanță cu afaceri din România. Putem discuta proiectul online, iar brief-ul și etapele de lucru sunt stabilite împreună.</p></details>
+            <details><summary>Cât costă un site sau o campanie de marketing?</summary><p>Costul depinde de pagini, funcționalități, conținut și obiective. Completează <Link href="/chestionar-audit">brief-ul proiectului</Link> pentru o propunere adaptată nevoilor tale; pentru un site simplu există și <Link href="/chestionar-site-prezentare">chestionarul rapid</Link>.</p></details>
+            <details><summary>Cum începem colaborarea?</summary><p>Ne spui despre afacerea ta, analizăm obiectivele și stabilim soluția și etapele înainte de implementare. Poți vedea <Link href="/portofoliu">proiectele din portofoliu</Link> sau ne poți scrie din <Link href="/contact">pagina de contact</Link>.</p></details>
           </div>
         </section>
 
@@ -271,6 +226,6 @@ export default function HomePage() {
         </section>
       </main>
       <Footer />
-    </>
+    </HomeMotion>
   );
 }

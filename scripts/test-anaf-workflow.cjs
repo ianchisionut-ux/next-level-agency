@@ -2,6 +2,13 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const ts = require('typescript');
 const vm = require('node:vm');
+function pureModule(file) {
+  const exports = {};
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, { exports, require(id) { throw new Error(`Unexpected pure-module dependency ${id}`); } });
+  return exports;
+}
+const money = pureModule('lib/accounting/money.ts');
+const date = pureModule('lib/accounting/date.ts');
 let mode = 'snapshot';
 const queries = [];
 const pool = {
@@ -11,6 +18,7 @@ const pool = {
     if (sql.includes('SELECT id,"uploadId",status')) return { rows: mode === 'NETWORK' ? [] : [{ id: 7, status: mode, uploadId: '' }] };
     if (sql.includes('SELECT "anafApprovedEnvironment"')) return {rows:[{anafApprovedEnvironment:'test'}]};
     if (sql.includes('SELECT * FROM anaf_connections')) return {rows:[{accessToken:'fake',expiresAt:'2099-01-01'}]};
+    if (sql.includes('SELECT "expiresAt",(COALESCE')) return {rows:[{expiresAt:'2099-01-01',refreshAvailable:false}]};
     if (sql.includes('COALESCE(MAX')) return {rows:[{attempt:1}]};
     if (sql.includes('RETURNING id')) return {rows:[{id:8}]};
     if (sql.includes('COUNT(*) AS count FROM anaf_connections')) return { rows: [{count: 1}] };
@@ -22,11 +30,17 @@ const api = {};
 const full = {invoice:{id:1,series:'TEST',number:1,invoiceType:'STANDARD',status:'issued',issueDate:'2026-09-04',dueDate:'2026-09-05',total:1,subtotal:1,vatTotal:0},company:{name:'Test',cif:'123',address:'Test 1',city:'Zalau',county:'SJ',vatPayer:0},client:{name:'Test',cif:'123',clientType:'PJ',address:'Test 2',city:'Zalau',judet:'SJ'},items:[{description:'Test',unitCode:'H87',qty:1,unitPrice:1,valoare:1,vatValue:0,vatRate:0,vatCategoryCode:'O',taxExemptionReason:'Nu face obiectul TVA'}]};
 vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/accounting/efactura.ts','utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, {
   exports: api, process: {env:{ANAF_ENVIRONMENT:'test',ANAF_CLIENT_ID:'test',ANAF_CLIENT_SECRET:'test'}}, console, Buffer, AbortSignal,
-  fetch() { throw new Error('Network is forbidden in tests'); },
+  fetch(url) {
+    if (String(url).includes('/validare/')) return Promise.resolve({ ok: true, json: async () => ({stare:'ok'}) });
+    throw new Error('Network is forbidden in tests');
+  },
   require(id) {
     if(id.endsWith('/db')) return {ready:async()=>pool};
     if(id.endsWith('/repo')) return {getInvoiceFull:async()=>{if(mode==='NETWORK')return full;throw new Error('Snapshot must not be regenerated');}};
     if(id.endsWith('/crypto')) return {encrypt:String,decrypt:String};
+    if(id.endsWith('/money')) return money;
+    if(id.endsWith('/date')) return date;
+    if(['node:crypto','node:zlib','fflate','fast-xml-parser'].includes(id)) return require(id);
     throw new Error(id);
   }
 });

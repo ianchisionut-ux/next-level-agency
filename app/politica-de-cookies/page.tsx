@@ -1,11 +1,9 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import LegalPage from "@/components/LegalPage";
 import { siteConfig } from "@/lib/data";
 import CookieSettingsLink from "@/components/CookieSettingsLink";
 
-export const metadata: Metadata = {
-  title: "Politica de Cookies | Next Level Advertising Agency",
-};
+export const metadata = pageMetadata("Politica de Cookies | Next Level", "Informații despre cookie-urile folosite pe site-ul Next Level și opțiunile tale privind consimțământul și preferințele.", "/politica-de-cookies");
 
 export default function CookiePolicyPage() {
   return (

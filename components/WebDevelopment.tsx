@@ -1,4 +1,5 @@
 import { webProjects } from "@/lib/data";
+import Image from "next/image";
 
 export default function WebDevelopment() {
   return (
@@ -28,11 +29,12 @@ export default function WebDevelopment() {
                 rel="noopener noreferrer"
                 className="group overflow-hidden rounded-2xl border border-line-light bg-paper-soft transition hover:-translate-y-1 hover:border-blue/40 hover:shadow-lg hover:shadow-blue/10"
               >
-                <div className="aspect-video overflow-hidden bg-slate-100">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                <div className="relative aspect-video overflow-hidden bg-slate-100">
+                  <Image
                     src={project.thumbnail}
                     alt={project.title}
+                    fill
+                    sizes="(min-width: 1024px) 400px, (min-width: 640px) 50vw, 100vw"
                     className={`h-full w-full object-cover transition duration-300 ${project.previewCrop ? "scale-[1.35] object-center group-hover:scale-[1.39]" : "object-top group-hover:scale-105"}`}
                   />
                 </div>

@@ -1,13 +1,10 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SimplePresentationForm from "./SimplePresentationForm";
 
-export const metadata: Metadata = {
-  title: "Chestionar site de prezentare | Next Level Advertising Agency",
-  description: "Un chestionar scurt pentru firmele care doresc un site simplu, modern și convingător.",
-};
+export const metadata = pageMetadata("Ofertă site de prezentare pentru firmă | Next Level", "Spune-ne ce site de prezentare îți dorești. Un chestionar rapid despre afacerea, paginile și obiectivele tale, pentru o ofertă personalizată.", "/chestionar-site-prezentare");
 
 export default function SimplePresentationQuestionnairePage() {
   return (

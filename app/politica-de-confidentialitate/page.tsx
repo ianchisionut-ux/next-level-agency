@@ -1,10 +1,8 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import LegalPage from "@/components/LegalPage";
 import { siteConfig } from "@/lib/data";
 
-export const metadata: Metadata = {
-  title: "Politica de Confidențialitate | Next Level Advertising Agency",
-};
+export const metadata = pageMetadata("Politica de Confidențialitate | Next Level", "Cum prelucrează Next Level datele personale: scopuri, temeiuri, drepturile tale și informații de contact pentru protecția datelor.", "/politica-de-confidentialitate");
 
 export default function PrivacyPolicyPage() {
   return (

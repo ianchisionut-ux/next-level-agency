@@ -2,6 +2,7 @@ import { after, type NextRequest, NextResponse } from "next/server";
 import { accountingApi } from "@/lib/accounting/access";
 import { createStornoInvoice } from "@/lib/accounting/repo";
 import { getAnafConnectionStatus, sendInvoiceToAnaf } from "@/lib/accounting/efactura";
+import { bucharestDate } from "@/lib/accounting/date";
 
 async function POSTHandler(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -14,13 +15,13 @@ async function POSTHandler(req: NextRequest, { params }: { params: Promise<{ id:
     const stornoId = await createStornoInvoice({
       originalInvoiceId: Number(id),
       series: String(data.series || "STO"),
-      issueDate: String(data.issueDate || new Date().toISOString().slice(0, 10)),
+      issueDate: String(data.issueDate || bucharestDate()),
       reason,
     });
     if (data.sendToAnafNow) after(async () => {
       try {
         const connection = await getAnafConnectionStatus();
-        if (connection.configured && connection.connected) await sendInvoiceToAnaf(stornoId);
+        if (connection.configured && connection.canAttempt) await sendInvoiceToAnaf(stornoId);
       } catch (error) {
         console.error(`Trimiterea automată e-Factura pentru storno ${stornoId} a eșuat:`, error);
       }

@@ -1,10 +1,8 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import LegalPage from "@/components/LegalPage";
 import { siteConfig } from "@/lib/data";
 
-export const metadata: Metadata = {
-  title: "Termeni și Condiții | Next Level Advertising Agency",
-};
+export const metadata = pageMetadata("Termeni și Condiții | Next Level", "Termenii de utilizare a site-ului Next Level Advertising Agency: informații despre companie, servicii, conținut și contact.", "/termeni-si-conditii");
 
 export default function TermsPage() {
   return (

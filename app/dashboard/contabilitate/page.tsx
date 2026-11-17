@@ -2,7 +2,7 @@ import { getDashboardStats, listInvoices } from "@/lib/accounting/repo";
 import { requireAccountingPage } from "@/lib/accounting/access";
 import Link from "next/link";
 import { StatusBadge } from "@/components/accounting/StatusBadge";
-import { getAnafPublicConfig } from "@/lib/accounting/efactura";
+import { getAnafConnectionStatus } from "@/lib/accounting/efactura";
 import { Plus, TriangleAlert } from "lucide-react";
 
 // This page reads live data straight from Postgres on every request; it must
@@ -17,7 +17,7 @@ function fmt(n: number) {
 function AnafCompactStatus({ status }: { status: string | null }) {
   const meta = status === "VALIDATED"
     ? { color: "#16a34a", label: "Validată ANAF" }
-    : ["REJECTED", "ERROR"].includes(status || "")
+    : ["REJECTED", "ERROR", "UNCERTAIN"].includes(status || "")
       ? { color: "#dc2626", label: "Necesită atenție" }
       : ["UPLOADING", "PROCESSING"].includes(status || "")
         ? { color: "#eab308", label: "În procesare" }
@@ -26,11 +26,11 @@ function AnafCompactStatus({ status }: { status: string | null }) {
 }
 
 export default async function DashboardPage() {
-  const [stats, recent] = await Promise.all([
+  const [stats, recent, anaf] = await Promise.all([
     getDashboardStats(),
     listInvoices(7),
+    getAnafConnectionStatus(),
   ]);
-  const anaf = getAnafPublicConfig();
 
   const cards = [
     { label: "Facturi emise", value: stats.totalInvoices.toString(), accent: "var(--cyan)" },
@@ -53,7 +53,9 @@ export default async function DashboardPage() {
       </div>
 
       {anaf.environment === "test" && <div className="ef-safety-warning mb-4"><TriangleAlert size={17}/><span><strong>ANAF Test este activ.</strong> Trimiterile nu au efect fiscal real. Activează Producție înainte de folosirea operațională.</span></div>}
-      {stats.anafProblems > 0 && <Link href="/dashboard/contabilitate/invoices" className="ref-error ef-dashboard-alert"><TriangleAlert size={17}/><span><strong>{stats.anafProblems} {stats.anafProblems === 1 ? "factură necesită" : "facturi necesită"} atenție la e-Factura.</strong> Deschide registrul pentru detalii și retransmitere.</span></Link>}
+      {(!anaf.configured || anaf.needsReconnect) && <Link href="/dashboard/contabilitate/efactura" className="ref-error ef-dashboard-alert"><TriangleAlert size={17}/><span><strong>ANAF necesită configurare sau reconectare.</strong> Transmiterile nu pot continua până la restabilirea accesului SPV.</span></Link>}
+      {anaf.tokenStatus === "EXPIRED_REFRESHABLE" && <Link href="/dashboard/contabilitate/efactura" className="ef-safety-warning mb-4"><TriangleAlert size={17}/><span>Tokenul ANAF a expirat. Reînnoirea va fi încercată la următoarea operațiune; accesul SPV trebuie urmărit.</span></Link>}
+      {(anaf.backlog.pending > 0 || anaf.backlog.archivePending > 0) && <Link href="/dashboard/contabilitate/efactura" className="ref-error ef-dashboard-alert"><TriangleAlert size={17}/><span><strong>{anaf.backlog.pending} facturi fără validare ANAF · {anaf.backlog.blocked} blocate · {anaf.backlog.overdue} cu termen estimat depășit.</strong> {anaf.backlog.archivePending} răspunsuri așteaptă arhivarea.{anaf.backlog.earliestDueDate ? ` Primul termen estimat de la emitere: ${anaf.backlog.earliestDueDate}.` : ""} Data operațiunii și limita legală de emitere nu sunt incluse în estimare. Deschide lista pentru intervenție.</span></Link>}
 
       <div className="stat-grid">
         {cards.map((c) => (

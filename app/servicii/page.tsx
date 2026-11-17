@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -11,10 +11,7 @@ import {
 } from "@/components/Icons";
 import { services, siteConfig } from "@/lib/data";
 
-export const metadata: Metadata = {
-  title: "Servicii | Next Level Advertising Agency",
-  description: "Branding, performance marketing, web design, AI & automation, SEO & content marketing.",
-};
+export const metadata = pageMetadata("Servicii de marketing digital, web design și SEO | Next Level", "Strategie, branding, campanii Google și Meta, site-uri web și automatizări. Descoperă serviciile Next Level pentru afaceri din Zalău și România.", "/servicii");
 
 const serviceIcons = {
   target: IconTarget,

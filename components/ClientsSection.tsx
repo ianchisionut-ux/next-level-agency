@@ -1,4 +1,5 @@
 import { clients } from "@/lib/data";
+import Image from "next/image";
 
 export default function ClientsSection() {
   return (
@@ -23,12 +24,9 @@ export default function ClientsSection() {
               className="client-logo-tile group flex items-center justify-center transition hover:-translate-y-0.5"
               aria-label={client.name}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={client.logo}
-                alt={client.name}
-                className="h-24 w-auto max-w-full object-contain sm:h-32 lg:h-40"
-              />
+              <div className="relative h-24 w-full sm:h-32 lg:h-40">
+                <Image src={client.logo} alt={client.name} fill sizes="(min-width: 1024px) 260px, (min-width: 640px) 30vw, 45vw" className="object-contain" />
+              </div>
             </a>
           ))}
         </div>

@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { posts } from "@/lib/blog";
+import { breadcrumbSchema, pageMetadata, SITE_NAME, SITE_URL } from "@/lib/seo";
+import JsonLd from "@/components/JsonLd";
 
 export function generateStaticParams() {
   return posts.map((post) => ({ slug: post.slug }));
@@ -16,10 +18,12 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const post = posts.find((p) => p.slug === slug);
-  if (!post) return {};
+  if (!post) return { title: "Articol inexistent", robots: { index: false } };
+  const title = `${post.title} | Blog Next Level`;
+  const base = pageMetadata(title, post.excerpt, `/blog/${post.slug}`);
   return {
-    title: `${post.title} | Blog Next Level`,
-    description: post.excerpt,
+    ...base,
+    openGraph: { ...base.openGraph, type: "article", publishedTime: post.publishedAt, authors: [SITE_NAME] },
   };
 }
 
@@ -34,6 +38,8 @@ export default async function BlogPostPage({
 
   return (
     <>
+      <JsonLd data={{ "@context": "https://schema.org", "@type": "BlogPosting", headline: post.title, description: post.excerpt, datePublished: `${post.publishedAt}T00:00:00+03:00`, inLanguage: "ro-RO", mainEntityOfPage: `${SITE_URL}/blog/${post.slug}`, image: `${SITE_URL}/opengraph-image`, author: { "@type": "Organization", name: SITE_NAME, url: SITE_URL }, publisher: { "@type": "Organization", name: SITE_NAME, logo: { "@type": "ImageObject", url: `${SITE_URL}/brand/logo-full.png` } } }} />
+      <JsonLd data={breadcrumbSchema([{ name: "Acasă", path: "/" }, { name: "Blog", path: "/blog" }, { name: post.title, path: `/blog/${post.slug}` }])} />
       <Header />
       <main>
         <section className="grain bg-navy py-20">
@@ -41,7 +47,7 @@ export default async function BlogPostPage({
             <Link href="/blog" className="text-sm font-semibold text-blue-bright hover:underline">
               ← Înapoi la blog
             </Link>
-            <p className="eyebrow mt-6 text-blue-bright">{post.date}</p>
+            <time dateTime={post.publishedAt} className="eyebrow mt-6 block text-blue-bright">{post.date}</time>
             <h1 className="mt-3 text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
               {post.title}
             </h1>

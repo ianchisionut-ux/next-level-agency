@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
 export function pdfText(value: unknown) { return String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
 function asciiObject<T extends object>(value: T): T { return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, typeof item === "string" ? pdfText(item) : item])) as T; }
 
-function fmt(n: number) { return n.toLocaleString("ro-RO", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmt(n: number, maximumFractionDigits = 2) { return n.toLocaleString("ro-RO", { minimumFractionDigits: 2, maximumFractionDigits }); }
 function identification(client: Client) {
   return client.clientType === "PF"
     ? [client.cnp && `CNP: ${client.cnp}`, (client.ciSeries || client.ciNumber) && `CI: ${client.ciSeries} ${client.ciNumber}`]
@@ -92,7 +92,7 @@ export function InvoicePdf({ invoice, items, client, company }: { invoice: Invoi
 
     <View style={styles.table}>
       <View style={styles.tableHeader}><Text style={styles.cNr}>Nr.</Text><Text style={styles.cDenumire}>Produs / serviciu</Text><Text style={styles.cUM}>U.M.</Text><Text style={styles.cCant}>Cant.</Text><Text style={styles.cPret}>Pret unitar</Text><Text style={styles.cVal}>Valoare</Text><Text style={styles.cTva}>TVA</Text></View>
-      {itemsPdf.map((it,idx)=><View key={it.id} style={[styles.tableRow, idx%2 ? styles.tableRowAlt : {}]}><Text style={styles.cNr}>{idx+1}</Text><Text style={styles.cDenumire}>{it.description}</Text><Text style={styles.cUM}>{it.um}</Text><Text style={styles.cCant}>{fmt(it.qty)}</Text><Text style={styles.cPret}>{fmt(it.unitPrice)}</Text><Text style={styles.cVal}>{fmt(it.valoare)}</Text><Text style={styles.cTva}>{fmt(it.vatValue)} ({it.vatRate}%)</Text></View>)}
+      {itemsPdf.map((it,idx)=><View key={it.id} style={[styles.tableRow, idx%2 ? styles.tableRowAlt : {}]}><Text style={styles.cNr}>{idx+1}</Text><Text style={styles.cDenumire}>{it.description}</Text><Text style={styles.cUM}>{it.um}</Text><Text style={styles.cCant}>{fmt(it.qty, 6)}</Text><Text style={styles.cPret}>{fmt(it.unitPrice, 9)}</Text><Text style={styles.cVal}>{fmt(it.valoare)}</Text><Text style={styles.cTva}>{fmt(it.vatValue)} ({it.vatRate}%)</Text></View>)}
     </View>
 
     <View style={styles.summaryArea}><View style={styles.words}><Text style={styles.wordsTitle}>TOTAL IN LITERE</Text><Text>{amountToWordsRO(invoicePdf.total, invoicePdf.currency)}</Text>{companyPdf.vatIncasare ? <Text style={{marginTop:4,color:MUTED}}>TVA la incasare</Text> : null}</View>

@@ -3,16 +3,17 @@ import "./globals.css";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import CookieConsent from "@/components/CookieConsent";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  // TODO: înlocuiește cu domeniul real odată ce e cumpărat și conectat.
-  metadataBase: new URL("https://nextlevelagency.ro"),
-  title: "Next Level Advertising Agency | Marketing digital, Branding & Web Design",
-  description:
-    "Transformăm afaceri în branduri puternice și generăm rezultate reale prin marketing digital, design și automatizări inteligente.",
+  metadataBase: new URL(SITE_URL),
+  title: "Marketing digital și web design Zalău | Next Level",
+  description: DEFAULT_DESCRIPTION,
+  applicationName: SITE_NAME,
+  robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 } },
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/brand/logo-mark.png",
     apple: "/apple-touch-icon.png",
   },
   appleWebApp: {
@@ -21,11 +22,12 @@ export const metadata: Metadata = {
     title: "Signal",
   },
   openGraph: {
-    title: "Next Level Advertising Agency",
-    description:
-      "Marketing digital, branding și web design care generează rezultate reale.",
-    images: ["/brand/logo-full.png"],
+    type: "website", locale: "ro_RO", siteName: SITE_NAME,
+    title: "Marketing digital și web design Zalău | Next Level",
+    description: DEFAULT_DESCRIPTION,
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: SITE_NAME }],
   },
+  twitter: { card: "summary_large_image", images: ["/opengraph-image"] },
 };
 
 export const viewport: Viewport = {

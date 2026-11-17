@@ -1,14 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState, use } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState, use } from "react";
 import Link from "next/link";
 import { StatusBadge } from "@/components/accounting/StatusBadge";
 import { EFacturaPanel } from "@/components/accounting/EFacturaPanel";
 import { InvoiceCorrection } from "@/components/accounting/InvoiceCorrection";
 import { InvoiceRefund } from "@/components/accounting/InvoiceRefund";
-import { ArrowLeft, Download, Trash2, Receipt as ReceiptIcon, RotateCcw } from "lucide-react";
+import { ArrowLeft, Download, Receipt as ReceiptIcon, RotateCcw } from "lucide-react";
 import { bucharestDate } from "@/lib/accounting/date";
+import { addMoney, roundMoney, subtractMoney } from "@/lib/accounting/money";
+import { completePendingOperation, pendingOperation, readPendingOperation, type PendingOperation } from "@/components/accounting/pending-operation";
+
+type PaymentRequest = { amount: number; date: string; method: string };
+type ReceiptRequest = { amount: number; issueDate: string };
 
 type FullInvoice = {
   invoice: {
@@ -21,6 +25,7 @@ type FullInvoice = {
     subtotal: number;
     vatTotal: number;
     paidAmount: number;
+    currency: string;
     invoiceType: "STANDARD" | "STORNO";
     originalInvoiceId: number | null;
     stornoReason: string;
@@ -29,8 +34,8 @@ type FullInvoice = {
   client: { id: number; name: string; cif: string };
   company: { name: string };
   user: { id: number; name: string; role: string } | null;
-  receipts: { id: number; series: string; number: number; issueDate: string; amount: number }[];
-  payments: { id: number; amount: number; date: string; method: string }[];
+  receipts: { id: number; series: string; number: number; issueDate: string; amount: number; operationKey?: string }[];
+  payments: { id: number; amount: number; date: string; method: string; operationKey?: string }[];
   eFacturaSubmission: null | { status: string; uploadId: string };
 };
 
@@ -40,88 +45,140 @@ function fmt(n: number) {
 
 export default function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const router = useRouter();
   const [data, setData] = useState<FullInvoice | null>(null);
   const [payAmount, setPayAmount] = useState<number>(0);
   const [payDate, setPayDate] = useState(bucharestDate());
   const [payMethod, setPayMethod] = useState("numerar");
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [receiptBusy, setReceiptBusy] = useState(false);
+  const paymentLock = useRef(false);
+  const receiptLock = useRef(false);
+  const [pendingPayment, setPendingPayment] = useState<PendingOperation<PaymentRequest> | null>(null);
+  const [pendingReceipt, setPendingReceipt] = useState<PendingOperation<ReceiptRequest> | null>(null);
+  const [loadError, setLoadError] = useState("");
+  const paymentStorageKey = `nextlevel.accounting.${id}.payment`;
+  const receiptStorageKey = `nextlevel.accounting.${id}.receipt`;
 
   const load = useCallback(() => {
     fetch(`/api/accounting/invoices/${id}`)
-      .then((r) => r.json())
+      .then(async (r) => { const result = await r.json(); if (!r.ok || !result.invoice) throw new Error(result.error || "Factura nu a putut fi încărcată."); return result as FullInvoice; })
       .then((d) => {
         setData(d);
-        setPayAmount(Math.max(0, d.invoice.total - d.invoice.paidAmount));
-      });
-  }, [id]);
+        let payment = readPendingOperation<PaymentRequest>(paymentStorageKey);
+        let receipt = readPendingOperation<ReceiptRequest>(receiptStorageKey);
+        if (payment && d.payments.some(row => row.operationKey === payment?.operationKey)) { completePendingOperation(paymentStorageKey); payment = null; }
+        if (receipt && d.receipts.some(row => row.operationKey === receipt?.operationKey)) { completePendingOperation(receiptStorageKey); receipt = null; }
+        setPendingPayment(payment); setPendingReceipt(receipt);
+        setPayAmount(payment?.payload.amount ?? Math.max(0, subtractMoney(d.invoice.total, d.invoice.paidAmount)));
+        if (payment) { setPayDate(payment.payload.date); setPayMethod(payment.payload.method); }
+        setLoadError("");
+      }).catch((error) => setLoadError(error instanceof Error ? error.message : "Factura nu a putut fi încărcată."));
+  }, [id, paymentStorageKey, receiptStorageKey]);
   useEffect(load, [load]);
 
+  async function recoverOperation(kind: "payment" | "receipt", operationKey: string) {
+    try {
+      const response = await fetch(`/api/accounting/invoices/${id}`, { cache: "no-store" });
+      if (!response.ok) return false;
+      const current = await response.json() as FullInvoice;
+      const rows = kind === "payment" ? current.payments : current.receipts;
+      if (!rows.some(row => row.operationKey === operationKey)) return false;
+      completePendingOperation(kind === "payment" ? paymentStorageKey : receiptStorageKey);
+      if (kind === "payment") setPendingPayment(null); else setPendingReceipt(null);
+      load();
+      alert("Operațiunea anterioară este deja înregistrată. Situația facturii a fost reîncărcată.");
+      return true;
+    } catch { return false; }
+  }
+
+  async function recoverPending(kind: "payment" | "receipt") {
+    try {
+      const previous = readPendingOperation(kind === "payment" ? paymentStorageKey : receiptStorageKey);
+      return previous ? await recoverOperation(kind, previous.operationKey) : false;
+    } catch { return false; }
+  }
+
   async function addPayment() {
+    if (paymentLock.current || !data) return;
+    paymentLock.current = true;
     setPaymentBusy(true);
     try {
+      const previous = readPendingOperation<PaymentRequest>(paymentStorageKey);
+      if (previous && await recoverOperation("payment", previous.operationKey)) return;
+      const remaining = Math.max(0, subtractMoney(data.invoice.total, data.invoice.paidAmount));
+      if (!Number.isFinite(payAmount) || payAmount <= 0 || roundMoney(payAmount) !== payAmount || (!previous && payAmount > remaining)) return alert("Introdu o sumă pozitivă cu maximum două zecimale, în limita restului de plată.");
+      const pending = pendingOperation(paymentStorageKey, { amount: payAmount, date: payDate, method: payMethod });
+      setPendingPayment(pending);
       const response = await fetch(`/api/accounting/invoices/${id}/payment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: payAmount, date: payDate, method: payMethod }),
+        body: JSON.stringify({ ...pending.payload, operationKey: pending.operationKey }),
       });
       const result = await response.json();
-      if (!response.ok) return alert(result.error || "Plata nu a putut fi înregistrată.");
+      if (!response.ok) {
+        if (await recoverOperation("payment", pending.operationKey)) return;
+        return alert(result.error || "Plata nu a putut fi înregistrată.");
+      }
+      completePendingOperation(paymentStorageKey); setPendingPayment(null);
       load();
+    } catch {
+      if (await recoverPending("payment")) return;
+      alert("Plata nu a putut fi confirmată. Reîncarcă factura și verifică încasările înainte de o nouă plată.");
     } finally {
+      paymentLock.current = false;
       setPaymentBusy(false);
     }
   }
 
   async function generateReceipt() {
-    if (!data) return;
-    const cashPaid = data.payments
-      .filter((payment) => payment.method.toLowerCase() === "numerar" || payment.method.toLowerCase() === "cash")
-      .reduce((sum, payment) => sum + Number(payment.amount), 0);
-    const receipted = data.receipts.reduce((sum, receipt) => sum + Number(receipt.amount), 0);
-    const amount = Math.round((cashPaid - receipted) * 100) / 100;
-    if (amount <= 0) return alert("Înregistrează mai întâi o plată în numerar. Chitanța se emite numai pentru suma încasată.");
+    if (!data || receiptLock.current) return;
+    receiptLock.current = true;
     setReceiptBusy(true);
     try {
+    const previous = readPendingOperation<ReceiptRequest>(receiptStorageKey);
+    if (previous && await recoverOperation("receipt", previous.operationKey)) return;
+    if (!previous && data.invoice.currency !== "RON") return alert("Chitanțele sunt disponibile numai pentru facturi în RON.");
+    const cashPaid = data.payments
+      .filter((payment) => payment.method.toLowerCase() === "numerar" || payment.method.toLowerCase() === "cash")
+      .reduce((sum, payment) => addMoney(sum, payment.amount), 0);
+    const receipted = data.receipts.reduce((sum, receipt) => addMoney(sum, receipt.amount), 0);
+    const amount = subtractMoney(cashPaid, receipted);
+    if (!previous && amount <= 0) return alert("Înregistrează mai întâi o plată în numerar. Chitanța se emite numai pentru suma încasată.");
+    const pending = pendingOperation(receiptStorageKey, { amount: amount > 0 ? amount : previous!.payload.amount, issueDate: payDate });
+    setPendingReceipt(pending);
       const response = await fetch(`/api/accounting/invoices/${id}/receipt`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, issueDate: payDate }),
+        body: JSON.stringify({ ...pending.payload, operationKey: pending.operationKey }),
       });
       const result = await response.json();
-      if (!response.ok) return alert(result.error || "Chitanța nu a putut fi emisă.");
+      if (!response.ok) {
+        if (await recoverOperation("receipt", pending.operationKey)) return;
+        return alert(result.error || "Chitanța nu a putut fi emisă.");
+      }
+      completePendingOperation(receiptStorageKey); setPendingReceipt(null);
       load();
+    } catch {
+      if (await recoverPending("receipt")) return;
+      alert("Chitanța nu a putut fi confirmată. Reîncarcă factura și verifică documentele existente înainte de a reîncerca.");
     } finally {
+      receiptLock.current = false;
       setReceiptBusy(false);
     }
   }
 
-  async function removeInvoice() {
-    if (!data) return;
-    const relationWarning = data.invoice.invoiceType === "STORNO"
-      ? " Factura inițială va redeveni activă."
-      : data.invoice.status === "stornoed" ? " Se va șterge și factura storno legată." : "";
-    if (!confirm(`Ștergi definitiv această factură?${relationWarning}`)) return;
-    const response = await fetch(`/api/accounting/invoices/${id}`, { method: "DELETE" });
-    const result = await response.json();
-    if (!response.ok) return alert(result.error || "Factura nu a putut fi ștearsă.");
-    router.push("/dashboard/contabilitate/invoices");
-  }
-
-  if (!data) return <div style={{ color: "var(--text-faint)" }}>Se incarca...</div>;
+  if (!data) return <div role={loadError ? "alert" : "status"} style={{ color: "var(--text-faint)" }}>{loadError || "Se încarcă…"}</div>;
   const { invoice, items, client, user, receipts, payments } = data;
-  const rest = invoice.total - invoice.paidAmount;
+  const rest = subtractMoney(invoice.total, invoice.paidAmount);
   const cashPaid = payments
     .filter((payment) => payment.method.toLowerCase() === "numerar" || payment.method.toLowerCase() === "cash")
-    .reduce((sum, payment) => sum + Number(payment.amount), 0);
-  const receiptedAmount = receipts.reduce((sum, receipt) => sum + Number(receipt.amount), 0);
-  const receiptAvailable = Math.max(0, Math.round((cashPaid - receiptedAmount) * 100) / 100);
-  const paymentDisabledReason = rest <= 0 ? "Factura este achitată integral." : payAmount <= 0 ? "Introdu o sumă mai mare decât 0." : "";
-  const receiptDisabledReason = receiptAvailable <= 0 ? "Nu există o plată în numerar fără chitanță." : "";
+    .reduce((sum, payment) => addMoney(sum, payment.amount), 0);
+  const receiptedAmount = receipts.reduce((sum, receipt) => addMoney(sum, receipt.amount), 0);
+  const receiptAvailable = Math.max(0, subtractMoney(cashPaid, receiptedAmount));
+  const paymentDisabledReason = rest <= 0 ? "Factura este achitată integral." : !Number.isFinite(payAmount) || payAmount <= 0 ? "Introdu o sumă mai mare decât 0." : payAmount > rest ? "Suma depășește restul de plată." : roundMoney(payAmount) !== payAmount ? "Suma poate avea maximum două zecimale." : "";
+  const receiptDisabledReason = invoice.currency !== "RON" ? "Chitanțele sunt disponibile numai în RON." : receiptAvailable <= 0 ? "Nu există o plată în numerar fără chitanță." : "";
   const financialLocked = invoice.invoiceType === "STORNO" || ["storno", "stornoed", "canceled"].includes(invoice.status);
   const canStorno = invoice.invoiceType !== "STORNO" && !financialLocked;
-  const anafLocked = Boolean(data.eFacturaSubmission && (data.eFacturaSubmission.uploadId || ["UPLOADING", "PROCESSING", "VALIDATED", "REJECTED"].includes(data.eFacturaSubmission.status)));
 
   return (
     <div>
@@ -151,13 +208,16 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
         {canStorno && <a href={`/dashboard/contabilitate/invoices/storno?invoice=${id}`} className="btn-secondary">
           <RotateCcw size={14} /> Stornează factura
         </a>}
-        {!anafLocked && <button onClick={removeInvoice} className="btn-danger">
-          <Trash2 size={14} /> Sterge factura
-        </button>}
-        {anafLocked && <span className="ef-delete-lock">Protejată ANAF · corecțiile se fac prin storno</span>}
+        <span className="ef-delete-lock">Document emis · anularea se face prin storno</span>
       </div>
 
       <EFacturaPanel invoiceId={Number(id)} />
+      {loadError && <p role="alert" className="mb-4 text-red-600">{loadError}</p>}
+      {(pendingPayment || pendingReceipt) && <div className="card mb-6">
+        <p className="text-sm mb-3">O operațiune anterioară așteaptă confirmarea. Reverificarea păstrează identificatorul inițial și previne dublarea. Poți corecta datele unei cereri respinse.</p>
+        {pendingPayment && <button className="btn-secondary mr-2" onClick={addPayment} disabled={paymentBusy}>Reverifică plata de {fmt(pendingPayment.payload.amount)} {invoice.currency}</button>}
+        {pendingReceipt && <button className="btn-secondary" onClick={generateReceipt} disabled={receiptBusy}>Reverifică chitanța de {fmt(pendingReceipt.payload.amount)} RON</button>}
+      </div>}
       {invoice.status === "stornoed" && Number(invoice.paidAmount) > 0 && (
         <InvoiceRefund
           invoiceId={invoice.id}
@@ -198,11 +258,11 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
         <div style={{ width: 260 }} className="text-sm space-y-1">
           <div className="flex justify-between" style={{ color: "var(--text-dim)" }}>
             <span>Subtotal</span>
-            <span className="num">{fmt(invoice.subtotal)} RON</span>
+            <span className="num">{fmt(invoice.subtotal)} {invoice.currency}</span>
           </div>
           <div className="flex justify-between" style={{ color: "var(--text-dim)" }}>
             <span>TVA</span>
-            <span className="num">{fmt(invoice.vatTotal)} RON</span>
+            <span className="num">{fmt(invoice.vatTotal)} {invoice.currency}</span>
           </div>
           <div
             className="flex justify-between font-bold pt-2"
@@ -210,16 +270,16 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
           >
             <span>Total</span>
             <span className="num" style={{ color: "var(--cyan-strong)" }}>
-              {fmt(invoice.total)} RON
+              {fmt(invoice.total)} {invoice.currency}
             </span>
           </div>
           <div className="flex justify-between" style={{ color: "var(--text-dim)" }}>
             <span>Incasat</span>
-            <span className="num">{fmt(invoice.paidAmount)} RON</span>
+            <span className="num">{fmt(invoice.paidAmount)} {invoice.currency}</span>
           </div>
           <div className="flex justify-between font-semibold" style={{ color: "var(--amber)" }}>
             <span>Rest de plata</span>
-            <span className="num">{financialLocked ? "—" : `${fmt(Math.max(0, rest))} RON`}</span>
+            <span className="num">{financialLocked ? "—" : `${fmt(Math.max(0, rest))} ${invoice.currency}`}</span>
           </div>
         </div>
       </div>
@@ -230,7 +290,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
           <div className="section-label">Inregistreaza o plata</div>
           <div className="space-y-2">
             <div>
-              <label className="field-label">Suma</label>
+              <label className="field-label">Suma ({invoice.currency})</label>
               <input type="number" min="0.01" max={Math.max(0, rest)} step="0.01" className="input" value={payAmount} onChange={(e) => setPayAmount(Number(e.target.value))} />
             </div>
             <div>
@@ -245,7 +305,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
                 <option value="transfer">Transfer bancar</option>
               </select>
             </div>
-            <button title={paymentDisabledReason} onClick={addPayment} disabled={Boolean(paymentDisabledReason) || paymentBusy} className="btn-primary mt-2 disabled:cursor-not-allowed disabled:opacity-50">
+            <button title={paymentDisabledReason} onClick={addPayment} disabled={Boolean(paymentDisabledReason || loadError) || paymentBusy || Boolean(pendingPayment)} className="btn-primary mt-2 disabled:cursor-not-allowed disabled:opacity-50">
               {paymentBusy ? "Se înregistrează…" : "Adaugă plata"}
             </button>
             {paymentDisabledReason && <p className="text-xs" style={{ color: "var(--text-faint)" }}>{paymentDisabledReason}</p>}
@@ -261,7 +321,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
                   <span>
                     {new Date(p.date).toLocaleDateString("ro-RO")} &middot; {p.method}
                   </span>
-                  <span className="num">{fmt(p.amount)} RON</span>
+                  <span className="num">{fmt(p.amount)} {invoice.currency}</span>
                 </div>
               ))}
             </div>
@@ -270,7 +330,7 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
 
         <div className="card">
           <div className="section-label">Chitante</div>
-          <button title={receiptDisabledReason} onClick={generateReceipt} disabled={Boolean(receiptDisabledReason) || receiptBusy} className="btn-primary mb-2 disabled:cursor-not-allowed disabled:opacity-50">
+          <button title={receiptDisabledReason} onClick={generateReceipt} disabled={Boolean(receiptDisabledReason || loadError) || receiptBusy || Boolean(pendingReceipt)} className="btn-primary mb-2 disabled:cursor-not-allowed disabled:opacity-50">
             <ReceiptIcon size={14} /> {receiptBusy ? "Se generează…" : `Generează chitanță · ${fmt(receiptAvailable)} RON`}
           </button>
           {receiptDisabledReason && <p className="mb-2 text-xs" style={{ color: "var(--text-faint)" }}>{receiptDisabledReason}</p>}

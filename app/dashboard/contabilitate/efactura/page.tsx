@@ -15,6 +15,10 @@ import {
 type Status = {
   configured: boolean;
   connected: boolean;
+  hasConnection: boolean;
+  canAttempt: boolean;
+  needsReconnect: boolean;
+  tokenStatus: string;
   environment: "test" | "production";
   redirectUri: string;
   connection?: { expiresAt: string; connectedAt: string };
@@ -27,6 +31,11 @@ type Status = {
     lastRunAt: string;
     lastSuccessAt: string | null;
   } | null;
+  backlog: {
+    pending: number; blocked: number; overdue: number; dueToday: number; archivePending: number;
+    oldestIssueDate: string | null; earliestDueDate: string | null;
+    issues: Array<{ invoiceId: number; reference: string; issueDate: string; deadline: string | null; status: string; blocked: boolean; overdue: boolean }>;
+  };
 };
 type Message = {
   id: number;
@@ -37,6 +46,7 @@ type Message = {
   documentDate: string;
   downloadId: string;
   createdAt: string;
+  archiveDownloadedAt: string | null;
 };
 
 const BUCHAREST_TIME_ZONE = "Europe/Bucharest";
@@ -123,11 +133,9 @@ export default function EFacturaPage() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Protecția e-Factura a eșuat.");
       await load();
-      setNotice(
-        d.skipped
-          ? d.reason
-          : `Protecție finalizată: ${d.checked} statusuri verificate, ${d.sent} facturi trimise, ${d.failed} erori.`,
-      );
+      const summary = d.skipped ? d.reason : `Procesare finalizată: ${d.checked} statusuri verificate, ${d.sent} facturi trimise, ${d.failed} erori; ${d.backlog?.pending || 0} facturi fără validare, ${d.backlog?.archivePending || 0} răspunsuri de arhivat.`;
+      if (d.skipped || d.failed || d.backlog?.pending || d.backlog?.archivePending) setError(summary);
+      else setNotice(summary);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Protecția e-Factura a eșuat.");
     } finally {
@@ -156,7 +164,7 @@ export default function EFacturaPage() {
             Transmitere, statusuri și facturi primite prin API-ul oficial.
           </p>
         </div>
-        {status?.connected && (
+        {status?.configured && status?.canAttempt && (
           <div className="flex gap-2 flex-wrap">
             <button
               className="btn-primary"
@@ -164,7 +172,7 @@ export default function EFacturaPage() {
               disabled={protecting || busy}
             >
               <ShieldCheck size={15} />
-              {protecting ? "Se verifică…" : "Rulează protecția acum"}
+              {protecting ? "Se procesează…" : "Procesează coada ANAF"}
             </button>
             <button
               className="btn-secondary"
@@ -194,6 +202,10 @@ export default function EFacturaPage() {
           </span>
         </div>
       )}
+      {status?.needsReconnect && <div className="ref-error" role="alert"><strong>Conexiunea SPV necesită reconectare.</strong> Tokenul de acces este absent sau expirat și nu poate fi reînnoit automat.</div>}
+      {status?.tokenStatus === "EXPIRED_REFRESHABLE" && <div className="ef-safety-warning"><TriangleAlert size={17}/><span><strong>Tokenul de acces a expirat.</strong> Reînnoirea va fi încercată la următoarea operațiune ANAF. Până la reușita ei, accesul SPV nu este confirmat.</span></div>}
+      {status?.backlog && (status.backlog.pending > 0 || status.backlog.archivePending > 0) && <div className="ref-error" role="alert"><strong>{status.backlog.pending} facturi fără validare · {status.backlog.blocked} blocate · {status.backlog.overdue} cu termen estimat depășit · {status.backlog.dueToday} cu termen estimat azi.</strong><p>{status.backlog.archivePending} răspunsuri ANAF așteaptă arhivarea.{status.backlog.oldestIssueDate ? ` Cea mai veche factură: ${status.backlog.oldestIssueDate}.` : ""}{status.backlog.earliestDueDate ? ` Primul termen estimat de la emitere: ${status.backlog.earliestDueDate}.` : ""}</p></div>}
+      {status?.backlog?.issues.length ? <div className="card-table mb-4"><table><thead><tr><th>Factură</th><th>Emisă</th><th>Termen estimat</th><th>Status ANAF</th></tr></thead><tbody>{status.backlog.issues.map(issue => <tr key={issue.invoiceId}><td><a className="doc-chip" href={`/dashboard/contabilitate/invoices/${issue.invoiceId}#e-factura`}>{issue.reference}</a></td><td>{issue.issueDate}</td><td>{issue.deadline || "Verificare necesară"}{issue.overdue ? " · DEPĂȘIT" : ""}</td><td>{issue.status === "UNCERTAIN" ? "Rezultat necunoscut — verifică SPV; retrimitere blocată" : issue.status}</td></tr>)}</tbody></table><p className="page-subtitle p-3">Estimările folosesc 5 zile lucrătoare de la emitere, cu sărbătorile legale din România. Nu includ data operațiunii sau data-limită legală de emitere, care nu sunt înregistrate aici; termenul legal aplicabil poate fi anterior.</p></div> : null}
       <div className="ef-status-grid">
         <div className="card">
           <div className="section-label">Configurare</div>
@@ -213,8 +225,10 @@ export default function EFacturaPage() {
           </div>
           <div className="ef-status-line">
             <span>Conexiune SPV</span>
-            <strong>{status?.connected ? "Conectată" : "Neconectată"}</strong>
+            <strong>{status?.connected ? "Token de acces neexpirat" : status?.canAttempt ? "Token expirat · reînnoire disponibilă" : "Reconectare necesară"}</strong>
           </div>
+          {status?.connection?.expiresAt && <div className="ef-status-line"><span>Tokenul expiră la</span><strong>{new Date(status.connection.expiresAt).toLocaleString("ro-RO", { timeZone: BUCHAREST_TIME_ZONE })}</strong></div>}
+          <p className="page-subtitle">Starea de mai sus se bazează pe tokenul salvat. Drepturile certificatului pentru CIF sunt confirmate de ANAF la executarea unei operațiuni.</p>
           <div className="ef-status-line">
             <span>Ultima protecție automată</span>
             <strong
@@ -251,7 +265,7 @@ export default function EFacturaPage() {
               Adaugă în Vercel ANAF_CLIENT_ID, ANAF_CLIENT_SECRET,
               ANAF_REDIRECT_URI și ANAF_ENVIRONMENT.
             </p>
-          ) : status.connected ? (
+          ) : status.canAttempt && !status.needsReconnect ? (
             <button className="btn-danger" onClick={disconnect}>
               <Unlink size={14} />
               Deconectează ANAF
@@ -269,7 +283,7 @@ export default function EFacturaPage() {
           <div className="ef-flow">
             <Cloud size={28} />
             <p>
-              Factură validată local → XML CIUS-RO → încărcare ANAF → verificare
+              Factură validată local → XML CIUS-RO → validator ANAF → încărcare ANAF → verificare
               status → arhivare răspuns.
             </p>
           </div>
@@ -314,7 +328,7 @@ export default function EFacturaPage() {
                   </td>
                   <td className="num">{m.messageId}</td>
                   <td>{m.cif || "—"}</td>
-                  <td>{m.details || "—"}</td>
+                  <td>{m.details || "—"}<div className="page-subtitle">{m.archiveDownloadedAt ? "ZIP arhivat local, cu verificare SHA-256" : "ZIP încă nearhivat local"}</div></td>
                   <td>
                     {m.documentDate ||
                       new Date(m.createdAt).toLocaleDateString("ro-RO", {

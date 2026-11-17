@@ -1,10 +1,8 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import LegalPage from "@/components/LegalPage";
 import { siteConfig } from "@/lib/data";
 
-export const metadata: Metadata = {
-  title: "Declarație de Accesibilitate | Next Level Advertising Agency",
-};
+export const metadata = pageMetadata("Declarație de Accesibilitate | Next Level", "Angajamentul Next Level privind accesibilitatea site-ului și modalitatea de a semnala dificultăți de acces sau utilizare.", "/declaratie-de-accesibilitate");
 
 export default function AccessibilityPage() {
   return (

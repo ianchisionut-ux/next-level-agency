@@ -3,6 +3,7 @@ export type BlogPost = {
   title: string;
   excerpt: string;
   date: string;
+  publishedAt: string;
   content: string[];
 };
 
@@ -12,6 +13,7 @@ export const posts: BlogPost[] = [
     title: "5 greșeli frecvente în campaniile de Performance Marketing",
     excerpt: "Cele mai comune greșeli care îți consumă bugetul de ads și cum le eviți.",
     date: "12 Iulie 2026",
+    publishedAt: "2026-07-12",
     content: [
       "Aproape orice afacere care rulează reclame plătite trece, la un moment dat, prin aceleași capcane. Vestea bună e că sunt ușor de identificat și, odată corectate, aduc o îmbunătățire vizibilă a rezultatelor în doar câteva săptămâni.",
       "Prima greșeală este lipsa unui obiectiv clar de business în spatele campaniei. Multe conturi sunt optimizate după click-uri sau afișări, în loc de conversii reale — lead-uri, comenzi, apeluri. Fără o legătură directă cu ce înseamnă succes pentru afacerea ta, orice cifră de pe platformă poate arăta bine fără să însemne nimic.",
@@ -27,6 +29,7 @@ export const posts: BlogPost[] = [
     title: "De ce brandingul contează mai mult decât crezi",
     excerpt: "Cum o identitate vizuală puternică îți crește rata de conversie.",
     date: "3 Iulie 2026",
+    publishedAt: "2026-07-03",
     content: [
       "Mulți proprietari de afaceri văd brandingul ca pe un „nice to have” — ceva de care te ocupi după ce ai deja clienți și buget de sponsorizat pe rețele. În realitate, e adesea exact invers: brandingul e motivul pentru care oamenii au încredere să cumpere de la tine în primul rând.",
       "Un brand consistent — aceleași culori, același ton de comunicare, aceeași calitate vizuală pe site, pe rețele și în materialele tipărite — transmite un mesaj simplu: „știm ce facem”. Iar acest mesaj se traduce direct în încredere, iar încrederea se traduce în conversii.",
@@ -40,6 +43,7 @@ export const posts: BlogPost[] = [
     title: "Automatizări AI care îți economisesc ore întregi pe săptămână",
     excerpt: "Trei fluxuri de automatizare pe care le implementăm des la clienți.",
     date: "24 Iunie 2026",
+    publishedAt: "2026-06-24",
     content: [
       "Automatizarea nu înseamnă să înlocuiești oamenii — înseamnă să scoți din calendarul lor task-urile repetitive, ca să rămână timp pentru deciziile care chiar contează. Iată trei fluxuri simple, dar cu impact mare, pe care le implementăm frecvent.",
       "Primul: rutarea automată a lead-urilor. În loc ca un formular de contact să ajungă într-un inbox verificat sporadic, lead-ul e trimis instant către persoana potrivită, în funcție de tipul cererii, cu notificare pe WhatsApp sau Slack. Rezultatul: timp de răspuns de minute, nu de ore, iar timpul de răspuns e unul dintre cei mai puternici factori care influențează dacă un lead se transformă în client.",
@@ -53,6 +57,7 @@ export const posts: BlogPost[] = [
     title: "SEO local: cum apari primul când clienții te caută în orașul tău",
     excerpt: "Pașii esențiali pentru Google Business Profile, recenzii și cuvinte cheie locale.",
     date: "15 Iunie 2026",
+    publishedAt: "2026-06-15",
     content: [
       "Pentru majoritatea afacerilor cu o zonă geografică clară — un service auto, un restaurant, o clinică — SEO local contează mai mult decât clasamentul general pe Google. Practic, contează să apari când cineva caută exact ce oferi tu, în orașul tău.",
       "Primul pas, adesea neglijat: profilul Google Business complet și actualizat. Nume, adresă, telefon, program de funcționare, categorii corecte și poze reale ale locației. Un profil incomplet sau cu informații vechi pierde clienți înainte ca aceștia să ajungă măcar pe site.",
@@ -67,6 +72,7 @@ export const posts: BlogPost[] = [
     title: "Site vechi vs. site nou: când merită să investești în redesign",
     excerpt: "Semnele că website-ul tău îți pierde clienți în loc să-i aducă.",
     date: "5 Iunie 2026",
+    publishedAt: "2026-06-05",
     content: [
       "Un site nu trebuie refăcut doar pentru că „e vechi”. Există însă câteva semne clare că design-ul actual chiar te costă clienți, nu doar imagine.",
       "Primul semn: site-ul nu arată bine sau nu funcționează corect pe telefon. Majoritatea vizitatorilor vin de pe mobil — dacă textul e prea mic, butoanele greu de apăsat sau paginile se încarcă greu, pierzi vizitatori chiar înainte să afle ce oferi.",
@@ -81,6 +87,7 @@ export const posts: BlogPost[] = [
     title: "Cum arată un raport lunar de marketing care chiar contează",
     excerpt: "Ce cifre urmărim de fapt și de ce restul e doar zgomot.",
     date: "28 Mai 2026",
+    publishedAt: "2026-05-28",
     content: [
       "Multe rapoarte de marketing sunt pline de cifre impresionante — afișări, click-uri, engagement — dar sărace în informația care contează cu adevărat: cât de aproape ești de obiectivele afacerii tale.",
       "Un raport util pornește de la o singură întrebare: ce înseamnă succes luna asta? Mai multe lead-uri? Mai multe vânzări? Un cost mai mic per client? Toate cifrele din raport ar trebui să răspundă, direct sau indirect, la această întrebare.",
@@ -94,6 +101,7 @@ export const posts: BlogPost[] = [
     title: "Facebook vs. Google Ads: unde își găsește afacerea ta clienții",
     excerpt: "Diferențele cheie și cum alegi platforma potrivită pentru bugetul tău.",
     date: "19 Mai 2026",
+    publishedAt: "2026-05-19",
     content: [
       "Una dintre cele mai frecvente întrebări pe care le primim de la clienți noi este: „Ar trebui să facem reclame pe Facebook sau pe Google?” Răspunsul scurt: depinde de cum caută clienții tăi soluția de care au nevoie.",
       "Google Ads funcționează cel mai bine atunci când oamenii caută activ ceva — „instalator urgent Cluj”, „avocat divorț București”. E marketing bazat pe intenție: cineva are deja o problemă și caută o soluție chiar acum.",
@@ -107,6 +115,7 @@ export const posts: BlogPost[] = [
     title: "Conținutul care vinde: ghid rapid de copywriting pentru IMM-uri",
     excerpt: "Structuri simple de texte care transformă vizitatorii în clienți.",
     date: "8 Mai 2026",
+    publishedAt: "2026-05-08",
     content: [
       "Nu trebuie să fii scriitor profesionist ca să scrii texte care vând. Ai nevoie doar de o structură clară care pune clientul, nu produsul, în centrul mesajului.",
       "O structură simplă și eficientă: problemă → soluție → dovadă → acțiune. Începe prin a numi exact problema pe care o rezolvi (nu produsul în sine). Continuă cu modul în care afacerea ta rezolvă acea problemă. Adaugă o dovadă — un rezultat, o recenzie, un număr concret. Închide cu un îndemn clar la acțiune: sună, comandă, programează-te.",
@@ -120,6 +129,7 @@ export const posts: BlogPost[] = [
     title: "De ce rata de conversie contează mai mult decât traficul",
     excerpt: "Un site cu mai puțini vizitatori dar bine optimizat poate vinde mai mult.",
     date: "29 Aprilie 2026",
+    publishedAt: "2026-04-29",
     content: [
       "„Vreau mai mult trafic pe site” este, probabil, cea mai frecventă cerere pe care o primim. Dar traficul, de unul singur, nu înseamnă nimic dacă vizitatorii nu se transformă în clienți.",
       "Imaginează-ți două site-uri: unul primește 10.000 de vizitatori pe lună și convertește 1% dintre ei (100 de clienți); altul primește doar 2.000 de vizitatori, dar convertește 6% (120 de clienți). Al doilea site are mult mai puțin trafic, dar generează mai multe rezultate — cu un buget de marketing mult mai mic.",
