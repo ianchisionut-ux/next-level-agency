@@ -34,7 +34,9 @@ const canonicalOrigin = "https://www.nextlevel-agency.ro";
       assert.ok(html.includes("/hero/nextlevel-core.webp") || html.includes("%2Fhero%2Fnextlevel-core.webp"), 'Server-rendered Blender fallback image');
       assert.ok(!html.includes("/video/hero-bg.mp4"));
       assert.ok(html.includes("ProfessionalService"));
+      for (const anchor of ['web-development', 'performance-marketing', 'ai-automatizari']) assert.ok(html.includes(`/servicii#${anchor}`), `Clickable 3D service link ${anchor}`);
     }
+    if (path === '/servicii') for (const anchor of ['web-development', 'performance-marketing', 'ai-automatizari']) assert.ok(html.includes(`id="${anchor}"`), `Service destination ${anchor}`);
     if (path.startsWith("/blog/")) assert.ok(html.includes("BlogPosting") && html.includes("BreadcrumbList"));
   }
   const model = await fetch(new URL('/hero/nextlevel-core.glb', base));
@@ -42,7 +44,7 @@ const canonicalOrigin = "https://www.nextlevel-agency.ro";
   const modelBytes = Buffer.from(await model.arrayBuffer());
   assert.equal(modelBytes.toString('ascii', 0, 4), 'glTF');
   assert.ok(modelBytes.length < 1_000_000, 'Interactive Blender model stays below 1 MB');
-  for (const path of ["/login", "/signup", "/forgot-password", "/offline", "/dashboard/contabilitate", "/api/accounting/invoices"]) {
+  for (const path of ["/login", "/signup", "/forgot-password", "/offline", "/dashboard/contabilitate", "/api/accounting/invoices", "/api/accounting/health"]) {
     const response = await fetch(new URL(path, base), { redirect: "manual" });
     assert.ok(response.headers.get("x-robots-tag")?.includes("noindex"), `Private indexing directive on ${path}`);
     assert.ok(response.status < 500, `No server failure on ${path}`);

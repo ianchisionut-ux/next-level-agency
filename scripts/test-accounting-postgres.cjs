@@ -176,6 +176,20 @@ async function main() {
     await schema.testUpgrade(db.pool);
     assert.equal((await query('SELECT version FROM accounting_schema_meta')).rows[0].version, 13);
     assert.ok((await query('SELECT COUNT(*)::int AS n FROM accounting_audit_events')).rows[0].n >= 7);
+    const health = await db.load('lib/accounting/health.ts').getAccountingHealth();
+    assert.equal(health.ok, true);
+    assert.equal(health.schema.numericColumns, 16);
+    assert.equal(health.schema.checkConstraints, 4);
+    assert.equal(health.schema.uniqueValidIndexes, 3);
+    assert.equal(health.financial.invoicesWithErrors, 0);
+    // The diagnostic must detect a corrupt historical header without writing
+    // documents or hiding the discrepancy behind the v13 version marker.
+    await query('ALTER TABLE invoices DROP CONSTRAINT invoices_financial_invariants');
+    await query('UPDATE invoices SET total=total+0.01 WHERE id=$1', [cashId]);
+    const unhealthy = await db.load('lib/accounting/health.ts').getAccountingHealth();
+    assert.equal(unhealthy.ok, false);
+    assert.equal(unhealthy.financial.headerTotalsMismatches, 1);
+    assert.equal(unhealthy.schema.checkConstraints, 3);
     console.log('Isolated PostgreSQL integration passed: schema migration, eight concurrent issuance retries, exact totals, payments/REF/refunds, storno, cash receipt, SQL constraints, transactional rollback and immutable history. No live database or ANAF requests.');
   } finally { await db.engine.close(); }
 }

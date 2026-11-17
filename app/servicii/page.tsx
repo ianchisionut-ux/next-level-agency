@@ -49,7 +49,8 @@ export default function ServiciiPage() {
                 return (
                   <div
                     key={service.title}
-                    className="rounded-2xl border border-line-light bg-paper-soft p-8 transition hover:border-blue/40 hover:shadow-lg hover:shadow-blue/10"
+                    id={service.icon === "code" ? "web-development" : service.icon === "chart" ? "performance-marketing" : service.icon === "bot" ? "ai-automatizari" : undefined}
+                    className="scroll-mt-28 rounded-2xl border border-line-light bg-paper-soft p-8 transition hover:border-blue/40 hover:shadow-lg hover:shadow-blue/10"
                   >
                     <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue/10 text-blue">
                       <Icon className="h-6 w-6" />

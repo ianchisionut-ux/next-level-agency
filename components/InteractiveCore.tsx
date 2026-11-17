@@ -1,17 +1,24 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Hand, Pause, Play, RotateCcw, Sparkles } from "lucide-react";
+import { ArrowUpRight, Hand, Pause, Play, RotateCcw, Sparkles } from "lucide-react";
 import type * as Three from "three";
 
 type CoreControls = { pulse: () => void; reset: () => void; rotate: (x: number, y: number) => void; zoom: (factor: number) => void };
+const coreServices = [
+  { key: "web", title: "Web & App Dev", description: "Experiențe care convertesc", href: "/servicii#web-development", mesh: "NL / Web glass panel" },
+  { key: "marketing", title: "Performance Marketing", description: "Campanii. Rezultate. Creștere.", href: "/servicii#performance-marketing", mesh: "NL / Growth bar 5" },
+  { key: "automation", title: "AI & Automatizări", description: "Mai mult impact. Mai puțin efort.", href: "/servicii#ai-automatizari", mesh: "NL / Automation module 1" },
+] as const;
 
 /** The editable Blender model is loaded only when the hero is near the viewport. */
 export default function InteractiveCore() {
   const host = useRef<HTMLDivElement>(null);
   const api = useRef<CoreControls | null>(null);
   const pausedRef = useRef(false);
+  const serviceLabels = useRef<(HTMLDivElement | null)[]>([]);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -25,6 +32,7 @@ export default function InteractiveCore() {
     let frame = 0;
     let release = () => {};
     let schedule = () => {};
+    const resetLabels = () => serviceLabels.current.forEach(label => { if (label) label.style.cssText = ""; });
 
     const init = async () => {
       started = true;
@@ -61,6 +69,29 @@ export default function InteractiveCore() {
         controls.saveState();
         const stage = new THREE.Group();
         scene.add(stage);
+        const projected = new THREE.Vector3();
+        const labelTargets: (Three.Object3D | undefined)[] = [];
+        const projectLabels = () => {
+          const width = mount.clientWidth, height = mount.clientHeight;
+          if (!width || !height) return;
+          stage.updateMatrixWorld(true);
+          camera.updateMatrixWorld();
+          labelTargets.forEach((target, index) => {
+            const label = serviceLabels.current[index];
+            if (!target || !label) return;
+            target.getWorldPosition(projected).project(camera);
+            // Three DOM style writes per rendered frame; React stays idle.
+            const edge = Math.min(width * 0.25, 110);
+            const anchorX = (projected.x * 0.5 + 0.5) * width;
+            const anchorY = (-projected.y * 0.5 + 0.5) * height;
+            const x = Math.max(edge, Math.min(width - edge, anchorX));
+            const y = Math.max(82, Math.min(height - 100, anchorY));
+            const dx = x - anchorX, dy = y - anchorY;
+            const connectorLength = Math.hypot(dx, 25 - dy);
+            const connectorAngle = Math.atan2(dx, 25 - dy) * 180 / Math.PI;
+            label.style.cssText = `transform:translate3d(${anchorX.toFixed(2)}px,${anchorY.toFixed(2)}px,0);--label-x:${dx.toFixed(2)}px;--label-y:${dy.toFixed(2)}px;--connector-length:${connectorLength.toFixed(2)}px;--connector-angle:${connectorAngle.toFixed(2)}deg`;
+          });
+        };
         const environment = new RoomEnvironment();
         const pmrem = new THREE.PMREMGenerator(renderer);
         const environmentTarget = pmrem.fromScene(environment, 0.04);
@@ -106,7 +137,7 @@ export default function InteractiveCore() {
           emissive.forEach(({ material, intensity }) => { material.emissiveIntensity = intensity * (1 + pulse * 1.8); });
           halos.forEach((halo, index) => { (halo.material as Three.SpriteMaterial).opacity = 0.28 + pulse * 0.42 + (animating ? Math.sin(now * 0.0015 + index) * 0.055 : 0); });
           if (now - lastRender >= 1000 / 40 || !animating || pulse > 0) {
-            renderer.render(scene, camera); lastRender = now;
+            renderer.render(scene, camera); projectLabels(); lastRender = now;
           }
           rendering = false;
           if (animating || changed || pulse > 0) frame = requestAnimationFrame(render);
@@ -122,11 +153,12 @@ export default function InteractiveCore() {
         resize.observe(mount);
         controls.addEventListener("change", schedule);
         controls.addEventListener("start", schedule);
-        const contextLost = (event: Event) => { event.preventDefault(); contextUnavailable = true; cancelAnimationFrame(frame); frame = 0; api.current = null; setFailed(true); setReady(false); setStatus("Previzualizarea 3D nu este disponibilă. Imaginea Blender rămâne vizibilă."); };
+        const contextLost = (event: Event) => { event.preventDefault(); contextUnavailable = true; cancelAnimationFrame(frame); frame = 0; api.current = null; resetLabels(); setFailed(true); setReady(false); setStatus("Previzualizarea 3D nu este disponibilă. Imaginea Blender rămâne vizibilă."); };
         renderer.domElement.addEventListener("webglcontextlost", contextLost);
         release = () => {
           if (released) return;
           released = true;
+          resetLabels();
           cancelAnimationFrame(frame);
           resize.disconnect();
           controls.dispose();
@@ -154,6 +186,7 @@ export default function InteractiveCore() {
         model.scene.scale.setScalar(scale);
         model.scene.position.copy(center).multiplyScalar(-scale);
         stage.add(model.scene);
+        coreServices.forEach((service, index) => { labelTargets[index] = model.scene.getObjectByName(THREE.PropertyBinding.sanitizeNodeName(service.mesh)); });
         model.scene.traverse(object => {
           if (!(object instanceof THREE.Mesh)) return;
           const materials = Array.isArray(object.material) ? object.material : [object.material];
@@ -174,7 +207,7 @@ export default function InteractiveCore() {
           rotate: (x, y) => { stage.rotation.y += x; stage.rotation.x += y; schedule(); },
           zoom: factor => { const length = Math.max(controls.minDistance, Math.min(controls.maxDistance, camera.position.length() * factor)); camera.position.setLength(length); controls.update(); schedule(); },
         };
-        renderer.render(scene, camera);
+        renderer.render(scene, camera); projectLabels();
         setReady(true); setStatus("Modelul Blender este interactiv. Trage cu mouse-ul sau degetul pentru rotire.");
         schedule();
       } catch {
@@ -215,6 +248,15 @@ export default function InteractiveCore() {
       <div className="nl-core-stage" tabIndex={0} role="group" aria-label="Ecosistem 3D Next Level, rotire interactivă" aria-describedby="nl-core-help" onKeyDown={keyboard}>
         <Image src="/hero/nextlevel-core.webp" alt="Ecosistem 3D Next Level creat în Blender: nucleu de sticlă, orbite cyan, interfață web, automatizări și grafic de performanță" width={1200} height={1200} priority sizes="(min-width: 1280px) 680px, (min-width: 1024px) 50vw, 100vw" className="nl-core-render nl-core-fallback" />
         <div ref={host} className="nl-core-canvas" aria-hidden="true" />
+        <div className="nl-core-services" aria-label="Explorează serviciile din ecosistem">
+          {coreServices.map((service, index) => <div key={service.key} ref={element => { serviceLabels.current[index] = element; }} className={`nl-core-service-label nl-core-service-${service.key}`}>
+            <span className="nl-core-service-connector" aria-hidden="true" />
+            <Link href={service.href} className="nl-core-service-link">
+              <span><strong>{service.title}</strong><small>{service.description}</small></span>
+              <ArrowUpRight size={13} aria-hidden="true" />
+            </Link>
+          </div>)}
+        </div>
       </div>
       <div className="nl-core-controls">
         <span id="nl-core-help"><Hand size={13} aria-hidden="true" /> Trage pentru a roti <span className="nl-core-keyboard-help">· săgeți / + / −</span></span>
