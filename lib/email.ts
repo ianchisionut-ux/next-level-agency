@@ -6,7 +6,13 @@ function getResend() {
   return new Resend(key);
 }
 
-const FROM = process.env.EMAIL_FROM || "Signal <onboarding@resend.dev>";
+const FROM = process.env.EMAIL_FROM || "Next Level Agency <contact@nextlevel-agency.ro>";
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]!));
+function emailLink(value: string) {
+  const url = new URL(value);
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname))) throw new Error("Link e-mail invalid.");
+  return escapeHtml(url.toString());
+}
 
 export async function sendInvitationEmail(params: {
   to: string;
@@ -15,17 +21,17 @@ export async function sendInvitationEmail(params: {
   acceptUrl: string;
 }) {
   const resend = getResend();
-  await resend.emails.send({
+  const result = await resend.emails.send({
     from: FROM,
     to: params.to,
     subject: `${params.inviterName} te-a invitat în ${params.workspaceName} pe Signal`,
     html: `
       <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
         <p style="color: #0E1013; font-size: 15px;">
-          <strong>${params.inviterName}</strong> te-a invitat să colaborezi în
-          <strong>${params.workspaceName}</strong> pe Signal, platforma de marketing social.
+          <strong>${escapeHtml(params.inviterName)}</strong> te-a invitat să colaborezi în
+          <strong>${escapeHtml(params.workspaceName)}</strong> pe Signal, platforma de marketing social.
         </p>
-        <a href="${params.acceptUrl}"
+        <a href="${emailLink(params.acceptUrl)}"
            style="display: inline-block; margin-top: 16px; background: #4F7CFF; color: white;
                   padding: 10px 20px; border-radius: 10px; text-decoration: none; font-size: 14px;">
           Acceptă invitația
@@ -36,11 +42,12 @@ export async function sendInvitationEmail(params: {
       </div>
     `,
   });
+  if (result.error || !result.data?.id) throw new Error("Resend nu a acceptat trimiterea invitației.");
 }
 
 export async function sendPasswordResetEmail(params: { to: string; resetUrl: string }) {
   const resend = getResend();
-  await resend.emails.send({
+  const result = await resend.emails.send({
     from: FROM,
     to: params.to,
     subject: "Resetează-ți parola pe Signal",
@@ -50,7 +57,7 @@ export async function sendPasswordResetEmail(params: { to: string; resetUrl: str
           Ai cerut resetarea parolei pentru contul tău Signal. Apasă butonul de mai jos
           ca să alegi o parolă nouă.
         </p>
-        <a href="${params.resetUrl}"
+        <a href="${emailLink(params.resetUrl)}"
            style="display: inline-block; margin-top: 16px; background: #4F7CFF; color: white;
                   padding: 10px 20px; border-radius: 10px; text-decoration: none; font-size: 14px;">
           Resetează parola
@@ -62,6 +69,7 @@ export async function sendPasswordResetEmail(params: { to: string; resetUrl: str
       </div>
     `,
   });
+  if (result.error || !result.data?.id) throw new Error("Resend nu a acceptat trimiterea instrucțiunilor.");
 }
 
 

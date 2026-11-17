@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
     return privatePaths.map(source => ({ source, headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }] }));
   },
   outputFileTracingRoot: process.cwd(),
-  outputFileTracingIncludes: { "/*": ["./prisma/accounting-safety-v13.sql"] },
+  outputFileTracingIncludes: { "/*": ["./prisma/accounting-safety-v13.sql", "./prisma/email-mailbox.sql", "./prisma/mailbox-archive.sql"] },
   turbopack: {
     root: process.cwd(),
   },

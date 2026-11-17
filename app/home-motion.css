@@ -2,8 +2,10 @@
 .nl-landing { overflow-x: clip; }
 .nl-hero { position: relative; isolation: isolate; overflow: hidden; background: #fff; color: #0b1c32; }
 .nl-hero-grid { position: absolute; inset: 0; z-index: -1; opacity: .4; background-image: linear-gradient(#60a5fa0c 1px, transparent 1px), linear-gradient(90deg, #60a5fa0c 1px, transparent 1px); background-size: 64px 64px; mask-image: linear-gradient(black, transparent); }
-.nl-hero-content { position: relative; display: grid; align-items: center; gap: 20px; max-width: 1400px; margin: auto; padding: 84px 32px 48px; }
+.nl-hero-main { position: relative; display: flex; flex-direction: column; }
+.nl-hero-content { position: relative; z-index: 2; order: 1; display: flex; align-items: center; max-width: 1400px; width: 100%; margin: auto; padding: 84px 32px 16px; pointer-events: none; }
 .nl-hero-copy { position: relative; z-index: 2; }
+.nl-hero-copy { pointer-events: auto; }
 .nl-live-badge { display: inline-flex; align-items: center; gap: 10px; border: 1px solid #bfdbe9; border-radius: 99px; padding: 9px 14px; font-size: 11px; letter-spacing: .05em; color: #405a73; background: linear-gradient(110deg, #eff8fc 35%, #dbeafe 50%, #eff8fc 65%); background-size: 220% 100%; animation: nl-shimmer 7s ease-in-out infinite; }
 .nl-live-badge > span, .nl-node-dot { width: 6px; height: 6px; border-radius: 50%; background: #22d3ee; box-shadow: 0 0 14px #22d3ee88; }
 .nl-hero h1 { margin-top: 25px; font-size: clamp(2.7rem, 4.7vw, 4.65rem); font-weight: 800; line-height: 1.08; letter-spacing: -.055em; }
@@ -18,7 +20,7 @@
 .nl-hero a:focus-visible { outline: 3px solid #67e8f9; outline-offset: 5px; }
 .nl-hero-disciplines { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 32px; font-size: 10px; color: #5a7087; letter-spacing: .03em; }
 .nl-hero-disciplines span + span::before { content: "/"; color: #365679; margin-right: 18px; }
-.nl-hero-art { position: relative; min-width: 0; margin: 0 -20px; aspect-ratio: 1; transition: transform .25s ease-out; }
+.nl-hero-art { position: relative; order: 2; min-width: 0; width: 100%; height: clamp(380px, 88vw, 650px); }
 .nl-core-render { position: relative; z-index: 1; width: 100%; height: auto; }
 .nl-orbit-halo { position: absolute; inset: 18%; border-radius: 50%; background: radial-gradient(ellipse, #bae6fd55, #dbeafe22 45%, transparent 70%); }
 .nl-art-caption { position: absolute; z-index: 2; bottom: 2%; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 9px; color: #56718b; white-space: nowrap; font-size: 10px; }
@@ -74,7 +76,19 @@
 @keyframes nl-gradient { 0%, 100% { background-position: 0 50%; } 50% { background-position: 100% 50%; } }
 @keyframes nl-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -10px; } }
 @keyframes nl-reveal { from { opacity: .25; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
-@media (min-width: 1024px) { .nl-hero-content { grid-template-columns: 1fr 1fr; min-height: 680px; padding-top: 40px; padding-bottom: 35px; } }
+@media (min-width: 1024px) {
+  .nl-hero-main { min-height: clamp(720px, 78vh, 920px); }
+  .nl-hero-content { flex: 1; min-height: inherit; padding-top: 64px; padding-bottom: 64px; }
+  .nl-hero-copy { width: 51%; padding: 22px 0; background: linear-gradient(90deg,#fffffff5,#ffffffdf 78%,#ffffff00); }
+  .nl-hero-art { position: absolute; z-index: 1; inset: 0; height: 100%; }
+  .nl-core-fallback { left: 49%; right: auto; width: 50%; }
+  .nl-orbit-halo { left: 52%; right: 4%; top: 10%; bottom: 10%; }
+  .nl-core-controls { left: 53%; right: 5%; bottom: 3%; }
+  .nl-art-caption { left: 75%; bottom: 0; }
+  .nl-core-service-web { left: 61%; }
+  .nl-core-service-marketing { left: 88%; }
+  .nl-core-service-automation { left: 81%; }
+}
 @media (max-width: 640px) { .nl-hero-content { padding: 52px 24px 0; gap: 0; } .nl-hero-description { font-size: 14px; } .nl-hero-actions { gap: 10px; } .nl-primary-cta, .nl-secondary-cta { padding: 14px 17px; font-size: 12px; } .nl-hero-art { margin-top: 8px; } .nl-art-label { padding: 8px 10px; font-size: 9px; } .nl-hero-bottom { padding-inline: 24px; font-size: 8px; } }
 @media (max-width: 480px) { .nl-core-keyboard-help { display: none; } .nl-core-controls { left: 5%; right: 5%; bottom: 5%; font-size: 9px; } .nl-art-caption { bottom: -3%; font-size: 9px; } .nl-core-service-link { padding: 8px; gap: 6px; max-width: 160px; border-radius: 8px; } .nl-core-service-link strong { font-size: 9px; } .nl-core-service-link small { font-size: 7px; margin-top: 3px; } }
 @media (prefers-reduced-motion: reduce) { .nl-landing *, .nl-landing *::before { animation: none !important; transition: none !important; scroll-behavior: auto !important; } .nl-landing [data-tilt], .nl-landing [data-magnetic] { transform: none !important; } html:has(.nl-landing) { scroll-behavior: auto; } }

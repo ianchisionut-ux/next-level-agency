@@ -9,6 +9,8 @@
     "test:invoicing-core": "node scripts/test-invoicing-core.cjs",
     "audit:invoicing": "node scripts/audit-invoicing.cjs",
     "check:public-site": "node scripts/check-public-site.cjs",
+    "test:hero": "node scripts/test-hero-framing.cjs",
+    "test:mailbox": "node scripts/test-mailbox-core.cjs && node scripts/test-mailbox-service.cjs && node scripts/test-mailbox-archive.cjs && node scripts/test-mailbox-ui.cjs && node scripts/test-transaction-email.cjs && node scripts/test-mailbox-setup.cjs",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
@@ -32,6 +34,7 @@
     "react-dom": "^19.0.0",
     "recharts": "^2.12.7",
     "resend": "^4.0.1",
+    "sanitize-html": "2.18.2",
     "three": "0.187.0"
   },
   "overrides": {
@@ -45,6 +48,7 @@
     "@types/pg": "^8.23.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/sanitize-html": "2.16.2",
     "@types/three": "0.187.0",
     "prisma": "^6.1.0",
     "tailwindcss": "^4.0.0",

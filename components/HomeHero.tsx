@@ -6,7 +6,13 @@ export default function HomeHero() {
   return (
     <section className="nl-hero" aria-labelledby="hero-title">
       <div className="nl-hero-grid" aria-hidden="true" />
-      <div className="nl-hero-content">
+      <div className="nl-hero-main">
+        <div className="nl-hero-art">
+          <div className="nl-orbit-halo" aria-hidden="true" />
+          <InteractiveCore />
+          <div className="nl-art-caption"><Orbit size={15} aria-hidden="true" /><span>Web. Automatizări. Performanță.</span></div>
+        </div>
+        <div className="nl-hero-content">
         <div className="nl-hero-copy">
           <p className="nl-live-badge"><span aria-hidden="true" /> Next Level · Digital growth studio</p>
           <h1 id="hero-title">Marketing digital.<br />Web design.<br /><span className="nl-gradient-text">Totul, la alt nivel.</span></h1>
@@ -17,10 +23,6 @@ export default function HomeHero() {
           </div>
           <div className="nl-hero-disciplines" aria-label="Serviciile agenției"><span>Strategie & branding</span><span>Web & SEO</span><span>AI & automatizări</span></div>
         </div>
-        <div className="nl-hero-art">
-          <div className="nl-orbit-halo" aria-hidden="true" />
-          <InteractiveCore />
-          <div className="nl-art-caption"><Orbit size={15} aria-hidden="true" /><span>Web. Automatizări. Performanță.</span></div>
         </div>
       </div>
       <div className="nl-hero-bottom"><span>CREĂM. OPTIMIZĂM. SCALĂM.</span><a href="#servicii">Descoperă ce putem construi <span aria-hidden="true">↓</span></a></div>

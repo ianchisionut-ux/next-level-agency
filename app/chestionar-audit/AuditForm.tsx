@@ -17,7 +17,7 @@ import {
 // Chestionar & Audit — Proiect Site Web
 // Formular multi-pas, adaptat după PDF-ul de audit Next Level.
 // La trimitere, POST către /api/audit -> Resend trimite un email formatat
-// către nextlevel.zalau@gmail.com (aceeași infrastructură de email ca restul site-ului).
+// către contact@nextlevel-agency.ro (aceeași infrastructură de email ca restul site-ului).
 // -----------------------------------------------------------------------------
 
 type FormState = {
@@ -944,8 +944,8 @@ export default function AuditForm() {
             {status === "error" && (
               <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
                 Ceva nu a mers bine la trimitere. Ne poți scrie direct la{" "}
-                <a href="mailto:nextlevel.zalau@gmail.com" className="underline">
-                  nextlevel.zalau@gmail.com
+                <a href="mailto:contact@nextlevel-agency.ro" className="underline">
+                  contact@nextlevel-agency.ro
                 </a>{" "}
                 sau la +40 740 565 663.
               </p>

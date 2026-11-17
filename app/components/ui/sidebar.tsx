@@ -15,6 +15,7 @@ const NAV_GROUPS = [
     { href: "/dashboard/oferte-web", label: "Oferte Web", icon: InboxIcon, superAdminOnly: true },
   ]},
   { label: "Intern", items: [
+    { href: "/dashboard/email", label: "E-mail", icon: InboxIcon, superAdminOnly: true },
     { href: "/dashboard/calendar", label: "Calendar intern", icon: CalendarIcon },
     { href: "/dashboard/registru", label: "Registru intern", icon: RegistryIcon },
     { href: "/dashboard/registru-acte", label: "Registru acte", icon: RegistryIcon, superAdminOnly: true },

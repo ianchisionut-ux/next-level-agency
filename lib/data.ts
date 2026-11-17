@@ -12,7 +12,7 @@ export const siteConfig = {
   caen: "6210",
   registrationDate: "24 august 2026",
   phone: "+40 740 565 663",
-  email: "nextlevel.zalau@gmail.com",
+  email: "contact@nextlevel-agency.ro",
   address: "Str. Fundătura nr. 1A, sat Mirșid, com. Mirșid, jud. Sălaj, România",
   // Numărul de WhatsApp în format internațional, FĂRĂ + și fără spații.
   whatsappNumber: "40740565663",

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ArrowUpRight, Hand, Pause, Play, RotateCcw, Sparkles } from "lucide-react";
 import type * as Three from "three";
+import { HERO_FIELD_OF_VIEW, heroFraming, layoutHeroLabels, type HeroLabelAnchor, type HeroLabelRect } from "@/lib/hero-framing";
 
 type CoreControls = { pulse: () => void; reset: () => void; rotate: (x: number, y: number) => void; zoom: (factor: number) => void };
 const coreServices = [
@@ -51,41 +52,71 @@ export default function InteractiveCore() {
         renderer.domElement.setAttribute("aria-hidden", "true");
         mount.appendChild(renderer.domElement);
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+        const camera = new THREE.PerspectiveCamera(HERO_FIELD_OF_VIEW, 1, 0.1, 200);
         camera.position.set(3, 1.7, 6.9);
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enablePan = false;
         controls.enableDamping = true;
         controls.dampingFactor = 0.08;
         controls.autoRotateSpeed = 0.55;
-        controls.minDistance = 4.7;
-        controls.maxDistance = 11;
+        controls.minDistance = 1;
+        controls.maxDistance = 100;
         controls.minPolarAngle = 0.35;
         controls.maxPolarAngle = Math.PI - 0.35;
         controls.rotateSpeed = 0.7;
         controls.zoomSpeed = 0.5;
         controls.target.set(0, 0, 0);
         controls.update();
-        controls.saveState();
         const stage = new THREE.Group();
         scene.add(stage);
+        let sceneRadius = 2.9;
+        let wideScene = false;
+        let fitted = false;
+        let viewportWidth = mount.clientWidth, viewportHeight = mount.clientHeight;
+        const labelSizes = coreServices.map(() => ({ width: 210, height: 64 }));
+        let previousLabels: HeroLabelRect[] = [];
+        const defaultDirection = new THREE.Vector3(3, 1.7, 6.9).normalize();
+        const fitView = (reset = false) => {
+          const width = viewportWidth, height = viewportHeight;
+          if (!width || !height) return;
+          wideScene = window.matchMedia("(min-width: 1024px)").matches;
+          const framing = heroFraming(width, height, sceneRadius, wideScene);
+          const zoomRatio = fitted && !reset ? camera.position.distanceTo(controls.target) / controls.minDistance : 1.1;
+          controls.minDistance = framing.minDistance;
+          controls.maxDistance = framing.maxDistance;
+          camera.aspect = width / height;
+          camera.setViewOffset(width, height, framing.offsetX, framing.offsetY, width, height);
+          const distance = Math.max(framing.minDistance, Math.min(framing.maxDistance, framing.minDistance * zoomRatio));
+          if (reset || !fitted) camera.position.copy(defaultDirection).multiplyScalar(distance);
+          else camera.position.sub(controls.target).setLength(distance).add(controls.target);
+          controls.update();
+          fitted = true;
+        };
         const projected = new THREE.Vector3();
         const labelTargets: (Three.Object3D | undefined)[] = [];
         const projectLabels = () => {
-          const width = mount.clientWidth, height = mount.clientHeight;
+          const width = viewportWidth, height = viewportHeight;
           if (!width || !height) return;
           stage.updateMatrixWorld(true);
           camera.updateMatrixWorld();
+          const anchors: HeroLabelAnchor[] = [];
+          const indices: number[] = [];
           labelTargets.forEach((target, index) => {
             const label = serviceLabels.current[index];
             if (!target || !label) return;
             target.getWorldPosition(projected).project(camera);
+            anchors.push({ x: (projected.x * 0.5 + 0.5) * width, y: (-projected.y * 0.5 + 0.5) * height, ...labelSizes[index] });
+            indices.push(index);
+          });
+          const placed = layoutHeroLabels(width, height, anchors, wideScene, previousLabels);
+          previousLabels = placed;
+          placed.forEach((rect, index) => {
+            const label = serviceLabels.current[indices[index]];
+            if (!label) return;
+            const anchorX = anchors[index].x, anchorY = anchors[index].y;
             // Three DOM style writes per rendered frame; React stays idle.
-            const edge = Math.min(width * 0.25, 110);
-            const anchorX = (projected.x * 0.5 + 0.5) * width;
-            const anchorY = (-projected.y * 0.5 + 0.5) * height;
-            const x = Math.max(edge, Math.min(width - edge, anchorX));
-            const y = Math.max(82, Math.min(height - 100, anchorY));
+            const x = rect.left + rect.width / 2;
+            const y = rect.top + rect.height + 25;
             const dx = x - anchorX, dy = y - anchorY;
             const connectorLength = Math.hypot(dx, 25 - dy);
             const connectorAngle = Math.atan2(dx, 25 - dy) * 180 / Math.PI;
@@ -143,14 +174,34 @@ export default function InteractiveCore() {
           if (animating || changed || pulse > 0) frame = requestAnimationFrame(render);
         };
         schedule = () => { if (!disposed && !contextUnavailable && visible && !document.hidden && !frame && !rendering) frame = requestAnimationFrame(render); };
-        const resize = new ResizeObserver(() => {
-          const width = mount.clientWidth, height = mount.clientHeight;
-          if (!width || !height) return;
-          renderer.setSize(width, height, false);
-          camera.aspect = width / height;
-          camera.updateProjectionMatrix(); schedule();
+        const labelElements = new Map<Element, number>();
+        const resize = new ResizeObserver(entries => {
+          let resizedStage = false;
+          entries.forEach(entry => {
+            if (entry.target === mount) {
+              viewportWidth = entry.contentRect.width; viewportHeight = entry.contentRect.height;
+              resizedStage = true;
+            } else {
+              const index = labelElements.get(entry.target);
+              if (index === undefined) return;
+              const borderBox = entry.borderBoxSize?.[0];
+              const box = borderBox ? { width: borderBox.inlineSize, height: borderBox.blockSize } : entry.target.getBoundingClientRect();
+              if (box.width > 0 && box.height > 0) labelSizes[index] = { width: box.width, height: box.height };
+            }
+          });
+          previousLabels = [];
+          if (resizedStage && viewportWidth > 0 && viewportHeight > 0) { renderer.setSize(viewportWidth, viewportHeight, false); fitView(); }
+          schedule();
         });
         resize.observe(mount);
+        serviceLabels.current.forEach((label, index) => {
+          const link = label?.querySelector<HTMLAnchorElement>(".nl-core-service-link");
+          if (!link) return;
+          labelElements.set(link, index);
+          const box = link.getBoundingClientRect();
+          if (box.width > 0 && box.height > 0) labelSizes[index] = { width: box.width, height: box.height };
+          resize.observe(link, { box: "border-box" });
+        });
         controls.addEventListener("change", schedule);
         controls.addEventListener("start", schedule);
         const contextLost = (event: Event) => { event.preventDefault(); contextUnavailable = true; cancelAnimationFrame(frame); frame = 0; api.current = null; resetLabels(); setFailed(true); setReady(false); setStatus("Previzualizarea 3D nu este disponibilă. Imaginea Blender rămâne vizibilă."); };
@@ -186,6 +237,19 @@ export default function InteractiveCore() {
         model.scene.scale.setScalar(scale);
         model.scene.position.copy(center).multiplyScalar(-scale);
         stage.add(model.scene);
+        model.scene.updateMatrixWorld(true);
+        const vertex = new THREE.Vector3();
+        let radiusSquared = 0;
+        model.scene.traverse(object => {
+          if (!(object instanceof THREE.Mesh)) return;
+          const positions = object.geometry.getAttribute("position");
+          for (let index = 0; index < positions.count; index++) {
+            vertex.fromBufferAttribute(positions, index).applyMatrix4(object.matrixWorld);
+            radiusSquared = Math.max(radiusSquared, vertex.lengthSq());
+          }
+        });
+        sceneRadius = Math.sqrt(radiusSquared) * 1.025;
+        fitView(true);
         coreServices.forEach((service, index) => { labelTargets[index] = model.scene.getObjectByName(THREE.PropertyBinding.sanitizeNodeName(service.mesh)); });
         model.scene.traverse(object => {
           if (!(object instanceof THREE.Mesh)) return;
@@ -203,7 +267,7 @@ export default function InteractiveCore() {
         });
         api.current = {
           pulse: () => { pulseUntil = performance.now() + 1000; schedule(); },
-          reset: () => { stage.rotation.set(0, 0, 0); controls.reset(); schedule(); },
+          reset: () => { stage.rotation.set(0, 0, 0); fitView(true); schedule(); },
           rotate: (x, y) => { stage.rotation.y += x; stage.rotation.x += y; schedule(); },
           zoom: factor => { const length = Math.max(controls.minDistance, Math.min(controls.maxDistance, camera.position.length() * factor)); camera.position.setLength(length); controls.update(); schedule(); },
         };

@@ -229,7 +229,7 @@ function OfferPaper({ data, totals }: { data: WebOfferData; totals: ReturnType<t
       <section className="web-offer-included"><h2>Ce este inclus</h2><div>{data.included.filter(Boolean).map((item, index) => <p key={index}><span>✓</span>{item}</p>)}</div></section>
       <section className="web-offer-conditions"><h2>Condiții comerciale</h2><div><p><small>VALABILITATE</small>{data.validity}</p><p><small>TERMEN</small>{data.deliveryTerm}</p><p><small>PLATĂ</small>{data.paymentTerms}</p></div></section>
       {data.notes && <section><h2>Observații</h2><div className="web-offer-paper-note">{data.notes}</div></section>}
-      <footer className="web-offer-paper-footer"><div><img src="/brand/logo-mark.png" alt="" /><span><strong>NEXTLEVEL AUTOMATION S.R.L.</strong><small>CUI 55476878 · Zalău, Sălaj</small><small>+40 740 565 663 · nextlevel.zalau@gmail.com</small></span></div><div><span>Acceptat beneficiar,</span><strong>________________________</strong></div></footer>
+      <footer className="web-offer-paper-footer"><div><img src="/brand/logo-mark.png" alt="" /><span><strong>NEXTLEVEL AUTOMATION S.R.L.</strong><small>CUI 55476878 · Zalău, Sălaj</small><small>+40 740 565 663 · contact@nextlevel-agency.ro</small></span></div><div><span>Acceptat beneficiar,</span><strong>________________________</strong></div></footer>
     </article>
   );
 }

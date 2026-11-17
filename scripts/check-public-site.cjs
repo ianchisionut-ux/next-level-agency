@@ -44,11 +44,17 @@ const canonicalOrigin = "https://www.nextlevel-agency.ro";
   const modelBytes = Buffer.from(await model.arrayBuffer());
   assert.equal(modelBytes.toString('ascii', 0, 4), 'glTF');
   assert.ok(modelBytes.length < 1_000_000, 'Interactive Blender model stays below 1 MB');
-  for (const path of ["/login", "/signup", "/forgot-password", "/offline", "/dashboard/contabilitate", "/api/accounting/invoices", "/api/accounting/health"]) {
+  for (const path of ["/login", "/signup", "/forgot-password", "/offline", "/dashboard/contabilitate", "/dashboard/email", "/api/accounting/invoices", "/api/accounting/health", "/api/mailbox/status", "/api/mailbox/threads", "/api/cron/mailbox"]) {
     const response = await fetch(new URL(path, base), { redirect: "manual" });
     assert.ok(response.headers.get("x-robots-tag")?.includes("noindex"), `Private indexing directive on ${path}`);
     assert.ok(response.status < 500, `No server failure on ${path}`);
   }
+  for (const path of ['/api/mailbox/status', '/api/mailbox/threads', '/api/mailbox/drafts', '/api/mailbox/preferences', '/api/cron/mailbox']) {
+    const response = await fetch(new URL(path, base), { redirect: 'manual' });
+    assert.equal(response.status, 401, `Mailbox authentication on ${path}`);
+  }
+  const webhook = await fetch(new URL('/api/mailbox/webhook', base), { method: 'POST', body: '{}' });
+  assert.ok([400, 401, 503].includes(webhook.status), 'Unsigned webhooks are rejected before any persistence');
   const image = await fetch(new URL("/opengraph-image", base));
   assert.equal(image.status, 200);
   assert.ok(image.headers.get("content-type").startsWith("image/"));

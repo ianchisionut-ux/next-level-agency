@@ -29,8 +29,7 @@ export async function POST(req: NextRequest) {
     try {
       await sendPasswordResetEmail({ to: user.email, resetUrl });
     } catch {
-      // fara RESEND_API_KEY configurat, cel putin logam link-ul ca sa poata fi testat local
-      console.log("Link resetare parola (email nu a putut fi trimis):", resetUrl);
+      console.error("E-mailul de resetare a parolei nu a putut fi trimis.");
     }
   }
 
