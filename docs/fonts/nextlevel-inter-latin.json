@@ -1,0 +1,145 @@
+{
+  "family": "NextLevelLatin",
+  "style": "normal",
+  "version": "Version 4.001;git-66647c0bb",
+  "sourceRevision": "0b58fb370093f9a9f4ff785d94405710b79de67c",
+  "sources": {
+    "Inter-source.ttf": {
+      "url": "https://raw.githubusercontent.com/google/fonts/0b58fb370093f9a9f4ff785d94405710b79de67c/ofl/inter/Inter%5Bopsz,wght%5D.ttf",
+      "sha256": "29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031"
+    },
+    "OFL.txt": {
+      "url": "https://raw.githubusercontent.com/google/fonts/0b58fb370093f9a9f4ff785d94405710b79de67c/ofl/inter/OFL.txt",
+      "sha256": "5b9321a4298cfeb6b34354164a1c3afc3db114569984c502b9b35d988fd58c57"
+    },
+    "live-inter-5.woff2": {
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa25L7W0Q5n-wU.woff2",
+      "sha256": "a28eb6d3ccb534ae0c94ca999371df024aab60b08c3c8a5720ee9e32fa0faaa2"
+    },
+    "live-inter-6.woff2": {
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+      "sha256": "c940764593d0fe5d596be327ca7558855e018039fb78509aa21921fd3644c3e4"
+    }
+  },
+  "tools": {
+    "python": "3.13.13",
+    "fontTools": "4.68.0",
+    "brotli": "1.2.1",
+    "uharfbuzz": "0.57.0",
+    "pythonHashSeed": 0
+  },
+  "asset": "/fonts/nextlevel-inter-latin.cac3d9473eb7.woff2",
+  "bytes": 51956,
+  "sha256": "cac3d9473eb7bfe666ad7996de12f95e791dfa57235ea4b4dd1bbe0c40712898",
+  "unicodeRange": "U+0020-007E,U+00A0,U+00A2-00A3,U+00A5,U+00A9,U+00AB,U+00AE,U+00B0,U+00B7,U+00BB,U+00C2,U+00CE,U+00D7,U+00E2,U+00EE,U+00F7,U+0102-0103,U+015E-015F,U+0162-0163,U+0218-021B,U+0302,U+0306,U+0326-0327,U+2002,U+2009,U+200B,U+2013-2014,U+2018-201A,U+201C-201E,U+2020,U+2022,U+2026,U+2032-2033,U+2039-203A,U+2044,U+20A0-20AF,U+20B1-20B5,U+20B8-20BA,U+20BC-20BF,U+2122,U+2191,U+2193,U+2212,U+FEFF",
+  "codepointCount": 177,
+  "additionalNfdCodepoints": [
+    "U+0302",
+    "U+0306",
+    "U+0326",
+    "U+0327"
+  ],
+  "axes": {
+    "wght": {
+      "min": 100,
+      "default": 400,
+      "max": 900
+    },
+    "opsz": {
+      "pinned": 14
+    }
+  },
+  "metrics": {
+    "unitsPerEm": 2048,
+    "hhea": [
+      1984,
+      -494,
+      0
+    ],
+    "xHeight": 1118,
+    "capHeight": 1490
+  },
+  "matchingCurrentArialFallback": {
+    "sizeAdjust": "107.12%",
+    "ascentOverride": "90.44%",
+    "descentOverride": "22.52%",
+    "lineGapOverride": "0.0%"
+  },
+  "parity": {
+    "weights": [
+      100,
+      200,
+      300,
+      400,
+      500,
+      600,
+      700,
+      800,
+      900
+    ],
+    "sourceAdvanceAndOutlineComparisons": 1593,
+    "liveAdvanceAndOutlineComparisons": 1584,
+    "differences": 0
+  },
+  "shapingParity": {
+    "engine": "HarfBuzz",
+    "uharfbuzz": "0.57.0",
+    "runs": 486,
+    "shapedGlyphOutlineComparisons": 26082,
+    "weights": [
+      100,
+      200,
+      300,
+      400,
+      500,
+      600,
+      700,
+      800,
+      900
+    ],
+    "forms": [
+      "NFC",
+      "NFD"
+    ],
+    "language": "ro",
+    "differences": 0
+  },
+  "preserved": [
+    "GSUB",
+    "GPOS",
+    "GDEF",
+    "gvar",
+    "HVAR",
+    "default shaping and numeric layout features",
+    "hinting",
+    "OFL copyright and license"
+  ],
+  "requestedLayoutFeatures": [
+    "rvrn",
+    "rlig",
+    "rclt",
+    "ccmp",
+    "locl",
+    "mark",
+    "mkmk",
+    "kern",
+    "liga",
+    "clig",
+    "calt",
+    "tnum",
+    "pnum",
+    "zero",
+    "frac",
+    "numr",
+    "dnom",
+    "sups",
+    "subs",
+    "ordn"
+  ],
+  "removedUnusedFeatures": "Stylistic SS/CV alternates are not used by the public CSS. Original Inter remains available separately.",
+  "integration": {
+    "fontDisplay": "optional",
+    "originalInterFallbackRequired": true,
+    "note": "Apply only to public pages; retain original Inter for Unicode outside this exact CSS range."
+  }
+}

@@ -5,6 +5,7 @@ const path = require("node:path");
 const base = new URL(process.argv[2] || "http://127.0.0.1:3003");
 assert.ok(["127.0.0.1", "localhost"].includes(base.hostname), "This check only runs against a local isolated server.");
 const canonicalOrigin = "https://www.nextlevel-agency.ro";
+const publicFont = require('../docs/fonts/nextlevel-inter-latin.json');
 
 (async () => {
   const robots = await fetch(new URL("/robots.txt", base));
@@ -21,6 +22,7 @@ const canonicalOrigin = "https://www.nextlevel-agency.ro";
     const response = await fetch(new URL(path, base));
     assert.equal(response.status, 200, path);
     const html = await response.text();
+    assert.ok(html.split('</head>')[0].includes(publicFont.asset), `Public font is discovered in the head on ${path}`);
     const title = /<title>(.*?)<\/title>/.exec(html)?.[1];
     assert.ok(title, `Missing title on ${path}`);
     assert.ok(!titles.has(title), `Duplicate title on ${path}`);
@@ -54,6 +56,18 @@ const canonicalOrigin = "https://www.nextlevel-agency.ro";
   assert.equal(posterResponse.status, 200);
   const poster = await posterResponse.json();
   const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
+  const fontResponse = await fetch(new URL(publicFont.asset, base));
+  assert.equal(fontResponse.status, 200);
+  assert.ok(fontResponse.headers.get('content-type')?.includes('font/woff2'));
+  assert.ok(fontResponse.headers.get('cache-control')?.includes('31536000') && fontResponse.headers.get('cache-control')?.includes('immutable'), 'Only the content-hashed font gets long browser caching');
+  const fontBytes = Buffer.from(await fontResponse.arrayBuffer());
+  assert.equal(fontBytes.toString('ascii', 0, 4), 'wOF2');
+  assert.equal(fontBytes.length, publicFont.bytes);
+  assert.equal(sha256(fontBytes), publicFont.sha256, 'Public font matches the glyph-parity manifest');
+  const fontCss = readFileSync(path.join(__dirname, '..', 'app', 'public-font.css'), 'utf8');
+  assert.ok(fontCss.includes(publicFont.asset));
+  const fontRanges = [...fontCss.matchAll(/unicode-range:\s*([^;]+);/gi)].map(match => match[1].replace(/\s/g, '').toUpperCase());
+  assert.deepEqual(fontRanges, [publicFont.unicodeRange, publicFont.unicodeRange], 'Both public faces use exactly the verified character coverage');
   assert.equal(poster.modelSha256, sha256(modelBytes), 'Preview renders must match the current GLB');
   assert.equal(poster.framingSha256, sha256(readFileSync(path.join(__dirname, '..', 'lib', 'hero-framing.ts'), 'utf8').replace(/\r\n/g, '\n')), 'Preview framing cannot silently become stale');
   assert.equal(poster.cameraType, 'perspective'); assert.equal(poster.fov, 38);
@@ -71,6 +85,7 @@ const canonicalOrigin = "https://www.nextlevel-agency.ro";
     const response = await fetch(new URL(path, base), { redirect: "manual" });
     assert.ok(response.headers.get("x-robots-tag")?.includes("noindex"), `Private indexing directive on ${path}`);
     assert.ok(response.status < 500, `No server failure on ${path}`);
+    if (path === '/login') assert.ok(!(await response.text()).split('</head>')[0].includes(publicFont.asset), 'Private authentication does not preload the public font');
   }
   for (const path of ['/api/mailbox/status', '/api/mailbox/threads', '/api/mailbox/drafts', '/api/mailbox/preferences', '/api/cron/mailbox']) {
     const response = await fetch(new URL(path, base), { redirect: 'manual' });

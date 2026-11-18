@@ -16,6 +16,11 @@ operations and authentication unchanged.
 - Inter uses optional font display to avoid a late font swap on slow first
   visits; the metric-adjusted fallback can remain for that navigation. Touch
   devices use opaque public overlays instead of backdrop compositing.
+- Public pages use a 51,956-byte Inter subset for Romanian text, with identical
+  outlines and advances verified at nine weights. Other characters retain the
+  original Inter fallback. Only the content-hashed public font is preloaded and
+  cached immutably; the dashboard keeps its original font stack. Reproduction,
+  provenance and the OFL license are in `docs/fonts/`.
 - All devices keep an accurate rendered preview until the visitor chooses to
   explore the 3D model. Background gradients are static; compact screens, coarse
   pointers, reduced motion and Save-Data also avoid decorative motion work.
@@ -51,6 +56,9 @@ node scripts/audit-public-seo.cjs --report artifacts/seo-live.json
 
 The crawler only follows approved public routes and stores reports in
 `artifacts`. It never submits forms, sends messages or creates financial records.
+Network failures and HTTP 5xx receive one bounded GET retry. Reports retain both
+attempts and mark successful recovery as a warning instead of misreporting a
+missing indexing directive or hiding the transient failure.
 
 For repeatable lab measurements, use the official `lighthouse@13.6.0` CLI with a
 new temporary Chrome profile and the same mobile/desktop presets before and

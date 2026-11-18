@@ -1,0 +1,24 @@
+/* Inter's original outlines, subset for public Romanian content. See docs/fonts. */
+@font-face {
+  font-family: "NextLevelLatin";
+  src: url("/fonts/nextlevel-inter-latin.cac3d9473eb7.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: optional;
+  unicode-range: U+0020-007E,U+00A0,U+00A2-00A3,U+00A5,U+00A9,U+00AB,U+00AE,U+00B0,U+00B7,U+00BB,U+00C2,U+00CE,U+00D7,U+00E2,U+00EE,U+00F7,U+0102-0103,U+015E-015F,U+0162-0163,U+0218-021B,U+0302,U+0306,U+0326-0327,U+2002,U+2009,U+200B,U+2013-2014,U+2018-201A,U+201C-201E,U+2020,U+2022,U+2026,U+2032-2033,U+2039-203A,U+2044,U+20A0-20AF,U+20B1-20B5,U+20B8-20BA,U+20BC-20BF,U+2122,U+2191,U+2193,U+2212,U+FEFF;
+}
+
+@font-face {
+  font-family: "NextLevelLatinFallback";
+  src: local("Arial");
+  size-adjust: 107.12%;
+  ascent-override: 90.44%;
+  descent-override: 22.52%;
+  line-gap-override: 0%;
+  unicode-range: U+0020-007E,U+00A0,U+00A2-00A3,U+00A5,U+00A9,U+00AB,U+00AE,U+00B0,U+00B7,U+00BB,U+00C2,U+00CE,U+00D7,U+00E2,U+00EE,U+00F7,U+0102-0103,U+015E-015F,U+0162-0163,U+0218-021B,U+0302,U+0306,U+0326-0327,U+2002,U+2009,U+200B,U+2013-2014,U+2018-201A,U+201C-201E,U+2020,U+2022,U+2026,U+2032-2033,U+2039-203A,U+2044,U+20A0-20AF,U+20B1-20B5,U+20B8-20BA,U+20BC-20BF,U+2122,U+2191,U+2193,U+2212,U+FEFF;
+}
+
+/* Other alphabets retain the original Inter; the dashboard keeps its own stack. */
+body:has(.public-marketing-header) {
+  --font-sans: "NextLevelLatin", "NextLevelLatinFallback", var(--font-nextlevel-inter), ui-sans-serif, system-ui, sans-serif;
+}

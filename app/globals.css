@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./public-font.css";
 
 @theme {
   --font-sans: var(--font-nextlevel-inter), ui-sans-serif, system-ui, sans-serif;

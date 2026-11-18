@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import publicFont from "./docs/fonts/nextlevel-inter-latin.json";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -8,6 +9,7 @@ const nextConfig: NextConfig = {
   async headers() {
     const privatePaths = ["/dashboard/:path*", "/api/:path*", "/login", "/signup", "/forgot-password", "/reset-password/:path*", "/invite/:path*", "/campaigns/share/:path*", "/offline"];
     return [
+      { source: publicFont.asset, headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }] },
       ...privatePaths.map(source => ({ source, headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }] })),
       // Public deployment aliases must not compete with the canonical domain.
       // Host matching leaves www.nextlevel-agency.ro indexable.
