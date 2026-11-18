@@ -25,11 +25,6 @@ operations and authentication unchanged.
   explore the 3D model. Background gradients are static; compact screens, coarse
   pointers, reduced motion and Save-Data also avoid decorative motion work.
   Model geometry and preview provenance are checked against the GLB and camera.
-- Landing styles are included in the server-rendered head with a content-based
-  identifier, avoiding another blocking stylesheet request on the homepage.
-  `home-motion.css` remains native CSS and is included in the homepage trace.
-  Tailwind excludes local release artifacts and unrelated Sites checkouts so
-  those files cannot inflate the app's generated utilities.
 - Public links keep their normal URLs and Next.js navigation, while prefetch
   waits for actual pointer or keyboard intent instead of loading other pages
   during the initial visit.

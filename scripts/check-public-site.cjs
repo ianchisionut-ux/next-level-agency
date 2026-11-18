@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const { createHash } = require("node:crypto");
 const { readFileSync } = require("node:fs");
-const nodePath = require("node:path");
+const path = require("node:path");
 const base = new URL(process.argv[2] || "http://127.0.0.1:3003");
 assert.ok(["127.0.0.1", "localhost"].includes(base.hostname), "This check only runs against a local isolated server.");
 const canonicalOrigin = "https://www.nextlevel-agency.ro";
@@ -36,11 +36,6 @@ const publicFont = require('../docs/fonts/nextlevel-inter-latin.json');
     assert.ok(!html.includes("https://nextlevelagency.ro"), `Old wrong domain on ${path}`);
     for (const json of html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)) JSON.parse(json[1]);
     if (path === "/") {
-      const head = html.split('</head>')[0];
-      const criticalStyles = [...head.matchAll(/<style[^>]*nextlevel-landing-[^>]*>([\s\S]*?)<\/style>/g)];
-      assert.equal(criticalStyles.length, 1, 'Landing styles arrive in the server-rendered head');
-      assert.equal(criticalStyles[0][1], readFileSync(nodePath.join(__dirname, '..', 'app', 'home-motion.css'), 'utf8').replace(/\r\n/g, '\n'), 'Critical landing styles preserve the original rules');
-      assert.equal((head.match(/rel="stylesheet"/g) || []).length, 1, 'Homepage has only one blocking stylesheet request');
       assert.ok(!html.includes("/hero/nextlevel-core.webp") && !html.includes("%2Fhero%2Fnextlevel-core.webp"), 'No old orthographic/mismatched poster during the initial hero load');
       for (const frame of ['mobile', 'tablet', 'desktop']) assert.ok(html.includes(`/hero/nextlevel-core-runtime-${frame}.webp`), `Matching perspective preview for ${frame}`);
       assert.ok(html.includes('Explorează în 3D'), 'Explicit mobile activation is server-rendered');
@@ -69,12 +64,12 @@ const publicFont = require('../docs/fonts/nextlevel-inter-latin.json');
   assert.equal(fontBytes.toString('ascii', 0, 4), 'wOF2');
   assert.equal(fontBytes.length, publicFont.bytes);
   assert.equal(sha256(fontBytes), publicFont.sha256, 'Public font matches the glyph-parity manifest');
-  const fontCss = readFileSync(nodePath.join(__dirname, '..', 'app', 'public-font.css'), 'utf8');
+  const fontCss = readFileSync(path.join(__dirname, '..', 'app', 'public-font.css'), 'utf8');
   assert.ok(fontCss.includes(publicFont.asset));
   const fontRanges = [...fontCss.matchAll(/unicode-range:\s*([^;]+);/gi)].map(match => match[1].replace(/\s/g, '').toUpperCase());
   assert.deepEqual(fontRanges, [publicFont.unicodeRange, publicFont.unicodeRange], 'Both public faces use exactly the verified character coverage');
   assert.equal(poster.modelSha256, sha256(modelBytes), 'Preview renders must match the current GLB');
-  assert.equal(poster.framingSha256, sha256(readFileSync(nodePath.join(__dirname, '..', 'lib', 'hero-framing.ts'), 'utf8').replace(/\r\n/g, '\n')), 'Preview framing cannot silently become stale');
+  assert.equal(poster.framingSha256, sha256(readFileSync(path.join(__dirname, '..', 'lib', 'hero-framing.ts'), 'utf8').replace(/\r\n/g, '\n')), 'Preview framing cannot silently become stale');
   assert.equal(poster.cameraType, 'perspective'); assert.equal(poster.fov, 38);
   assert.equal(poster.frames.length, 3);
   for (const frame of poster.frames) {

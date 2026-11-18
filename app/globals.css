@@ -1,7 +1,5 @@
 @import "tailwindcss";
 @import "./public-font.css";
-@source not "../artifacts";
-@source not "../sites";
 
 @theme {
   --font-sans: var(--font-nextlevel-inter), ui-sans-serif, system-ui, sans-serif;

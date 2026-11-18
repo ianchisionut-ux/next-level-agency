@@ -21,7 +21,7 @@ const nextConfig: NextConfig = {
     ];
   },
   outputFileTracingRoot: process.cwd(),
-  outputFileTracingIncludes: { "/*": ["./prisma/accounting-safety-v13.sql", "./prisma/email-mailbox.sql", "./prisma/mailbox-archive.sql"], "/": ["./app/home-motion.css"] },
+  outputFileTracingIncludes: { "/*": ["./prisma/accounting-safety-v13.sql", "./prisma/email-mailbox.sql", "./prisma/mailbox-archive.sql"] },
   turbopack: {
     root: process.cwd(),
   },

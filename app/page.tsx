@@ -1,7 +1,4 @@
 import Link from "@/components/IntentLink";
-import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ClientsSection from "@/components/ClientsSection";
@@ -12,6 +9,7 @@ import HomeHero from "@/components/HomeHero";
 import HomeMotion from "@/components/HomeMotion";
 import JsonLd from "@/components/JsonLd";
 import { businessSchema, DEFAULT_DESCRIPTION, pageMetadata } from "@/lib/seo";
+import "./home-motion.css";
 import {
   IconTarget,
   IconChart,
@@ -33,10 +31,6 @@ const serviceIcons = {
   search: IconSearch,
 };
 
-// Static landing CSS arrives with the HTML instead of a second blocking request.
-const landingStyles = readFileSync(join(process.cwd(), "app", "home-motion.css"), "utf8").replace(/\r\n/g, "\n");
-const landingStyleHref = "nextlevel-landing-" + createHash("sha256").update(landingStyles).digest("hex").slice(0, 12);
-
 const serviceAnchors = {
   target: "branding-identitate",
   chart: "performance-marketing",
@@ -50,7 +44,6 @@ export const metadata = pageMetadata("Marketing digital și web design Zalău | 
 export default function HomePage() {
   return (
     <HomeMotion>
-      <style href={landingStyleHref} precedence="next">{landingStyles}</style>
       <JsonLd data={businessSchema} />
       <a className="nl-skip" href="#main-content">Sari la conținut</a>
       <Header />
