@@ -5,6 +5,10 @@ import InteractiveCore from "@/components/InteractiveCore";
 export default function HomeHero() {
   return (
     <section className="nl-hero" aria-labelledby="hero-title">
+      {/* React hoists these hints into head; only the matching viewport loads. */}
+      <link rel="preload" as="image" href="/hero/hero-circuit-background-mobile.avif" type="image/avif" media="(max-width: 767px)" fetchPriority="high" />
+      <link rel="preload" as="image" href="/hero/hero-circuit-background-tablet.avif" type="image/avif" media="(min-width: 768px) and (max-width: 1023px)" fetchPriority="high" />
+      <link rel="preload" as="image" href="/hero/hero-circuit-background.avif" type="image/avif" media="(min-width: 1024px)" fetchPriority="high" />
       <picture className="nl-hero-grid" aria-hidden="true">
         <source media="(max-width: 767px)" type="image/avif" srcSet="/hero/hero-circuit-background-mobile.avif" />
         <source media="(max-width: 767px)" type="image/webp" srcSet="/hero/hero-circuit-background-mobile.webp" />

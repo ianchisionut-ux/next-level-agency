@@ -84,14 +84,16 @@ export default function ProjectPreview({ url, title, thumbnail, children }: {
 }) {
   const id = useId();
   const viewport = useRef<HTMLDivElement>(null);
+  const refreshVisibility = useRef<((rectangle?: DOMRect) => void) | null>(null);
   const previewUrl = projectPreviewUrl(url);
   const selected = useSyncExternalStore(previews.subscribe, previews.getSnapshot, serverSnapshot);
   const active = selected?.id === id ? selected : null;
-  const [scale, setScale] = useState(0);
+  const [geometry, setGeometry] = useState<{ sequence: number; scale: number } | null>(null);
   const [ready, setReady] = useState(false);
   const [loadedSequence, setLoadedSequence] = useState<number | null>(null);
   const [failed, setFailed] = useState(false);
   const loaded = Boolean(active && loadedSequence === active.sequence);
+  const scale = active && geometry?.sequence === active.sequence ? geometry.scale : 0;
 
   useEffect(() => {
     const element = viewport.current;
@@ -110,25 +112,18 @@ export default function ProjectPreview({ url, title, thumbnail, children }: {
       visible,
       pageVisible: !document.hidden,
     });
-    const measure = () => {
-      const rectangle = element.getBoundingClientRect();
-      setScale(Math.max(0, rectangle.width) / VIEWPORT_WIDTH);
-      if (typeof IntersectionObserver === "undefined") {
-        visible = rectangle.width > 0 && rectangle.height > 0 && rectangle.bottom > 0 && rectangle.top < window.innerHeight && rectangle.right > 0 && rectangle.left < window.innerWidth;
-        policy();
-      }
+    const checkVisibility = (measured?: DOMRect) => {
+      const rectangle = measured ?? element.getBoundingClientRect();
+      visible = rectangle.width > 0 && rectangle.height > 0 && rectangle.bottom > 0 && rectangle.top < window.innerHeight && rectangle.right > 0 && rectangle.left < window.innerWidth;
+      policy();
     };
     const intersection = typeof IntersectionObserver === "undefined" ? null : new IntersectionObserver(entries => {
       visible = entries.some(entry => entry.isIntersecting && entry.intersectionRatio > 0);
       policy();
     });
-    const resize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    refreshVisibility.current = intersection ? null : checkVisibility;
     policy();
-    measure();
     intersection?.observe(element);
-    resize?.observe(element);
-    window.addEventListener("resize", measure);
-    if (!intersection) window.addEventListener("scroll", measure, { passive: true });
     fine.addEventListener("change", policy);
     reduced.addEventListener("change", policy);
     connection?.addEventListener?.("change", policy);
@@ -136,9 +131,7 @@ export default function ProjectPreview({ url, title, thumbnail, children }: {
     setReady(true);
     return () => {
       intersection?.disconnect();
-      resize?.disconnect();
-      window.removeEventListener("resize", measure);
-      window.removeEventListener("scroll", measure);
+      refreshVisibility.current = null;
       fine.removeEventListener("change", policy);
       reduced.removeEventListener("change", policy);
       connection?.removeEventListener?.("change", policy);
@@ -146,6 +139,35 @@ export default function ProjectPreview({ url, title, thumbnail, children }: {
       previews.remove(id);
     };
   }, [id, previewUrl]);
+
+  useEffect(() => {
+    const element = viewport.current;
+    if (!active || !element || !previewUrl) return;
+    const updateScale = (width: number) => {
+      const next = { sequence: active.sequence, scale: Math.max(0, width) / VIEWPORT_WIDTH };
+      setGeometry(current => current?.sequence === next.sequence && current.scale === next.scale ? current : next);
+    };
+    const measure = () => {
+      const rectangle = element.getBoundingClientRect();
+      updateScale(rectangle.width);
+      refreshVisibility.current?.(rectangle);
+    };
+    measure();
+    const resize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(entries => {
+      const entry = entries.find(item => item.target === element);
+      if (entry) updateScale(entry.contentRect.width);
+      refreshVisibility.current?.();
+    });
+    resize?.observe(element);
+    // IO normally handles visibility; older browsers need checks only while active.
+    if (!resize || refreshVisibility.current) window.addEventListener("resize", measure);
+    if (refreshVisibility.current) window.addEventListener("scroll", measure, { passive: true });
+    return () => {
+      resize?.disconnect();
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure);
+    };
+  }, [active, previewUrl]);
 
   useEffect(() => {
     if (!active || loaded) return;
@@ -158,7 +180,7 @@ export default function ProjectPreview({ url, title, thumbnail, children }: {
     return () => window.clearTimeout(timer);
   }, [active, id, loaded]);
 
-  const requestAutomatic = () => { if (!failed) previews.request(id); };
+  const requestAutomatic = () => { if (!failed) { refreshVisibility.current?.(); previews.request(id); } };
   const stop = () => previews.release(id);
 
   return (
@@ -199,7 +221,7 @@ export default function ProjectPreview({ url, title, thumbnail, children }: {
             aria-controls={`preview-${id}`}
             aria-pressed={Boolean(active)}
             aria-label={`${active ? "Oprește previzualizarea" : "Previzualizare live"}: ${title}`}
-            onClick={() => { if (active) stop(); else { setFailed(false); previews.request(id, true); } }}
+            onClick={() => { if (active) stop(); else { setFailed(false); refreshVisibility.current?.(); previews.request(id, true); } }}
             className="rounded-lg border border-line-light px-3 py-2 text-sm font-semibold text-blue hover:border-blue/50 disabled:opacity-50"
           >{active ? "Oprește previzualizarea" : "Previzualizare live"}</button>
           {failed && <p className="mt-2 text-xs leading-relaxed text-ink-soft" role="status">Previzualizarea nu este disponibilă. Explorează site-ul într-o filă nouă.</p>}

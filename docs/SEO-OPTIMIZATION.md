@@ -11,7 +11,8 @@ operations and authentication unchanged.
   changes. Deployment aliases on `*.vercel.app` return `X-Robots-Tag: noindex`;
   the canonical public domain remains `https://www.nextlevel-agency.ro`.
 - Next.js serves the fonts locally. The decorative hero background has responsive
-  AVIF/WebP variants instead of a shared large JPEG.
+  AVIF/WebP variants instead of a shared large JPEG. Viewport-specific preload
+  hints discover only the selected AVIF variant in the document head.
 - Inter uses optional font display to avoid a late font swap on slow first
   visits; the metric-adjusted fallback can remain for that navigation. Touch
   devices use opaque public overlays instead of backdrop compositing.
@@ -23,7 +24,8 @@ operations and authentication unchanged.
   waits for actual pointer or keyboard intent instead of loading other pages
   during the initial visit.
 - Video players connect to Vimeo after Play. Portfolio live previews start after
-  hover/focus intent or a button, with at most one active frame. Daily Menu,
+  hover/focus intent or a button, with at most one active frame. Their layout
+  measurements and resize observers also wait until activation. Daily Menu,
   BookEasy and ELMONT retain their static previews and external links because
   their existing framing policies block embedding.
 - Portfolio screenshots supplied by the owner were cropped and optimized as

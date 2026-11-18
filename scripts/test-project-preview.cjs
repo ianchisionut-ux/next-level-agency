@@ -100,7 +100,7 @@ checkNesting(parseDocument(html));
 
 // Execute actual component handlers and effects with a deterministic browser,
 // without loading any frame, browser, network service or database.
-function browserHarness() {
+function browserHarness({ intersectionSupported = true, resizeSupported = true } = {}) {
   const clock = fakeClock(), instances = [], intersections = new Map(), resizes = new Map(), listeners = new Map();
   const settings = { fine: true, reduced: false, saveData: false };
   let current;
@@ -112,7 +112,15 @@ function browserHarness() {
     addEventListener: (name, fn) => listen(name, fn), removeEventListener: (name, fn) => unlisten(name, fn) };
   const react = { ...React,
     useId() { current.cursor++; return current.id; },
-    useRef(value) { const index = current.cursor++; if (!current.slots[index]) current.slots[index] = { current: value === null ? current.element : value }; return current.slots[index]; },
+    useRef(value) {
+      const index = current.cursor++;
+      if (!current.slots[index]) {
+        const bindViewport = value === null && !current.viewportBound;
+        current.slots[index] = { current: bindViewport ? current.element : value };
+        if (bindViewport) current.viewportBound = true;
+      }
+      return current.slots[index];
+    },
     useSyncExternalStore(_subscribe, getSnapshot) { current.cursor++; return getSnapshot(); },
     useState(value) {
       const owner = current, index = owner.cursor++;
@@ -127,28 +135,43 @@ function browserHarness() {
   };
   const runtime = previewRuntime(react, { window, document, navigator: { connection: { get saveData() { return settings.saveData; }, addEventListener: (_, fn) => listen('connection', fn), removeEventListener: (_, fn) => unlisten('connection', fn) } },
     setTimeout: clock.set, clearTimeout: clock.clear,
-    IntersectionObserver: class { constructor(callback) { this.callback = callback; } observe(element) { intersections.set(element, this.callback); } disconnect() {} },
-    ResizeObserver: class { constructor(callback) { this.callback = callback; } observe(element) { resizes.set(element, this.callback); } disconnect() {} },
+    IntersectionObserver: intersectionSupported ? class {
+      constructor(callback) { this.callback = callback; this.elements = new Set(); }
+      observe(element) { this.elements.add(element); intersections.set(element, this.callback); }
+      disconnect() { this.elements.forEach(element => intersections.delete(element)); this.elements.clear(); }
+    } : undefined,
+    ResizeObserver: resizeSupported ? class {
+      constructor(callback) { this.callback = callback; this.elements = new Set(); }
+      observe(element) { this.elements.add(element); resizes.set(element, this.callback); }
+      disconnect() { this.elements.forEach(element => resizes.delete(element)); this.elements.clear(); }
+    } : undefined,
   });
   function render() {
     for (let pass = 0; pass < 2; pass++) for (const instance of instances) {
       current = instance; instance.cursor = 0; instance.tree = runtime.default(instance.props);
+      instance.frameRenders += nodes(instance.tree, 'iframe').length;
       const effects = instance.effects.splice(0); effects.forEach(fn => fn());
     }
   }
   function add(id, url) {
-    const instance = { id, slots: [], effects: [], width: 400, element: null };
-    instance.element = { getBoundingClientRect: () => ({ width: instance.width, height: instance.width * 9 / 16, top: 0, left: 0, bottom: 225, right: instance.width }) };
+    const instance = { id, slots: [], effects: [], width: 400, top: 0, measurements: 0, frameRenders: 0, element: null };
+    instance.element = { getBoundingClientRect: () => {
+      instance.measurements++;
+      return { width: instance.width, height: instance.width * 9 / 16, top: instance.top, left: 0, bottom: instance.top + instance.width * 9 / 16, right: instance.width };
+    } };
     instance.props = { url, title: id, thumbnail: React.createElement('img', { src: '/fixture.webp', alt: id }), children: React.createElement('a', { href: url }, 'Vezi site-ul') };
     instances.push(instance); render(); return instance;
   }
   const nodes = (node, type) => !node || typeof node !== 'object' ? [] : [...(node.type === type ? [node] : []), ...React.Children.toArray(node.props?.children).flatMap(child => nodes(child, type))];
   return { add, render, settings, document, clock, nodes,
-    visible(instance, value) { intersections.get(instance.element)?.([{ isIntersecting: value, intersectionRatio: value ? 1 : 0 }]); render(); },
+    visible(instance, value) { instance.top = value ? 0 : 1000; intersections.get(instance.element)?.([{ isIntersecting: value, intersectionRatio: value ? 1 : 0 }]); render(); },
     event(name) { listeners.get(name)?.forEach(fn => fn()); render(); },
-    resize(instance, width) { instance.width = width; resizes.get(instance.element)(); render(); },
+    resize(instance, width) { instance.width = width; resizes.get(instance.element)?.([{ target: instance.element, contentRect: { width } }]); render(); },
     advance(time) { clock.advance(time); render(); },
     frames() { return instances.flatMap(instance => nodes(instance.tree, 'iframe')); },
+    measurements() { return instances.reduce((sum, instance) => sum + instance.measurements, 0); },
+    resizeObservers() { return resizes.size; },
+    listeners(name) { return listeners.get(name)?.size || 0; },
     cleanup() { instances.forEach(instance => instance.slots.forEach(slot => slot?.cleanup?.())); },
   };
 }
@@ -156,8 +179,15 @@ const browser = browserHarness();
 const first = browser.add('pm', urls[0]), second = browser.add('dracula', urls[1]), blocked = browser.add('blocked', 'https://www.bookeasy.ro/descopera');
 browser.visible(first, true); browser.visible(second, true);
 assert.equal(browser.frames().length, 0);
+assert.equal(browser.measurements(), 0, 'Mount and intersection eligibility cannot force layout');
+assert.equal(browser.resizeObservers(), 0, 'Inactive cards do not observe their size');
+browser.resize(first, 400);
+assert.equal(browser.measurements(), 0, 'Inactive resize does not measure the preview');
+assert.equal(browser.listeners('resize'), 0);
 first.tree.props.onPointerEnter({ pointerType: 'mouse' }); browser.advance(349); assert.equal(browser.frames().length, 0);
+assert.equal(browser.measurements(), 0, 'Canceled or pending intent has no geometry work when IO exists');
 browser.advance(1); assert.equal(browser.frames().length, 1);
+assert.equal(browser.measurements(), 1); assert.equal(browser.resizeObservers(), 1);
 let frame = browser.frames()[0]; assert.equal(frame.props.src, urls[0]);
 assert.equal(frame.props.width, 1280); assert.equal(frame.props.height, 720); assert.equal(frame.props.style.transform, 'scale(0.3125)');
 assert.equal(frame.props.style.pointerEvents, 'none'); assert.equal(frame.props.tabIndex, -1);
@@ -165,9 +195,12 @@ assert.equal(frame.props.sandbox, 'allow-scripts allow-same-origin'); assert.equ
 for (const capability of ['camera', 'microphone', 'payment', 'autoplay']) assert.ok(frame.props.allow.includes(`${capability} 'none'`));
 assert.equal(frame.props.style.opacity, 0); frame.props.onLoad(); browser.render(); assert.equal(browser.frames()[0].props.style.opacity, 1);
 browser.resize(first, 320); assert.equal(browser.frames()[0].props.style.transform, 'scale(0.25)');
+assert.equal(browser.measurements(), 1, 'Active RO uses its supplied content width without a synchronous layout read');
 second.tree.props.onFocus({ currentTarget: { contains: () => false }, relatedTarget: null }); browser.advance(350);
 assert.equal(browser.frames().length, 1); assert.equal(browser.frames()[0].props.src, urls[1], 'Focus replaces the previous iframe');
+assert.equal(browser.resizeObservers(), 1, 'Replacing a preview disconnects the previous size observer');
 second.tree.props.onPointerLeave({ pointerType: 'mouse' }); browser.render(); assert.equal(browser.frames().length, 0);
+assert.equal(browser.resizeObservers(), 0, 'Stopping a preview releases size observations');
 first.tree.props.onPointerEnter({ pointerType: 'mouse' }); first.tree.props.onPointerLeave({ pointerType: 'mouse' }); browser.advance(350); assert.equal(browser.frames().length, 0);
 blocked.tree.props.onPointerEnter({ pointerType: 'mouse' }); browser.advance(350); assert.equal(browser.frames().length, 0);
 browser.settings.reduced = true; browser.event('reduced');
@@ -186,4 +219,39 @@ assert.equal(browser.nodes(first.tree, 'a')[0].props.href, urls[0]);
 browser.nodes(first.tree, 'button')[0].props.onClick(); browser.render();
 first.tree.props.onKeyDown({ key: 'Escape' }); browser.render(); assert.equal(browser.frames().length, 0);
 browser.cleanup(); assert.equal(browser.clock.jobs.size, 0);
-console.log('Project preview passed: 5 SSR thumbnails/links, zero initial iframes, 2 exact allowed sites, 16 policy states, 350ms intent, single active iframe, resize, loading fallback, manual preference activation, pointer/keyboard/offscreen/hidden cleanup. No network or database.');
+assert.equal(browser.resizeObservers(), 0);
+
+for (const intersectionSupported of [false, true]) for (const resizeSupported of [false, true]) {
+  const fallback = browserHarness({ intersectionSupported, resizeSupported });
+  const project = fallback.add('fallback', urls[0]);
+  fallback.visible(project, true);
+  assert.equal(fallback.measurements(), 0, 'Every API support combination avoids initial geometry work');
+  assert.equal(fallback.resizeObservers(), 0);
+  assert.equal(fallback.listeners('resize'), 0); assert.equal(fallback.listeners('scroll'), 0);
+  fallback.nodes(project.tree, 'button')[0].props.onClick(); fallback.render();
+  assert.equal(fallback.frames().length, 1, 'Explicit activation works with or without IO/RO');
+  assert.equal(fallback.frames()[0].props.style.transform, 'scale(0.3125)');
+  fallback.resize(project, 320);
+  if (!resizeSupported) fallback.event('resize');
+  assert.equal(fallback.frames()[0].props.style.transform, 'scale(0.25)');
+  fallback.visible(project, false);
+  if (!intersectionSupported) fallback.event('scroll');
+  assert.equal(fallback.frames().length, 0, 'Fallback visibility checks unload offscreen previews');
+  assert.equal(fallback.resizeObservers(), 0);
+  assert.equal(fallback.listeners('resize'), 0); assert.equal(fallback.listeners('scroll'), 0);
+  const afterStop = fallback.measurements();
+  fallback.event('resize'); fallback.event('scroll'); assert.equal(fallback.measurements(), afterStop, 'Stopped previews do no resize/scroll work');
+  if (!intersectionSupported) {
+    fallback.visible(project, true);
+    project.tree.props.onPointerEnter({ pointerType: 'mouse' });
+    const beforeStaleIntent = project.frameRenders;
+    fallback.visible(project, false); fallback.advance(350);
+    assert.equal(project.frameRenders, beforeStaleIntent, 'A stale fallback intent cannot briefly render a frame using old geometry');
+  }
+  fallback.visible(project, true);
+  fallback.nodes(project.tree, 'button')[0].props.onClick(); fallback.render();
+  assert.equal(fallback.frames().length, 1);
+  fallback.cleanup(); assert.equal(fallback.resizeObservers(), 0); assert.equal(fallback.clock.jobs.size, 0);
+  assert.equal(fallback.listeners('resize'), 0); assert.equal(fallback.listeners('scroll'), 0);
+}
+console.log('Project preview passed: 5 SSR thumbnails/links, zero initial iframes/layout reads/resize observers, 2 exact allowed sites, 16 policy states, 350ms intent, single active iframe, active-only geometry/resize, all IO/RO support combinations, loading fallback, manual preferences and pointer/keyboard/offscreen/hidden/unmount cleanup. No network or database.');
