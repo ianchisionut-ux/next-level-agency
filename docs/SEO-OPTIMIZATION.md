@@ -12,6 +12,9 @@ operations and authentication unchanged.
   the canonical public domain remains `https://www.nextlevel-agency.ro`.
 - Next.js serves the fonts locally. The decorative hero background has responsive
   AVIF/WebP variants instead of a shared large JPEG.
+- Inter uses optional font display to avoid a late font swap on slow first
+  visits; the metric-adjusted fallback can remain for that navigation. Touch
+  devices use opaque public overlays instead of backdrop compositing.
 - All devices keep an accurate rendered preview until the visitor chooses to
   explore the 3D model. Background gradients are static; compact screens, coarse
   pointers, reduced motion and Save-Data also avoid decorative motion work.
@@ -25,6 +28,9 @@ operations and authentication unchanged.
   their existing framing policies block embedding.
 - Portfolio screenshots supplied by the owner were cropped and optimized as
   local WebP thumbnails. The legacy ELMONT image redirects to a valid WebP.
+- The project questionnaire uses a single column, plain Romanian labels and
+  pictograms, with optional details expandable. Its payload and required-field
+  validation remain unchanged; the old visual guide and mock preview are removed.
 
 ## Verification
 

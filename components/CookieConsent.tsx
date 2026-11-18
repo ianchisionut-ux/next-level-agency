@@ -101,7 +101,7 @@ export default function CookieConsent() {
   return (
     <>
       {visible && (
-        <div className="fixed inset-x-0 bottom-0 z-[60] border-t border-white/10 bg-ink/95 backdrop-blur">
+        <div className="public-cookie-banner fixed inset-x-0 bottom-0 z-[60] border-t border-white/10 bg-ink/95 backdrop-blur">
           <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-6 py-5 sm:flex-row sm:justify-between">
             <p className="text-xs leading-relaxed text-white/60 sm:max-w-xl">
               Folosim cookie-uri necesare pentru funcționarea site-ului și,

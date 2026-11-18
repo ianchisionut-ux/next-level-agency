@@ -198,7 +198,7 @@ export default function ProjectPreview({ url, title, thumbnail, children }: {
             disabled={!ready}
             aria-controls={`preview-${id}`}
             aria-pressed={Boolean(active)}
-            aria-label={`${active ? "Oprește" : "Pornește"} previzualizarea live: ${title}`}
+            aria-label={`${active ? "Oprește previzualizarea" : "Previzualizare live"}: ${title}`}
             onClick={() => { if (active) stop(); else { setFailed(false); previews.request(id, true); } }}
             className="rounded-lg border border-line-light px-3 py-2 text-sm font-semibold text-blue hover:border-blue/50 disabled:opacity-50"
           >{active ? "Oprește previzualizarea" : "Previzualizare live"}</button>

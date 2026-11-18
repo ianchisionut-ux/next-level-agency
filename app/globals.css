@@ -320,6 +320,18 @@ body:has(.public-marketing-header) [class~="text-white/40"] { color: #596b83; }
 body:has(.public-marketing-header) [class~="text-white/30"],
 body:has(.public-marketing-header) [class~="text-white/20"] { color: #75849a; }
 
+/* Opaque public overlays avoid backdrop compositing while scrolling on touch.
+   Unlayered semantic selectors take precedence over Tailwind's utility layer. */
+@media (max-width: 767px), (pointer: coarse) {
+  .public-marketing-header,
+  .public-cookie-banner {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .public-marketing-header { background-color: var(--color-navy); }
+  .public-cookie-banner { background-color: var(--color-ink); }
+}
+
 .nl-services-section {
   background: linear-gradient(135deg, #eaf2fb 0%, #f0f5fc 55%, #e9f1fa 100%);
   border-block: 1px solid #e0eaf5;
