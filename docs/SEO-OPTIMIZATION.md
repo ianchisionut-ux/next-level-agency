@@ -12,10 +12,13 @@ operations and authentication unchanged.
   the canonical public domain remains `https://www.nextlevel-agency.ro`.
 - Next.js serves the fonts locally. The decorative hero background has responsive
   AVIF/WebP variants instead of a shared large JPEG.
-- Compact screens, coarse pointers, reduced motion and Save-Data keep an accurate
-  rendered preview until the visitor chooses to explore the 3D model. Desktop
-  initializes the model after the page load, paint and idle. Model geometry and
-  preview provenance are checked against the GLB and camera framing.
+- All devices keep an accurate rendered preview until the visitor chooses to
+  explore the 3D model. Background gradients are static; compact screens, coarse
+  pointers, reduced motion and Save-Data also avoid decorative motion work.
+  Model geometry and preview provenance are checked against the GLB and camera.
+- Public links keep their normal URLs and Next.js navigation, while prefetch
+  waits for actual pointer or keyboard intent instead of loading other pages
+  during the initial visit.
 - Video players connect to Vimeo after Play. Portfolio live previews start after
   hover/focus intent or a button, with at most one active frame. Daily Menu,
   BookEasy and ELMONT retain their static previews and external links because
@@ -31,6 +34,7 @@ scripts; the public-site audit itself needs only `npx next build` and `next star
 ```text
 npm run test:hero
 npm run test:project-preview
+npm run test:intent-link
 node scripts/audit-public-seo.cjs --self-test
 node scripts/check-public-site.cjs http://127.0.0.1:3003
 node scripts/audit-public-seo.cjs --origin http://127.0.0.1:3003 --report artifacts/seo-local.json

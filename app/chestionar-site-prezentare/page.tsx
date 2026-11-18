@@ -1,5 +1,5 @@
 import { pageMetadata } from "@/lib/seo";
-import Link from "next/link";
+import Link from "@/components/IntentLink";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SimplePresentationForm from "./SimplePresentationForm";

@@ -14,7 +14,7 @@ function runtime({ react = React, globals = {}, imports = [] } = {}) {
       if (name === 'react') return react;
       if (name === 'react/jsx-runtime') return require(name);
       if (name === 'next/image') return { default: ({ unoptimized, ...props }) => React.createElement('img', props) };
-      if (name === 'next/link') return { default: props => React.createElement('a', props, props.children) };
+      if (name === '@/components/IntentLink') return { default: props => React.createElement('a', props, props.children) };
       if (name === 'lucide-react') return new Proxy({}, { get: () => props => React.createElement('svg', props) });
       if (name === '@/lib/hero-framing') return {};
       if (name === 'three' || name.startsWith('three/')) { imports.push(name); throw new Error('3D dependency intercepted; no WebGL or network in this test'); }
@@ -29,14 +29,14 @@ let policies = 0;
 for (let bits = 0; bits < 16; bits++) {
   const input = { compact: Boolean(bits & 1), coarse: Boolean(bits & 2), reduced: Boolean(bits & 4), saveData: Boolean(bits & 8) };
   const policy = policyApi.heroRuntimePolicy(input);
-  assert.equal(policy.automatic, bits === 0); assert.equal(policy.autoRotate, bits === 0);
+  assert.equal(policy.activation, 'intent'); assert.equal(policy.autoRotate, bits === 0);
   assert.equal(policy.pixelRatioCap, bits === 0 ? 1.5 : 1);
   assert.equal(policy.environmentSize, bits === 0 ? 128 : 64);
   assert.equal(policy.transmissionCap, bits === 0 ? .58 : 0);
-  for (let readiness = 0; readiness < 8; readiness++) assert.equal(policyApi.shouldAutoStartHero(policy, Boolean(readiness & 1), Boolean(readiness & 2), Boolean(readiness & 4)), bits === 0 && readiness === 7);
   policies++;
 }
 assert.ok(!/navigator\s*\.\s*(userAgent|webdriver)/.test(source), 'No user-agent, crawler or test-only branches');
+assert.ok(!/requestIdleCallback|scheduleBoot|shouldAutoStartHero|preloadOnPointer/.test(source), 'No timer, idle or hover bootstrap path remains');
 const html = require('react-dom/server').renderToStaticMarkup(React.createElement(policyApi.default));
 assert.ok(!html.includes('/hero/nextlevel-core.webp'), 'The old orthographic poster must not return');
 for (const frame of ['mobile', 'tablet', 'desktop']) assert.ok(html.includes(`/hero/nextlevel-core-runtime-${frame}.webp`), 'Current-model perspective previews must be present in server HTML');
@@ -80,34 +80,31 @@ function harness(preferences = {}) {
     visible(value) { observer([{ isIntersecting: value }]); },
     paint() { for (let pass = 0; pass < 2; pass++) { const current = [...raf]; raf.clear(); current.forEach(([, fn]) => fn(pass * 16)); } },
     flushIdle() { const current = [...idle]; idle.clear(); current.forEach(([, fn]) => fn()); },
-    activate() { button.props.onClick(); }, cleanup() { cleanups.forEach(fn => fn()); },
+    activate() { button.props.onClick(); },
+    pointerDown(buttonIndex = 0) { button.props.onPointerDown({ button: buttonIndex }); },
+    cleanup() { cleanups.forEach(fn => fn()); },
   };
 }
 
 (async () => {
-  for (const preferences of [{ compact: true }, { coarse: true }, { reduced: true }, { saveData: true }]) {
+  for (let bits = 0; bits < 16; bits++) {
+    const preferences = { compact: Boolean(bits & 1), coarse: Boolean(bits & 2), reduced: Boolean(bits & 4), saveData: Boolean(bits & 8) };
     const test = harness(preferences); test.visible(true); test.paint(); test.flushIdle();
-    await Promise.resolve(); assert.equal(test.imports.length, 0, 'Manual-mode visits cannot import Three or its loaders');
-    test.activate(); test.activate(); await new Promise(setImmediate);
-    assert.equal(test.imports.length, 4, 'An explicit activation bypasses idle once, without duplicate imports'); test.cleanup();
+    assert.equal(test.idle.size, 0, 'No initial idle/timer bootstrap');
+    assert.ok(!test.events.has('window:load'), 'Load is never an activation signal');
+    test.visible(false); test.visible(true);
+    test.document.hidden = true; test.events.get('document:visibilitychange')();
+    test.document.hidden = false; test.events.get('document:visibilitychange')();
+    test.settings.saveData = !test.settings.saveData; test.events.get('connection:change')();
+    test.paint(); test.flushIdle(); await Promise.resolve();
+    assert.equal(test.imports.length, 0, 'Desktop/mobile, visibility and preferences cannot import Three without intent');
+    test.pointerDown(2); await Promise.resolve(); assert.equal(test.imports.length, 0, 'Context menu does not activate the model');
+    test.pointerDown(); test.activate(); test.activate(); await new Promise(setImmediate);
+    assert.equal(test.imports.length, 4, 'Pointerdown plus the following click load the dependency set only once'); test.cleanup();
   }
-  const desktop = harness({ loaded: false }); desktop.visible(true); desktop.paint();
-  assert.equal(desktop.idle.size, 0, 'Desktop must wait for the load event');
-  desktop.events.get('window:load')(); assert.equal(desktop.idle.size, 1); assert.equal(desktop.imports.length, 0);
-  desktop.flushIdle(); await new Promise(setImmediate); assert.equal(desktop.imports.length, 4); desktop.cleanup();
-
-  const offscreen = harness(); offscreen.paint(); assert.equal(offscreen.idle.size, 0);
-  offscreen.visible(true); assert.equal(offscreen.idle.size, 1);
-  const staleIdle = [...offscreen.idle.values()][0]; offscreen.visible(false); assert.equal(offscreen.idle.size, 0);
-  staleIdle(); await Promise.resolve(); assert.equal(offscreen.imports.length, 0); offscreen.cleanup();
-
-  const changed = harness(); changed.visible(true); changed.paint(); assert.equal(changed.idle.size, 1);
-  changed.settings.saveData = true; changed.events.get('connection:change')(); assert.equal(changed.idle.size, 0); changed.cleanup();
-
-  const hidden = harness(); hidden.document.hidden = true; hidden.visible(true); hidden.paint(); assert.equal(hidden.idle.size, 0);
-  hidden.document.hidden = false; hidden.events.get('document:visibilitychange')(); assert.equal(hidden.idle.size, 1); hidden.cleanup();
-
-  const priority = harness({ compact: true, loaded: false }); priority.activate(); await new Promise(setImmediate);
-  assert.equal(priority.imports.length, 4, 'Keyboard/pointer activation cannot be delayed by load or idle'); priority.cleanup();
-  console.log(`Hero runtime passed: ${policies} preference combinations, 128 readiness states, SSR poster/activation, zero automatic 3D imports on manual paths, desktop load/paint/idle, offscreen/hidden cancellation and explicit-priority activation. No rendering, network or database.`);
+  const priority = harness({ loaded: false }); priority.activate(); await new Promise(setImmediate);
+  assert.equal(priority.imports.length, 4, 'Keyboard click starts immediately, before window load and without idle'); priority.cleanup();
+  const unmounted = harness(); unmounted.cleanup(); unmounted.activate(); await Promise.resolve();
+  assert.equal(unmounted.imports.length, 0, 'Unmounted activation cannot import dependencies');
+  console.log(`Hero runtime passed: ${policies} preference combinations, SSR current-model previews and activation, zero initial Three/GLB bootstrap on every device, no load/idle/visibility/preference bootstrap, pointerdown/keyboard priority and duplicate/unmount guards. No rendering, network or database.`);
 })().catch(error => { console.error(error); process.exitCode = 1; });

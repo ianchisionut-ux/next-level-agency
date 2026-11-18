@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/IntentLink";
 import { ArrowUpRight, Orbit } from "lucide-react";
 import InteractiveCore from "@/components/InteractiveCore";
 

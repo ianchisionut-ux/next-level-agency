@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
+import Link from "@/components/IntentLink";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ArrowUpRight, Pause, Play, RotateCcw, Sparkles } from "lucide-react";
 import type * as Three from "three";
@@ -10,10 +10,7 @@ import { HERO_FIELD_OF_VIEW, heroFraming, layoutHeroLabels, type HeroLabelAnchor
 type CoreControls = { pulse: () => void; reset: () => void; rotate: (x: number, y: number) => void; zoom: (factor: number) => void };
 export function heroRuntimePolicy(preferences: { compact: boolean; coarse: boolean; reduced: boolean; saveData: boolean }) {
   const manual = preferences.compact || preferences.coarse || preferences.reduced || preferences.saveData;
-  return { automatic: !manual, autoRotate: !manual, pixelRatioCap: manual ? 1 : 1.5, environmentSize: manual ? 64 : 128, maxFps: 30, transmissionCap: manual ? 0 : 0.58 };
-}
-export function shouldAutoStartHero(policy: ReturnType<typeof heroRuntimePolicy>, visible: boolean, loaded: boolean, painted: boolean) {
-  return policy.automatic && visible && loaded && painted;
+  return { activation: "intent" as const, autoRotate: !manual, pixelRatioCap: manual ? 1 : 1.5, environmentSize: manual ? 64 : 128, maxFps: 30, transmissionCap: manual ? 0 : 0.58 };
 }
 const coreServices = [
   { key: "web", title: "Web & App Dev", description: "Experiențe care convertesc", href: "/servicii#web-development", mesh: "NL / Web glass panel" },
@@ -21,12 +18,11 @@ const coreServices = [
   { key: "automation", title: "AI & Automatizări", description: "Mai mult impact. Mai puțin efort.", href: "/servicii#ai-automatizari", mesh: "NL / Automation module 1" },
 ] as const;
 
-/** The editable Blender model is loaded only when the hero is near the viewport. */
+/** The editable Blender model is loaded only after explicit pointer/keyboard activation. */
 export default function InteractiveCore() {
   const host = useRef<HTMLDivElement>(null);
   const api = useRef<CoreControls | null>(null);
   const activate = useRef<(() => void) | null>(null);
-  const preloadOnPointer = useRef(false);
   const pausedRef = useRef(false);
   const serviceLabels = useRef<(HTMLDivElement | null)[]>([]);
   const [ready, setReady] = useState(false);
@@ -43,13 +39,8 @@ export default function InteractiveCore() {
     const coarse = window.matchMedia("(pointer: coarse)");
     const connection = (navigator as Navigator & { connection?: EventTarget & { saveData?: boolean } }).connection;
     const readPolicy = () => heroRuntimePolicy({ compact: compact.matches, coarse: coarse.matches, reduced: reduced.matches, saveData: Boolean(connection?.saveData) });
-    preloadOnPointer.current = readPolicy().automatic;
     let disposed = false, started = false, visible = false;
     let frame = 0;
-    let loaded = document.readyState === "complete", painted = false;
-    let paintFrame = 0, paintFrameAfter = 0;
-    let idleHandle: number | undefined;
-    const nativeIdle = typeof window.requestIdleCallback === "function";
     let release = () => {};
     let schedule = () => {};
     const resetLabels = () => serviceLabels.current.forEach(label => { if (label) label.style.cssText = ""; });
@@ -303,33 +294,19 @@ export default function InteractiveCore() {
         if (!disposed) { release(); setFailed(true); setBooting(false); setStatus("Modelul 3D nu se poate încărca. Se afișează imaginea de rezervă."); }
       }
     };
-    const cancelBoot = () => {
-      if (idleHandle === undefined) return;
-      if (nativeIdle) window.cancelIdleCallback(idleHandle); else window.clearTimeout(idleHandle);
-      idleHandle = undefined;
-    };
-    const scheduleBoot = () => {
-      if (disposed || started || document.hidden || idleHandle !== undefined || !shouldAutoStartHero(readPolicy(), visible, loaded, painted)) return;
-      const boot = () => { idleHandle = undefined; if (!document.hidden && shouldAutoStartHero(readPolicy(), visible, loaded, painted)) void init(); };
-      idleHandle = nativeIdle ? window.requestIdleCallback(boot, { timeout: 2000 }) : window.setTimeout(boot, 350);
-    };
-    activate.current = () => { cancelBoot(); void init(); };
-    const onLoad = () => { loaded = true; scheduleBoot(); };
-    window.addEventListener("load", onLoad, { once: true });
-    paintFrame = requestAnimationFrame(() => { paintFrameAfter = requestAnimationFrame(() => { painted = true; scheduleBoot(); }); });
+    activate.current = () => { void init(); };
     const intersection = new IntersectionObserver(entries => {
       visible = entries.some(entry => entry.isIntersecting);
-      if (visible && !started) scheduleBoot();
-      else if (visible) schedule();
-      else { cancelBoot(); cancelAnimationFrame(frame); frame = 0; }
+      if (visible) schedule();
+      else { cancelAnimationFrame(frame); frame = 0; }
     }, { rootMargin: "0px" });
     intersection.observe(mount);
-    const wake = () => { if (document.hidden) { cancelBoot(); cancelAnimationFrame(frame); frame = 0; } else { scheduleBoot(); schedule(); } };
-    const motion = () => { preloadOnPointer.current = readPolicy().automatic; if (!readPolicy().automatic) cancelBoot(); else scheduleBoot(); schedule(); };
+    const wake = () => { if (document.hidden) { cancelAnimationFrame(frame); frame = 0; } else schedule(); };
+    const motion = () => { schedule(); };
     document.addEventListener("visibilitychange", wake);
     reduced.addEventListener("change", motion);
     compact.addEventListener("change", motion); coarse.addEventListener("change", motion); connection?.addEventListener("change", motion);
-    return () => { disposed = true; api.current = null; activate.current = null; cancelBoot(); cancelAnimationFrame(paintFrame); cancelAnimationFrame(paintFrameAfter); intersection.disconnect(); window.removeEventListener("load", onLoad); document.removeEventListener("visibilitychange", wake); reduced.removeEventListener("change", motion); compact.removeEventListener("change", motion); coarse.removeEventListener("change", motion); connection?.removeEventListener("change", motion); release(); };
+    return () => { disposed = true; api.current = null; activate.current = null; intersection.disconnect(); document.removeEventListener("visibilitychange", wake); reduced.removeEventListener("change", motion); compact.removeEventListener("change", motion); coarse.removeEventListener("change", motion); connection?.removeEventListener("change", motion); release(); };
   }, []);
 
   function togglePause() {
@@ -350,7 +327,7 @@ export default function InteractiveCore() {
   return (
     <div className={`nl-interactive-core ${ready && !failed ? "is-ready" : ""}`}>
       <style>{`.nl-core-fallback.nl-core-runtime-preview{left:0;right:0;width:100%;height:100%;object-position:50% 50%}@media(min-width:1024px){.nl-core-fallback.nl-core-runtime-preview{object-position:75% 50%}}`}</style>
-      <div className="nl-core-stage" tabIndex={ready && !failed ? 0 : -1} role="group" aria-label="Ecosistem 3D Next Level, rotire interactivă" aria-describedby="nl-core-help" onKeyDown={keyboard} onPointerEnter={() => { if (preloadOnPointer.current) activate.current?.(); }}>
+      <div className="nl-core-stage" tabIndex={ready && !failed ? 0 : -1} role="group" aria-label="Ecosistem 3D Next Level, rotire interactivă" aria-describedby="nl-core-help" onKeyDown={keyboard}>
         <span id="nl-core-help" className="sr-only">Folosește săgețile pentru rotire, plus și minus pentru zoom, Home pentru resetare și spațiu pentru pauză.</span>
         <picture>
           <source media="(min-width: 1024px)" srcSet="/hero/nextlevel-core-runtime-desktop.webp" type="image/webp" />
@@ -358,7 +335,7 @@ export default function InteractiveCore() {
           <Image src="/hero/nextlevel-core-runtime-mobile.webp" alt="Previzualizare a modelului Next Level: nucleu, orbite, panou web, automatizări și grafic de marketing" width={412} height={494} unoptimized loading="lazy" fetchPriority="low" className="nl-core-render nl-core-fallback nl-core-runtime-preview" />
         </picture>
         <div ref={host} className="nl-core-canvas" aria-hidden="true" />
-        {!ready && !failed && <button type="button" className="nl-core-activate" disabled={booting} onClick={() => activate.current?.()}><Sparkles size={17} aria-hidden="true" />{booting ? "Se pregătește…" : "Explorează în 3D"}</button>}
+        {!ready && !failed && <button type="button" className="nl-core-activate" disabled={booting} onPointerDown={event => { if (event.button === 0) activate.current?.(); }} onClick={() => activate.current?.()}><Sparkles size={17} aria-hidden="true" />{booting ? "Se pregătește…" : "Explorează în 3D"}</button>}
         <div className="nl-core-services" aria-label="Explorează serviciile din ecosistem">
           {coreServices.map((service, index) => <div key={service.key} ref={element => { serviceLabels.current[index] = element; }} className={`nl-core-service-label nl-core-service-${service.key}`}>
             <span className="nl-core-service-connector" aria-hidden="true" />

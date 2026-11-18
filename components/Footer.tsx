@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/IntentLink";
 import Image from "next/image";
 import { IconFacebook, IconInstagram, IconTiktok } from "./Icons";
 import { siteConfig } from "@/lib/data";

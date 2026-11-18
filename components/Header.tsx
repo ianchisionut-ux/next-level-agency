@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/IntentLink";
 import { BriefcaseBusiness, BookOpenText, Images, LogIn, Mail, UsersRound, ClipboardList } from "lucide-react";
 import { BrandMark, IconWhatsapp, IconFacebook, IconInstagram, IconTiktok } from "./Icons";
 import { siteConfig } from "@/lib/data";

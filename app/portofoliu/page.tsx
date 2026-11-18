@@ -4,7 +4,7 @@ import Footer from "@/components/Footer";
 import ClientsSection from "@/components/ClientsSection";
 import OurWork from "@/components/OurWork";
 import WebDevelopment from "@/components/WebDevelopment";
-import Link from "next/link";
+import Link from "@/components/IntentLink";
 
 export const metadata = pageMetadata("Portofoliu web design și conținut video | Next Level", "Vezi site-uri și materiale video din portofoliul Next Level, alături de brandurile cu care lucrăm. Exemple pentru un proiect nou sau un redesign.", "/portofoliu");
 
