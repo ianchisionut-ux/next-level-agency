@@ -59,6 +59,9 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* OUR CLIENTS — light (editable in lib/data.ts) */}
+        <ClientsSection />
+
         {/* ---------------------------------------------------------------- */}
         {/* SERVICES */}
         {/* ---------------------------------------------------------------- */}
@@ -114,9 +117,6 @@ export default function HomePage() {
         {/* ================================================================ */}
         {/* LIGHT BAND START                                                  */}
         {/* ================================================================ */}
-
-        {/* OUR CLIENTS — light (editable in lib/data.ts) */}
-        <ClientsSection />
 
         <OurWork />
 
