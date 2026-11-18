@@ -1,4 +1,7 @@
 const assert = require("node:assert/strict");
+const { createHash } = require("node:crypto");
+const { readFileSync } = require("node:fs");
+const path = require("node:path");
 const base = new URL(process.argv[2] || "http://127.0.0.1:3003");
 assert.ok(["127.0.0.1", "localhost"].includes(base.hostname), "This check only runs against a local isolated server.");
 const canonicalOrigin = "https://www.nextlevel-agency.ro";
@@ -31,7 +34,10 @@ const canonicalOrigin = "https://www.nextlevel-agency.ro";
     assert.ok(!html.includes("https://nextlevelagency.ro"), `Old wrong domain on ${path}`);
     for (const json of html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)) JSON.parse(json[1]);
     if (path === "/") {
-      assert.ok(!html.includes("/hero/nextlevel-core.webp") && !html.includes("%2Fhero%2Fnextlevel-core.webp"), 'No mismatched poster during the initial hero load');
+      assert.ok(!html.includes("/hero/nextlevel-core.webp") && !html.includes("%2Fhero%2Fnextlevel-core.webp"), 'No old orthographic/mismatched poster during the initial hero load');
+      for (const frame of ['mobile', 'tablet', 'desktop']) assert.ok(html.includes(`/hero/nextlevel-core-runtime-${frame}.webp`), `Matching perspective preview for ${frame}`);
+      assert.ok(html.includes('Explorează în 3D'), 'Explicit mobile activation is server-rendered');
+      assert.ok(!/<(?:link|img)[^>]+(?:href|src)=[^>]*nextlevel-core\.glb/.test(html), 'The model is not an eager image/preload');
       assert.ok(!html.includes("/video/hero-bg.mp4"));
       assert.ok(html.includes("ProfessionalService"));
       for (const anchor of ['web-development', 'performance-marketing', 'ai-automatizari']) assert.ok(html.includes(`/servicii#${anchor}`), `Clickable 3D service link ${anchor}`);
@@ -44,6 +50,23 @@ const canonicalOrigin = "https://www.nextlevel-agency.ro";
   const modelBytes = Buffer.from(await model.arrayBuffer());
   assert.equal(modelBytes.toString('ascii', 0, 4), 'glTF');
   assert.ok(modelBytes.length < 1_000_000, 'Interactive Blender model stays below 1 MB');
+  const posterResponse = await fetch(new URL('/hero/nextlevel-core-runtime-poster.json', base));
+  assert.equal(posterResponse.status, 200);
+  const poster = await posterResponse.json();
+  const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
+  assert.equal(poster.modelSha256, sha256(modelBytes), 'Preview renders must match the current GLB');
+  assert.equal(poster.framingSha256, sha256(readFileSync(path.join(__dirname, '..', 'lib', 'hero-framing.ts'), 'utf8').replace(/\r\n/g, '\n')), 'Preview framing cannot silently become stale');
+  assert.equal(poster.cameraType, 'perspective'); assert.equal(poster.fov, 38);
+  assert.equal(poster.frames.length, 3);
+  for (const frame of poster.frames) {
+    assert.match(frame.asset, /^\/hero\/nextlevel-core-runtime-(mobile|tablet|desktop)\.webp$/);
+    assert.ok(frame.projectionErrorPx < .2, 'Blender projection agrees with the current runtime geometry');
+    const response = await fetch(new URL(frame.asset, base));
+    assert.equal(response.status, 200); assert.ok(response.headers.get('content-type').startsWith('image/'));
+    const bytes = Buffer.from(await response.arrayBuffer());
+    assert.equal(sha256(bytes), frame.sha256, 'Preview bytes match the recorded render');
+    assert.ok(bytes.length < 150_000, 'Each preview remains lightweight');
+  }
   for (const path of ["/login", "/signup", "/forgot-password", "/offline", "/dashboard/contabilitate", "/dashboard/email", "/api/accounting/invoices", "/api/accounting/health", "/api/mailbox/status", "/api/mailbox/threads", "/api/cron/mailbox"]) {
     const response = await fetch(new URL(path, base), { redirect: "manual" });
     assert.ok(response.headers.get("x-robots-tag")?.includes("noindex"), `Private indexing directive on ${path}`);

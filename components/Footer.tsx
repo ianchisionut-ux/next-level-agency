@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { BrandLogo, IconFacebook, IconInstagram, IconTiktok } from "./Icons";
+import Image from "next/image";
+import { IconFacebook, IconInstagram, IconTiktok } from "./Icons";
 import { siteConfig } from "@/lib/data";
+import { serviceContent } from "@/lib/service-content";
 import CookieSettingsLink from "./CookieSettingsLink";
 
 export default function Footer() {
@@ -9,10 +11,10 @@ export default function Footer() {
       <div className="mx-auto max-w-7xl px-6 py-14">
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <BrandLogo className="h-9" />
+            <Image src="/brand/logo-full.png" alt="Next Level Advertising Agency" width={1412} height={478} sizes="107px" className="h-9 w-auto object-contain" loading="lazy" />
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/50">
-              Agenție de advertising ce creează branduri puternice și generează
-              rezultate reale prin marketing digital, design și automatizări.
+              Branding, campanii de marketing digital, web design, SEO și
+              automatizări pentru afaceri.
             </p>
             <div className="mt-5 flex items-center gap-4">
               <a
@@ -55,10 +57,13 @@ export default function Footer() {
                 Partener tehnologic
               </p>
               <div className="inline-flex rounded-2xl bg-white p-1.5 shadow-[0_10px_35px_rgba(0,0,0,0.25)] ring-1 ring-white/15">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src="/brand/meta-tech-provider.png"
                   alt="Next Level este Meta Tech Provider"
+                  width={1024}
+                  height={400}
+                  sizes="224px"
+                  loading="lazy"
                   className="h-auto w-56 rounded-xl"
                 />
               </div>
@@ -66,18 +71,14 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-widest text-white/40">Servicii</h4>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-white/40">Servicii</h2>
             <ul className="mt-4 space-y-2 text-sm text-white/60">
-              <li><Link href="/servicii" className="hover:text-white">Branding &amp; Identity</Link></li>
-              <li><Link href="/servicii" className="hover:text-white">Performance Marketing</Link></li>
-              <li><Link href="/servicii" className="hover:text-white">Web Design &amp; Development</Link></li>
-              <li><Link href="/servicii" className="hover:text-white">AI &amp; Automation</Link></li>
-              <li><Link href="/servicii" className="hover:text-white">SEO &amp; Content Marketing</Link></li>
+              {serviceContent.map(service => <li key={service.id}><Link href={`/servicii#${service.id}`} className="hover:text-white">{service.title}</Link></li>)}
             </ul>
           </div>
 
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-widest text-white/40">Companie</h4>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-white/40">Companie</h2>
             <ul className="mt-4 space-y-2 text-sm text-white/60">
               <li><Link href="/despre-noi" className="hover:text-white">Despre noi</Link></li>
               <li><Link href="/portofoliu" className="hover:text-white">Portofoliu</Link></li>
@@ -88,7 +89,7 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-widest text-white/40">Contact</h4>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-white/40">Contact</h2>
             <ul className="mt-4 space-y-2 text-sm text-white/60">
               <li>{siteConfig.address}</li>
               <li>
@@ -117,10 +118,13 @@ export default function Footer() {
             rel="nofollow noopener noreferrer"
             className="rounded-lg bg-white p-2 transition hover:opacity-90"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src="/legal/anpc-sal.png"
               alt="Soluționarea Alternativă a Litigiilor"
+              width={500}
+              height={124}
+              sizes="(min-width: 640px) 194px, 162px"
+              loading="lazy"
               className="h-10 w-auto sm:h-12"
             />
           </a>
@@ -130,10 +134,13 @@ export default function Footer() {
             rel="nofollow noopener noreferrer"
             className="rounded-lg bg-white p-2 transition hover:opacity-90"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src="/legal/anpc-sol.png"
               alt="Soluționarea Online a Litigiilor"
+              width={500}
+              height={124}
+              sizes="(min-width: 640px) 194px, 162px"
+              loading="lazy"
               className="h-10 w-auto sm:h-12"
             />
           </a>
@@ -144,7 +151,7 @@ export default function Footer() {
             <p>
               Copyright © {new Date().getFullYear()} {siteConfig.legalName}. Toate drepturile rezervate.
             </p>
-            <p className="mt-1 text-white/30">
+            <p className="mt-1 text-white/50">
               CUI {siteConfig.cui} · {siteConfig.tradeRegistryNumber}
             </p>
           </div>

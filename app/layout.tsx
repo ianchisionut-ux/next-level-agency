@@ -1,9 +1,14 @@
 import type { Metadata, Viewport } from "next";
+import { IBM_Plex_Mono, Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import CookieConsent from "@/components/CookieConsent";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
+
+const inter = Inter({ subsets: ["latin", "latin-ext"], display: "swap", variable: "--font-nextlevel-inter", preload: true });
+const displayFont = Space_Grotesk({ subsets: ["latin", "latin-ext"], display: "swap", variable: "--font-nextlevel-display", preload: false });
+const monoFont = IBM_Plex_Mono({ weight: ["400", "500"], subsets: ["latin", "latin-ext"], display: "swap", variable: "--font-nextlevel-mono", preload: false });
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -40,19 +45,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="ro">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
-          rel="stylesheet"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="ro" className={`${inter.variable} ${displayFont.variable} ${monoFont.variable}`}>
       <body className="antialiased">
         {children}
         <WhatsAppButton />

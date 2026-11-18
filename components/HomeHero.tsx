@@ -5,7 +5,17 @@ import InteractiveCore from "@/components/InteractiveCore";
 export default function HomeHero() {
   return (
     <section className="nl-hero" aria-labelledby="hero-title">
-      <div className="nl-hero-grid" aria-hidden="true" />
+      <picture className="nl-hero-grid" aria-hidden="true">
+        <source media="(max-width: 767px)" type="image/avif" srcSet="/hero/hero-circuit-background-mobile.avif" />
+        <source media="(max-width: 767px)" type="image/webp" srcSet="/hero/hero-circuit-background-mobile.webp" />
+        <source media="(max-width: 1023px)" type="image/avif" srcSet="/hero/hero-circuit-background-tablet.avif" />
+        <source media="(max-width: 1023px)" type="image/webp" srcSet="/hero/hero-circuit-background-tablet.webp" />
+        <source type="image/avif" srcSet="/hero/hero-circuit-background.avif" />
+        <source type="image/webp" srcSet="/hero/hero-circuit-background.webp" />
+        {/* Pre-encoded art direction keeps the original centered circuit crop. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/hero/hero-circuit-background.jpg" alt="" width={1408} height={768} fetchPriority="high" loading="eager" decoding="async" />
+      </picture>
       <div className="nl-hero-main">
         <div className="nl-hero-art">
           <div className="nl-orbit-halo" aria-hidden="true" />

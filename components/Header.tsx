@@ -94,7 +94,7 @@ export default function Header() {
           href={`https://wa.me/${siteConfig.whatsappNumber}?text=${encodeURIComponent(siteConfig.whatsappMessage)}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="hidden shrink-0 items-center gap-2 whitespace-nowrap rounded-lg bg-blue px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-glow sm:flex"
+          className="hidden shrink-0 items-center gap-2 whitespace-nowrap rounded-lg bg-blue-glow px-4 py-2.5 text-sm font-semibold text-[#ffffff] transition hover:bg-blue-800 sm:flex"
         >
           Programează o discuție
         </a>
@@ -104,7 +104,7 @@ export default function Header() {
           href={`https://wa.me/${siteConfig.whatsappNumber}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue text-white sm:hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-glow text-[#ffffff] sm:hidden"
           aria-label="Scrie-ne pe WhatsApp"
         >
           <IconWhatsapp className="h-5 w-5" />

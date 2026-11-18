@@ -1,7 +1,7 @@
 import { pageMetadata } from "@/lib/seo";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { process, stats } from "@/lib/data";
+import { process } from "@/lib/data";
 import {
   IconDiscovery,
   IconStrategy,
@@ -35,18 +35,11 @@ export default function DespreNoiPage() {
             <p className="mx-auto mt-5 max-w-2xl text-base text-white/60">
               Next Level Advertising Agency ajută afaceri să crească printr-o
               combinație de branding puternic, marketing performant și
-              tehnologie modernă. Nu vindem promisiuni — livrăm cifre.
+              tehnologie modernă. Stabilim obiectivele și indicatorii de urmărit
+              în funcție de proiect, apoi discutăm rezultatele în contextul lor.
             </p>
           </div>
 
-          <div className="mx-auto mt-14 grid max-w-4xl grid-cols-2 gap-6 px-6 sm:grid-cols-4">
-            {stats.map((s) => (
-              <div key={s.label} className="text-center">
-                <div className="text-2xl font-extrabold text-blue-bright">{s.value}</div>
-                <div className="mt-1 text-xs text-white/50">{s.label}</div>
-              </div>
-            ))}
-          </div>
         </section>
 
         {/* MISSION / VALUES — light */}

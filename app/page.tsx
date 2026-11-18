@@ -16,12 +16,10 @@ import {
   IconCode,
   IconBot,
   IconSearch,
-  IconStar,
 } from "@/components/Icons";
 import {
   trustedBy,
   services,
-  testimonials,
   siteConfig,
 } from "@/lib/data";
 
@@ -31,6 +29,14 @@ const serviceIcons = {
   code: IconCode,
   bot: IconBot,
   search: IconSearch,
+};
+
+const serviceAnchors = {
+  target: "branding-identitate",
+  chart: "performance-marketing",
+  code: "web-development",
+  bot: "ai-automatizari",
+  search: "seo-content-marketing",
 };
 
 export const metadata = pageMetadata("Marketing digital și web design Zalău | Next Level", DEFAULT_DESCRIPTION, "/");
@@ -92,9 +98,7 @@ export default function HomePage() {
                     <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue/15 text-blue-bright">
                       <Icon className="h-5 w-5" />
                     </div>
-                    <h3 className="mt-5 text-sm font-bold uppercase tracking-wide">
-                      {service.title}
-                    </h3>
+                    <h3 className="mt-5 text-sm font-bold uppercase tracking-wide"><Link href={`/servicii#${serviceAnchors[service.icon]}`} className="underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-bright">{service.title}</Link></h3>
                     <p className="mt-2 text-sm leading-relaxed text-white/50">
                       {service.description}
                     </p>
@@ -126,47 +130,7 @@ export default function HomePage() {
         {/* LIGHT BAND END                                                    */}
         {/* ================================================================ */}
 
-        {/* TESTIMONIALS — dark */}
-        <section className="bg-navy py-24">
-          <div className="mx-auto max-w-7xl px-6">
-            <div className="mb-14 text-center">
-              <p className="eyebrow text-blue-bright">Ce spun clienții noștri</p>
-              <h2 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
-                Parteneriate. Rezultate. Încredere.
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-              {testimonials.map((t) => (
-                <div
-                  key={t.name}
-                  data-spotlight data-reveal
-                  className="rounded-2xl border border-white/10 bg-navy-soft p-6"
-                >
-                  <div className="flex gap-1 text-blue-bright">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <IconStar key={i} />
-                    ))}
-                  </div>
-                  <p className="mt-4 text-sm leading-relaxed text-white/70">
-                    &ldquo;{t.quote}&rdquo;
-                  </p>
-                  <div className="mt-5 flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue/20 text-xs font-bold text-blue-bright">
-                      {t.name.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold">{t.name}</p>
-                      <p className="text-xs text-white/40">{t.role}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="nl-faq bg-navy pb-24" aria-labelledby="faq-title">
+        <section className="nl-faq bg-navy py-24" aria-labelledby="faq-title">
           <div className="mx-auto max-w-4xl px-6">
             <p className="eyebrow text-blue-bright">Înainte să începem</p>
             <h2 id="faq-title" className="mt-3 mb-9 text-3xl font-extrabold tracking-tight">Întrebări despre proiectul tău digital</h2>
@@ -193,7 +157,7 @@ export default function HomePage() {
                 href={`https://wa.me/${siteConfig.whatsappNumber}?text=${encodeURIComponent(siteConfig.whatsappMessage)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="whitespace-nowrap rounded-lg bg-blue px-6 py-3.5 text-sm font-bold tracking-wide text-white transition hover:bg-blue-glow"
+                className="whitespace-nowrap rounded-lg bg-blue-glow px-6 py-3.5 text-sm font-bold tracking-wide text-[#ffffff] transition hover:bg-blue-800"
               >
                 PROGRAMEAZĂ O DISCUȚIE GRATUITĂ
               </a>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 
 // "Signal" e un tool intern, secret - nu are sens un banner public de
@@ -40,6 +40,25 @@ export default function CookieConsent() {
   const [visible, setVisible] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [prefs, setPrefs] = useState<Prefs>({ analytics: false, marketing: false });
+  const settingsDialog = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!settingsOpen || !settingsDialog.current) return;
+    const dialog = settingsDialog.current;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const controls = () => Array.from(dialog.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), a[href]'));
+    controls()[0]?.focus();
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); setSettingsOpen(false); return; }
+      if (event.key !== "Tab") return;
+      const items = controls(), first = items[0], last = items.at(-1);
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    dialog.addEventListener("keydown", handleKey);
+    return () => { dialog.removeEventListener("keydown", handleKey); if (previousFocus?.isConnected) previousFocus.focus(); };
+  }, [settingsOpen]);
 
   useEffect(() => {
     if (hidden) return;
@@ -107,7 +126,7 @@ export default function CookieConsent() {
               </button>
               <button
                 onClick={acceptAll}
-                className="rounded-lg bg-blue px-4 py-2 text-xs font-bold text-white hover:bg-blue-glow"
+                className="rounded-lg bg-blue-glow px-4 py-2 text-xs font-bold text-[#ffffff] hover:bg-blue-800"
               >
                 Acceptă tot
               </button>
@@ -117,9 +136,9 @@ export default function CookieConsent() {
       )}
 
       {settingsOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-6">
+        <div ref={settingsDialog} role="dialog" aria-modal="true" aria-labelledby="cookie-settings-title" className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-6">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 text-slate-900">
-            <h2 className="text-lg font-extrabold">Setări Cookies</h2>
+            <h2 id="cookie-settings-title" className="text-lg font-extrabold">Setări Cookies</h2>
             <p className="mt-2 text-xs leading-relaxed text-ink-soft">
               Alege ce categorii de cookie-uri accepți. Cele necesare rămân
               mereu active — fără ele site-ul nu funcționează corect.
@@ -131,7 +150,7 @@ export default function CookieConsent() {
                   <p className="text-sm font-semibold">Necesare</p>
                   <p className="text-xs text-ink-soft">Mereu active</p>
                 </div>
-                <input type="checkbox" checked disabled className="h-4 w-4" />
+                <input type="checkbox" aria-label="Cookie-uri necesare" checked disabled className="h-4 w-4" />
               </div>
 
               <div className="flex items-center justify-between rounded-lg border border-line-light p-3">
@@ -141,6 +160,7 @@ export default function CookieConsent() {
                 </div>
                 <input
                   type="checkbox"
+                  aria-label="Cookie-uri analitice"
                   checked={prefs.analytics}
                   onChange={(e) => setPrefs((p) => ({ ...p, analytics: e.target.checked }))}
                   className="h-4 w-4"
@@ -154,6 +174,7 @@ export default function CookieConsent() {
                 </div>
                 <input
                   type="checkbox"
+                  aria-label="Cookie-uri de marketing"
                   checked={prefs.marketing}
                   onChange={(e) => setPrefs((p) => ({ ...p, marketing: e.target.checked }))}
                   className="h-4 w-4"
@@ -170,7 +191,7 @@ export default function CookieConsent() {
               </button>
               <button
                 onClick={saveCustom}
-                className="rounded-lg bg-blue px-4 py-2 text-xs font-bold text-white hover:bg-blue-glow"
+                className="rounded-lg bg-blue-glow px-4 py-2 text-xs font-bold text-[#ffffff] hover:bg-blue-800"
               >
                 Salvează preferințele
               </button>

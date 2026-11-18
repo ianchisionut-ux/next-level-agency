@@ -26,13 +26,6 @@ export const siteConfig = {
   },
 };
 
-export const stats = [
-  { value: "10+", label: "Proiecte finalizate" },
-  { value: "98%", label: "Clienți mulțumiți" },
-  { value: "12K+", label: "Bugete gestionate" },
-  { value: "4.9★", label: "Rating Google" },
-];
-
 export const trustedBy = [
   "Google", "Meta", "TikTok", "Stripe", "YouTube", "Banca Transilvania",
 ];
@@ -47,27 +40,27 @@ export const services: Service[] = [
   {
     icon: "target",
     title: "Branding & Identity",
-    description: `Creăm identități vizuale puternice care te diferențiază de concurență.`,
+    description: `Strategie de brand și identitate vizuală coerentă, adaptate afacerii tale.`,
   },
   {
     icon: "chart",
     title: "Performance Marketing",
-    description: `Campanii profitabile pe Facebook, Google, TikTok și alte platforme.`,
+    description: `Campanii pe Google, Meta și TikTok, cu obiective și bugete stabilite împreună.`,
   },
   {
     icon: "code",
     title: "Web Design & Development",
-    description: `Site-uri moderne, rapide și optimizate pentru conversii.`,
+    description: `Site-uri de prezentare și aplicații web, cu structură și funcționalități adaptate proiectului.`,
   },
   {
     icon: "bot",
     title: "AI & Marketing Automation",
-    description: `Automatizări inteligente care îți economisesc timp și cresc vânzările.`,
+    description: `Integrarea aplicațiilor și automatizarea fluxurilor repetitive, pornind de la procesele tale.`,
   },
   {
     icon: "search",
     title: "SEO & Content Marketing",
-    description: `Strategii SEO și content care aduc trafic și conversii constante.`,
+    description: `Optimizare tehnică și conținut util, pentru pagini clare și ușor de descoperit în căutare.`,
   },
 ];
 
@@ -78,24 +71,6 @@ export const process = [
   { step: "04", icon: "optimization", title: "Optimization", description: "Optimizăm continuu pentru performanță maximă." },
   { step: "05", icon: "growth", title: "Growth", description: "Scalăm rezultatele și creșterea sustenabilă a afacerii tale." },
 ] as const;
-
-export const testimonials = [
-  {
-    quote: "Next Level ne-a ajutat să ne dublăm veniturile în doar 3 luni. Profesioniști, implicați și mereu cu un pas înainte.",
-    name: "Alex Pop",
-    role: "CEO - AutoLux",
-  },
-  {
-    quote: "Echipa lor este extraordinară. Campaniile aduc rezultate constante, iar comunicarea este impecabilă.",
-    name: "Mihai Ionescu",
-    role: "Founder - FoodHub",
-  },
-  {
-    quote: "Site-ul realizat de Next Level arată incredibil și convertește excelent. Recomand cu toată încrederea!",
-    name: "Andrei M.",
-    role: "Owner - Urban Suites",
-  },
-];
 
 // -----------------------------------------------------------------------------
 // SECȚIUNEA "OUR CLIENTS" — adaugă / elimină parteneri direct aici.
@@ -176,13 +151,14 @@ export const clients: Client[] = [
 export type WorkVideo = {
   title: string;
   embedUrl: string;
+  poster: string;
 };
 
 export const workVideos: WorkVideo[] = [
-  { title: "Casa Romana", embedUrl: "https://player.vimeo.com/video/1213316761?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479" },
-  { title: "Ceramic Stone", embedUrl: "https://player.vimeo.com/video/1213316759?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479" },
-  { title: "Incognito Escape Meses", embedUrl: "https://player.vimeo.com/video/1213316760?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479" },
-  { title: "CS Reel 5", embedUrl: "https://player.vimeo.com/video/1213324646?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479" },
+  { title: "Casa Romana", poster: "/work-videos/casa-romana.webp", embedUrl: "https://player.vimeo.com/video/1213316761?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479" },
+  { title: "Ceramic Stone", poster: "/work-videos/ceramic-stone.webp", embedUrl: "https://player.vimeo.com/video/1213316759?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479" },
+  { title: "Incognito Escape Meses", poster: "/work-videos/incognito-escape.webp", embedUrl: "https://player.vimeo.com/video/1213316760?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479" },
+  { title: "CS Reel 5", poster: "/work-videos/cs-reel.webp", embedUrl: "https://player.vimeo.com/video/1213324646?title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479" },
 ];
 // -----------------------------------------------------------------------------
 // SECȚIUNEA "WEB DEVELOPMENT" — site-urile pe care le-ați creat, cu poză de
@@ -202,9 +178,9 @@ export type WebProject = {
 
 export const webProjects: WebProject[] = [
   // Exemplu - șterge-l și pune-le pe ale tale:
-   { title: "Daily Menu", url: "https://www.dailym.ro/pentru-restaurante", thumbnail: "/web-projects/www.dailym.ro.png", previewCrop: true },
-   { title: "PM Customs", url: "https://www.pmcustoms.us", thumbnail: "/web-projects/www.pmcustoms.us.png" },
-   { title: "Dracula soil", url: "https://www.draculasoil.com", thumbnail: "/web-projects/www.draculasoil.com.png" },
-   { title: "BookEasy", url: "https://www.bookeasy.ro/descopera", thumbnail: "/web-projects/www.bookeasy.ro.png", previewCrop: true },
-   { title: "SC ELMONT S.A", url: "https://elmontz.vercel.app", thumbnail: "/web-projects/elmont.jfif" },
+   { title: "Daily Menu", url: "https://www.dailym.ro/", thumbnail: "/web-projects/daily-menu-2026-11-18.webp" },
+   { title: "PM Customs", url: "https://www.pmcustoms.us", thumbnail: "/web-projects/pm-customs-2026-11-18.webp" },
+   { title: "Dracula’s Soil", url: "https://www.draculasoil.com", thumbnail: "/web-projects/dracula-soil-2026-11-18.webp" },
+   { title: "BookEasy", url: "https://www.bookeasy.ro/descopera", thumbnail: "/web-projects/bookeasy-2026-11-18.webp" },
+   { title: "ELMONT S.A.", url: "https://elmontz.vercel.app", thumbnail: "/web-projects/elmont-2026-11-18.webp" },
 ];

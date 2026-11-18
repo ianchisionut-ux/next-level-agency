@@ -2,7 +2,8 @@ import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { posts } from "@/lib/blog";
+import { blogGuidance, posts } from "@/lib/blog";
+import { serviceContent } from "@/lib/service-content";
 
 export const metadata = pageMetadata("Blog marketing digital, SEO și automatizări | Next Level", "Ghiduri despre campanii Google și Meta, SEO local, web design, branding și automatizări. Idei practice pentru dezvoltarea afacerii tale.", "/blog");
 
@@ -19,8 +20,8 @@ export default function BlogPage() {
               Idei despre marketing și creștere
             </h1>
             <p className="mt-5 text-base text-white/60">
-              Gânduri, studii de caz și recomandări din activitatea noastră
-              zilnică de agenție.
+              Ghiduri despre alegerea canalelor de promovare, structura unui site,
+              conținut și automatizări. Idei de verificat în contextul afacerii tale.
             </p>
           </div>
         </section>
@@ -38,6 +39,7 @@ export default function BlogPage() {
                   <time dateTime={post.publishedAt} className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
                     {post.date}
                   </time>
+                  <p className="mt-3 text-xs font-semibold text-blue">{serviceContent.find(service => service.id === blogGuidance[post.slug]?.serviceId)?.shortTitle}</p>
                   <h2 className="mt-2 text-lg font-bold leading-snug">{post.title}</h2>
                   <p className="mt-2 text-sm leading-relaxed text-ink-soft">{post.excerpt}</p>
                   <span className="mt-4 inline-block text-sm font-semibold text-blue">
@@ -45,6 +47,11 @@ export default function BlogPage() {
                   </span>
                 </Link>
               ))}
+            </div>
+            <div className="mt-12 rounded-2xl border border-line-light bg-paper-soft p-7">
+              <h2 className="text-xl font-extrabold">De la ghid la implementare</h2>
+              <p className="mt-3 text-sm leading-relaxed text-ink-soft">Dacă vrei să discutăm aplicarea ideilor pe site-ul sau promovarea afacerii tale, vezi ce poate include fiecare serviciu și ce clarificăm înainte de ofertă.</p>
+              <ul className="mt-5 flex flex-wrap gap-x-6 gap-y-3 text-sm font-semibold">{serviceContent.map(service => <li key={service.id}><Link href={`/servicii#${service.id}`} className="text-blue hover:underline">{service.title}</Link></li>)}</ul>
             </div>
           </div>
         </section>

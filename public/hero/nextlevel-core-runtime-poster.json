@@ -1,0 +1,66 @@
+{
+  "modelSha256": "a7de20cbf39d51cabdbcd89dc307f1b50ba1f5c389245d9707f9202333daf00f",
+  "framingSha256": "70562f119c1885f49f6dcd4a38e5f0d5a998cca3db9ae739a81f3b2ea846b036",
+  "fov": 38,
+  "radius": 2.6556029340700036,
+  "renderer": "Blender Cycles",
+  "cameraType": "perspective",
+  "cameraDirectionThree": [
+    3,
+    1.7,
+    6.9
+  ],
+  "frames": [
+    {
+      "name": "mobile",
+      "asset": "/hero/nextlevel-core-runtime-mobile.webp",
+      "width": 412,
+      "height": 494,
+      "wide": false,
+      "transmission": 0,
+      "projectionErrorPx": 0.00010857555762795951,
+      "bounds": [
+        75.8229615688324,
+        128.75417017936707,
+        350.1208622455597,
+        323.8840282559395
+      ],
+      "sha256": "ef4ac8a66cdd2e4e055d3f11a41a864f5e6564187f7fa4a2e0267c47cbfb9af6",
+      "bytes": 17956
+    },
+    {
+      "name": "tablet",
+      "asset": "/hero/nextlevel-core-runtime-tablet.webp",
+      "width": 900,
+      "height": 650,
+      "wide": false,
+      "transmission": 0,
+      "projectionErrorPx": 0.00014662247258117271,
+      "bounds": [
+        261.7240011692047,
+        163.7443095445633,
+        653.0676305294037,
+        443.32081228494644
+      ],
+      "sha256": "ff8e2b9dcf4be35baed6e3d2dd489c6c53c2c41b2fd73e5551ea9ffde6bf8aa3",
+      "bytes": 29160
+    },
+    {
+      "name": "desktop",
+      "asset": "/hero/nextlevel-core-runtime-desktop.webp",
+      "width": 1350,
+      "height": 733,
+      "wide": true,
+      "transmission": 0.58,
+      "projectionErrorPx": 0.0001560069024692304,
+      "bounds": [
+        762.2361391782761,
+        176.9580425620079,
+        1248.6411452293396,
+        526.3731628060341
+      ],
+      "sha256": "62d337368728f10429a4873a8e31e3f24807842b8a3f13ba29907313ee026382",
+      "bytes": 40152
+    }
+  ]
+}

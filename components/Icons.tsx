@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 export function NavLogoIcon({ className = "h-9 w-9" }: { className?: string }) {
   return (
     <svg viewBox="0 0 40 40" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -17,10 +19,12 @@ export function BrandLogo({ className = "h-9" }: { className?: string }) {
   // Logo complet (marcă + wordmark), fundal transparent — afișat direct,
   // fără chip alb în spate.
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <Image
       src="/brand/logo-full.png"
       alt="Next Level Advertising Agency"
+      width={1412}
+      height={478}
+      sizes="160px"
       className={`w-auto object-contain ${className}`}
     />
   );
@@ -29,10 +33,12 @@ export function BrandLogo({ className = "h-9" }: { className?: string }) {
 export function BrandMark({ className = "h-16 w-16" }: { className?: string }) {
   // Doar marca (săgeata/M), fără text - pentru favicon-like spots și hero.
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <Image
       src="/brand/logo-mark.png"
       alt="Next Level"
+      width={503}
+      height={496}
+      sizes="64px"
       className={`object-contain ${className}`}
     />
   );

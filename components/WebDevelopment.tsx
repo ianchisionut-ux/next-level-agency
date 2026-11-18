@@ -1,5 +1,6 @@
 import { webProjects } from "@/lib/data";
 import Image from "next/image";
+import ProjectPreview from "@/components/ProjectPreview";
 
 export default function WebDevelopment() {
   return (
@@ -17,32 +18,28 @@ export default function WebDevelopment() {
 
         {webProjects.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-line-light bg-paper-soft p-10 text-center text-sm text-ink-soft">
-            Adaugă primele proiecte în <code className="rounded bg-slate-100 px-1.5 py-0.5">lib/data.ts</code> → <code className="rounded bg-slate-100 px-1.5 py-0.5">webProjects</code> — apar automat aici.
+            Selecția de proiecte web este în curs de actualizare.
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {webProjects.map((project) => (
-              <a
+              <ProjectPreview
                 key={project.url || project.title}
-                href={project.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group overflow-hidden rounded-2xl border border-line-light bg-paper-soft transition hover:-translate-y-1 hover:border-blue/40 hover:shadow-lg hover:shadow-blue/10"
+                url={project.url}
+                title={project.title}
+                thumbnail={<Image
+                  src={project.thumbnail}
+                  alt={`Site-ul ${project.title}`}
+                  fill
+                  sizes="(min-width: 1024px) 400px, (min-width: 640px) 50vw, 100vw"
+                  className={`h-full w-full object-cover motion-safe:transition motion-safe:duration-300 ${project.previewCrop ? "scale-[1.35] object-center motion-safe:group-hover:scale-[1.39]" : "object-top motion-safe:group-hover:scale-105"}`}
+                />}
               >
-                <div className="relative aspect-video overflow-hidden bg-slate-100">
-                  <Image
-                    src={project.thumbnail}
-                    alt={project.title}
-                    fill
-                    sizes="(min-width: 1024px) 400px, (min-width: 640px) 50vw, 100vw"
-                    className={`h-full w-full object-cover transition duration-300 ${project.previewCrop ? "scale-[1.35] object-center group-hover:scale-[1.39]" : "object-top group-hover:scale-105"}`}
-                  />
-                </div>
-                <div className="flex items-center justify-between p-5">
-                  <p className="font-bold text-slate-900">{project.title}</p>
+                <a href={project.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between gap-3 p-5">
+                  <h3 className="font-bold text-slate-900">{project.title}</h3>
                   <span className="text-sm font-semibold text-blue">Vezi site-ul →</span>
-                </div>
-              </a>
+                </a>
+              </ProjectPreview>
             ))}
           </div>
         )}
