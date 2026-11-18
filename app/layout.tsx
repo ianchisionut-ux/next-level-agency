@@ -6,7 +6,7 @@ import CookieConsent from "@/components/CookieConsent";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/seo";
 
-const inter = Inter({ subsets: ["latin", "latin-ext"], display: "optional", variable: "--font-nextlevel-inter", preload: true });
+const inter = Inter({ subsets: ["latin", "latin-ext"], display: "optional", variable: "--font-nextlevel-inter", preload: false });
 const displayFont = Space_Grotesk({ subsets: ["latin", "latin-ext"], display: "swap", variable: "--font-nextlevel-display", preload: false });
 const monoFont = IBM_Plex_Mono({ weight: ["400", "500"], subsets: ["latin", "latin-ext"], display: "swap", variable: "--font-nextlevel-mono", preload: false });
 
