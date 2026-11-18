@@ -150,6 +150,16 @@ export const clients: Client[] = [
     logo: "/clients/lg.png",
     url: "#",
   },
+  {
+    name: "SAV Haus",
+    logo: "/clients/sav-haus.webp",
+    url: "https://sav-haus.ro/",
+  },
+  {
+    name: "Obelix DecoRoom",
+    logo: "/clients/obelix-decoroom.png",
+    url: "https://www.facebook.com/profile.php?id=61572613300230",
+  },
 ];
 
 // -----------------------------------------------------------------------------
