@@ -78,7 +78,7 @@
 @media (min-width: 1024px) {
   .nl-hero-main { min-height: clamp(720px, 78vh, 920px); }
   .nl-hero-content { flex: 1; min-height: inherit; padding-top: 64px; padding-bottom: 64px; }
-  .nl-hero-copy { width: 51%; padding: 22px 0; background: linear-gradient(90deg,#fffffff5,#ffffffdf 78%,#ffffff00); }
+  .nl-hero-copy { width: 51%; padding: 22px 0; }
   .nl-hero-art { position: absolute; z-index: 1; inset: 0; height: 100%; }
   .nl-core-fallback { left: 49%; right: auto; width: 50%; }
   .nl-orbit-halo { left: 52%; right: 4%; top: 10%; bottom: 10%; }
