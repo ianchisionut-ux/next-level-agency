@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { ArrowUpRight, Hand, Pause, Play, RotateCcw, Sparkles } from "lucide-react";
+import { ArrowUpRight, Pause, Play, RotateCcw, Sparkles } from "lucide-react";
 import type * as Three from "three";
 import { HERO_FIELD_OF_VIEW, heroFraming, layoutHeroLabels, type HeroLabelAnchor, type HeroLabelRect } from "@/lib/hero-framing";
 
@@ -310,6 +310,7 @@ export default function InteractiveCore() {
   return (
     <div className={`nl-interactive-core ${ready && !failed ? "is-ready" : ""}`}>
       <div className="nl-core-stage" tabIndex={0} role="group" aria-label="Ecosistem 3D Next Level, rotire interactivă" aria-describedby="nl-core-help" onKeyDown={keyboard}>
+        <span id="nl-core-help" className="sr-only">Folosește săgețile pentru rotire, plus și minus pentru zoom, Home pentru resetare și spațiu pentru pauză.</span>
         <Image src="/hero/nextlevel-core.webp" alt="Ecosistem 3D Next Level creat în Blender: nucleu de sticlă, orbite cyan, interfață web, automatizări și grafic de performanță" width={1200} height={1200} priority sizes="(min-width: 1280px) 680px, (min-width: 1024px) 50vw, 100vw" className="nl-core-render nl-core-fallback" />
         <div ref={host} className="nl-core-canvas" aria-hidden="true" />
         <div className="nl-core-services" aria-label="Explorează serviciile din ecosistem">
@@ -323,7 +324,6 @@ export default function InteractiveCore() {
         </div>
       </div>
       <div className="nl-core-controls">
-        <span id="nl-core-help"><Hand size={13} aria-hidden="true" /> Trage pentru a roti <span className="nl-core-keyboard-help">· săgeți / + / −</span></span>
         <div>
           <button type="button" onClick={() => { api.current?.pulse(); setStatus("Impuls luminos activat în ecosistemul 3D."); }} disabled={!ready || failed} aria-label="Activează impulsul luminos"><Sparkles size={15} aria-hidden="true" /></button>
           <button type="button" onClick={togglePause} disabled={!ready || failed} aria-label={paused ? "Pornește rotirea automată" : "Oprește rotirea automată"} aria-pressed={paused}>{paused ? <Play size={15} aria-hidden="true" /> : <Pause size={15} aria-hidden="true" />}</button>
