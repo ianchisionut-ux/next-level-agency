@@ -230,6 +230,9 @@ export default function InteractiveCore() {
           model.scene.traverse(object => { if (object instanceof THREE.Mesh) { object.geometry.dispose(); (Array.isArray(object.material) ? object.material : [object.material]).forEach(material => material.dispose()); } });
           return;
         }
+        for (const name of ["NL / Faceted glass nucleus", "NL / Inner energy core"]) {
+          model.scene.getObjectByName(THREE.PropertyBinding.sanitizeNodeName(name))?.scale.multiplyScalar(1.3);
+        }
         const bounds = new THREE.Box3().setFromObject(model.scene);
         const size = bounds.getSize(new THREE.Vector3());
         const center = bounds.getCenter(new THREE.Vector3());
