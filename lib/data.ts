@@ -34,7 +34,7 @@ export const stats = [
 ];
 
 export const trustedBy = [
-  "Google", "Meta", "TikTok", "Shopify", "Stripe", "YouTube",
+  "Google", "Meta", "TikTok", "Stripe", "YouTube", "Banca Transilvania",
 ];
 
 export type Service = {
@@ -68,27 +68,6 @@ export const services: Service[] = [
     icon: "search",
     title: "SEO & Content Marketing",
     description: `Strategii SEO și content care aduc trafic și conversii constante.`,
-  },
-];
-
-export const differentiators = [
-  {
-    step: "01",
-    title: "Rezultate, nu promisiuni",
-    description:
-      "Fiecare campanie e urmărită pe cifre reale. Dacă ceva nu performează, optimizăm rapid sau oprim — nu ținem bugetul degeaba.",
-  },
-  {
-    step: "02",
-    title: "Transparență totală",
-    description:
-      "Acces direct la echipa care lucrează pe brandul tău, rapoarte clare, fără termeni ascunși sau contracte pe termen lung.",
-  },
-  {
-    step: "03",
-    title: "Parteneri de creștere, nu furnizori",
-    description:
-      "Nu bifăm task-uri — construim strategia ca și cum afacerea ar fi a noastră, cu focus pe creștere sustenabilă.",
   },
 ];
 

@@ -319,3 +319,8 @@ body:has(.public-marketing-header) [class~="text-white/50"],
 body:has(.public-marketing-header) [class~="text-white/40"] { color: #596b83; }
 body:has(.public-marketing-header) [class~="text-white/30"],
 body:has(.public-marketing-header) [class~="text-white/20"] { color: #75849a; }
+
+.nl-services-section {
+  background: linear-gradient(135deg, #eaf2fb 0%, #f0f5fc 55%, #e9f1fa 100%);
+  border-block: 1px solid #e0eaf5;
+}

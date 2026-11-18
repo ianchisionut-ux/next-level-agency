@@ -23,7 +23,7 @@ export default function InteractiveCore() {
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [paused, setPaused] = useState(false);
-  const [status, setStatus] = useState("Se pregătește ecosistemul 3D. Imaginea de rezervă este disponibilă.");
+  const [status, setStatus] = useState("Se pregătește ecosistemul 3D.");
 
   useEffect(() => {
     const mount = host.current;
@@ -204,7 +204,7 @@ export default function InteractiveCore() {
         });
         controls.addEventListener("change", schedule);
         controls.addEventListener("start", schedule);
-        const contextLost = (event: Event) => { event.preventDefault(); contextUnavailable = true; cancelAnimationFrame(frame); frame = 0; api.current = null; resetLabels(); setFailed(true); setReady(false); setStatus("Previzualizarea 3D nu este disponibilă. Imaginea Blender rămâne vizibilă."); };
+        const contextLost = (event: Event) => { event.preventDefault(); contextUnavailable = true; cancelAnimationFrame(frame); frame = 0; api.current = null; resetLabels(); setFailed(true); setReady(false); setStatus("Previzualizarea 3D nu este disponibilă. Se afișează imaginea de rezervă."); };
         renderer.domElement.addEventListener("webglcontextlost", contextLost);
         release = () => {
           if (released) return;
@@ -231,7 +231,7 @@ export default function InteractiveCore() {
           return;
         }
         for (const name of ["NL / Faceted glass nucleus", "NL / Inner energy core"]) {
-          model.scene.getObjectByName(THREE.PropertyBinding.sanitizeNodeName(name))?.scale.multiplyScalar(1.3);
+          model.scene.getObjectByName(THREE.PropertyBinding.sanitizeNodeName(name))?.scale.multiplyScalar(1.65);
         }
         const bounds = new THREE.Box3().setFromObject(model.scene);
         const size = bounds.getSize(new THREE.Vector3());
@@ -278,7 +278,7 @@ export default function InteractiveCore() {
         setReady(true); setStatus("Modelul Blender este interactiv. Trage cu mouse-ul sau degetul pentru rotire.");
         schedule();
       } catch {
-        if (!disposed) { release(); setFailed(true); setStatus("Modelul 3D nu se poate încărca. Randarea Blender rămâne disponibilă."); }
+        if (!disposed) { release(); setFailed(true); setStatus("Modelul 3D nu se poate încărca. Se afișează imaginea de rezervă."); }
       }
     };
     const intersection = new IntersectionObserver(entries => {
@@ -312,9 +312,9 @@ export default function InteractiveCore() {
 
   return (
     <div className={`nl-interactive-core ${ready && !failed ? "is-ready" : ""}`}>
-      <div className="nl-core-stage" tabIndex={0} role="group" aria-label="Ecosistem 3D Next Level, rotire interactivă" aria-describedby="nl-core-help" onKeyDown={keyboard}>
+      <div className="nl-core-stage" tabIndex={ready && !failed ? 0 : -1} role="group" aria-label="Ecosistem 3D Next Level, rotire interactivă" aria-describedby="nl-core-help" onKeyDown={keyboard}>
         <span id="nl-core-help" className="sr-only">Folosește săgețile pentru rotire, plus și minus pentru zoom, Home pentru resetare și spațiu pentru pauză.</span>
-        <Image src="/hero/nextlevel-core.webp" alt="Ecosistem 3D Next Level creat în Blender: nucleu de sticlă, orbite cyan, interfață web, automatizări și grafic de performanță" width={1200} height={1200} priority sizes="(min-width: 1280px) 680px, (min-width: 1024px) 50vw, 100vw" className="nl-core-render nl-core-fallback" />
+        {failed && <Image src="/hero/nextlevel-core.webp" alt="Ecosistem Next Level: nucleu de sticlă, orbite cyan, interfață web, automatizări și grafic de performanță" width={1200} height={1200} sizes="(min-width: 1280px) 680px, (min-width: 1024px) 50vw, 100vw" className="nl-core-render nl-core-fallback" />}
         <div ref={host} className="nl-core-canvas" aria-hidden="true" />
         <div className="nl-core-services" aria-label="Explorează serviciile din ecosistem">
           {coreServices.map((service, index) => <div key={service.key} ref={element => { serviceLabels.current[index] = element; }} className={`nl-core-service-label nl-core-service-${service.key}`}>

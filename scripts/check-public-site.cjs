@@ -31,7 +31,7 @@ const canonicalOrigin = "https://www.nextlevel-agency.ro";
     assert.ok(!html.includes("https://nextlevelagency.ro"), `Old wrong domain on ${path}`);
     for (const json of html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)) JSON.parse(json[1]);
     if (path === "/") {
-      assert.ok(html.includes("/hero/nextlevel-core.webp") || html.includes("%2Fhero%2Fnextlevel-core.webp"), 'Server-rendered Blender fallback image');
+      assert.ok(!html.includes("/hero/nextlevel-core.webp") && !html.includes("%2Fhero%2Fnextlevel-core.webp"), 'No mismatched poster during the initial hero load');
       assert.ok(!html.includes("/video/hero-bg.mp4"));
       assert.ok(html.includes("ProfessionalService"));
       for (const anchor of ['web-development', 'performance-marketing', 'ai-automatizari']) assert.ok(html.includes(`/servicii#${anchor}`), `Clickable 3D service link ${anchor}`);

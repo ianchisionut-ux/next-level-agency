@@ -21,7 +21,6 @@ import {
 import {
   trustedBy,
   services,
-  differentiators,
   testimonials,
   siteConfig,
 } from "@/lib/data";
@@ -61,9 +60,9 @@ export default function HomePage() {
         </section>
 
         {/* ---------------------------------------------------------------- */}
-        {/* SERVICES — dark                                                   */}
+        {/* SERVICES */}
         {/* ---------------------------------------------------------------- */}
-        <section id="servicii" className="bg-navy py-24 scroll-mt-24">
+        <section id="servicii" className="nl-services-section py-24 scroll-mt-24">
           <div className="mx-auto max-w-7xl px-6">
             <div className="mb-14 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
               <div>
@@ -108,29 +107,6 @@ export default function HomePage() {
               >
                 VEZI TOATE SERVICIILE
               </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* DIFFERENTIATORS — dark, closes out the top dark band */}
-        <section className="border-t border-white/10 bg-navy pb-24">
-          <div className="mx-auto max-w-7xl px-6">
-            <div className="mb-14 text-center">
-              <p className="eyebrow text-blue-bright">De ce Next Level</p>
-              <h2 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
-                Ce ne diferențiază de o agenție obișnuită
-              </h2>
-            </div>
-            <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
-              {differentiators.map((d) => (
-                <div key={d.step} data-spotlight data-reveal className="rounded-2xl border border-white/10 bg-navy-soft p-8">
-                  <span className="text-4xl font-extrabold text-blue/40">{d.step}</span>
-                  <h3 className="mt-4 text-lg font-bold">{d.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-white/50">
-                    {d.description}
-                  </p>
-                </div>
-              ))}
             </div>
           </div>
         </section>

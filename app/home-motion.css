@@ -30,16 +30,16 @@
 .nl-core-canvas { position: absolute; z-index: 2; inset: 0; opacity: 0; transition: opacity .5s ease; }
 .nl-core-canvas canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
 .nl-core-canvas canvas:active { cursor: grabbing; }
-.nl-core-fallback { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 1; transition: opacity .5s ease; }
+.nl-core-fallback { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .nl-interactive-core.is-ready .nl-core-canvas { opacity: 1; }
-.nl-interactive-core.is-ready .nl-core-fallback { opacity: 0; pointer-events: none; }
-.nl-core-controls { position: absolute; z-index: 3; left: 9%; right: 9%; bottom: 8%; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; color: #587086; font-size: 10px; }
+.nl-core-controls { position: absolute; z-index: 3; left: 9%; right: 9%; bottom: 8%; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; color: #587086; font-size: 10px; opacity: 0; visibility: hidden; transition: opacity .5s ease, visibility .5s ease; }
 .nl-core-controls > div { display: flex; gap: 6px; }
 .nl-core-controls button { display: grid; place-items: center; width: 31px; height: 31px; border: 1px solid #cbdce9; border-radius: 50%; background: #ffffffdd; color: #31566e; transition: border-color .2s, color .2s, background .2s; }
 .nl-core-controls button:hover { border-color: #0ea5e9; color: #0369a1; background: #effaff; }
 .nl-core-controls button:focus-visible { outline: 2px solid #0284c7; outline-offset: 3px; }
 .nl-core-controls button:disabled { opacity: .35; cursor: default; }
-.nl-core-services { position: absolute; z-index: 3; inset: 0; pointer-events: none; }
+.nl-core-services { position: absolute; z-index: 3; inset: 0; pointer-events: none; opacity: 0; visibility: hidden; transition: opacity .5s ease, visibility .5s ease; }
+.nl-interactive-core.is-ready .nl-core-services, .nl-interactive-core.is-ready .nl-core-controls { opacity: 1; visibility: visible; }
 .nl-core-service-label { position: absolute; width: 0; height: 0; pointer-events: none; }
 .nl-core-service-web { left: 25%; top: 49%; }
 .nl-core-service-marketing { left: 78%; top: 73%; }
