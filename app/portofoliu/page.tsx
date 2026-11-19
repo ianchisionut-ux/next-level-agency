@@ -2,35 +2,34 @@ import { pageMetadata } from "@/lib/seo";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ClientsSection from "@/components/ClientsSection";
-import OurWork from "@/components/OurWork";
 import WebDevelopment from "@/components/WebDevelopment";
 import Link from "@/components/IntentLink";
 import { webProjects } from "@/lib/data";
+import "./portfolio.css";
 
-export const metadata = pageMetadata("Portofoliu web design și conținut video | Next Level", "Vezi site-uri și materiale video din portofoliul Next Level, alături de brandurile cu care lucrăm. Exemple pentru un proiect nou sau un redesign.", "/portofoliu");
+export const metadata = pageMetadata("Portofoliu web design și dezvoltare | Next Level", "Vezi site-urile realizate de Next Level și brandurile cu care lucrăm. Explorează proiectele web pentru un site nou, o aplicație sau un redesign.", "/portofoliu");
 
 export default function PortofoliuPage() {
   return (
     <>
       <Header />
-      <main>
+      <main className="nl-portfolio-page">
         {/* HERO — dark */}
         <section className="grain bg-navy py-20 text-center">
           <div className="mx-auto max-w-3xl px-6">
             <p className="eyebrow text-blue-bright">Portofoliu</p>
             <h1 className="mt-3 text-4xl font-extrabold tracking-tight sm:text-5xl">
-              Proiecte web și conținut video
+              Site-uri și experiențe digitale
             </h1>
             <p className="mt-5 text-base text-white/60">
-              Branduri cu care lucrăm, exemple de conținut video și site-uri pe care le-am construit.
-              Explorează materialele pentru a discuta mai concret despre ce ai nevoie în proiectul tău.
+              Branduri cu care lucrăm și site-uri pe care le-am construit.
+              Explorează proiectele pentru a discuta mai concret despre ce ai nevoie în proiectul tău.
             </p>
           </div>
         </section>
 
         <ClientsSection />
-        <OurWork />
-        <WebDevelopment />
+        <WebDevelopment layout="compact" />
         <section className="border-t border-line-light bg-paper py-16 text-slate-900">
           <div className="mx-auto max-w-4xl px-6">
             <h2 className="text-2xl font-extrabold tracking-tight">De la exemple la proiectul tău</h2>

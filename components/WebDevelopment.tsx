@@ -2,8 +2,9 @@ import { webProjects } from "@/lib/data";
 import Image from "next/image";
 import ProjectPreview from "@/components/ProjectPreview";
 
-export default function WebDevelopment() {
-  const featuredPair = webProjects.length % 3 === 2;
+export default function WebDevelopment({ layout = "showcase" }: { layout?: "showcase" | "compact" } = {}) {
+  const compact = layout === "compact";
+  const featuredPair = !compact && webProjects.length % 3 === 2;
   return (
     <section className="nl-work-showcase bg-paper py-20 text-slate-900" aria-labelledby="work-title">
       <div className="mx-auto max-w-7xl px-6">
@@ -22,7 +23,7 @@ export default function WebDevelopment() {
             Selecția de proiecte web este în curs de actualizare.
           </div>
         ) : (
-          <div className={`nl-work-grid ${featuredPair ? "" : "nl-work-grid--uniform"} grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3`}>
+          <div className={`nl-work-grid ${featuredPair ? "" : "nl-work-grid--uniform"} grid grid-cols-1 gap-6 sm:grid-cols-2 ${compact ? "" : "lg:grid-cols-3"}`}>
             {webProjects.map((project, index) => (
               <ProjectPreview
                 key={project.url || project.title}
@@ -32,7 +33,7 @@ export default function WebDevelopment() {
                   src={project.thumbnail}
                   alt={`Site-ul ${project.title}`}
                   fill
-                  sizes={`(min-width: 1024px) ${featuredPair && index < 2 ? 640 : 400}px, (min-width: 640px) 50vw, 100vw`}
+                  sizes={`(min-width: 1024px) ${compact ? 520 : featuredPair && index < 2 ? 640 : 400}px, (min-width: 640px) 50vw, 100vw`}
                   className={`h-full w-full object-cover motion-safe:transition motion-safe:duration-300 ${project.previewCrop ? "scale-[1.35] object-center motion-safe:group-hover:scale-[1.39]" : "object-top motion-safe:group-hover:scale-105"}`}
                 />}
               >

@@ -129,8 +129,8 @@
 .nl-landing a:focus-visible, .nl-faq summary:focus-visible { outline: 3px solid #83adf3; outline-offset: 5px; }
 @media (min-width: 1024px) {
   .nl-landing .nl-work-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 24px; }
-  .nl-work-grid > .nl-project-card { grid-column: span 4; }.nl-work-grid > .nl-project-card:nth-child(-n+2) { grid-column: span 6; }
-  .nl-work-grid.nl-work-grid--uniform > .nl-project-card { grid-column: span 4; }
+  .nl-landing .nl-work-grid > .nl-project-card { grid-column: span 4; }.nl-landing .nl-work-grid > .nl-project-card:nth-child(-n+2) { grid-column: span 6; }
+  .nl-landing .nl-work-grid.nl-work-grid--uniform > .nl-project-card { grid-column: span 4; }
 }
 @media (max-width: 1023px) {
   .nl-section-heading { align-items: flex-start; flex-direction: column; gap: 20px; }.nl-section-heading > p { max-width: 540px; }
