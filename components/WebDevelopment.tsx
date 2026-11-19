@@ -4,14 +4,14 @@ import ProjectPreview from "@/components/ProjectPreview";
 
 export default function WebDevelopment() {
   return (
-    <section className="bg-paper py-20 text-slate-900">
+    <section className="nl-work-showcase bg-paper py-20 text-slate-900" aria-labelledby="work-title">
       <div className="mx-auto max-w-7xl px-6">
-        <div className="mb-12 text-center">
-          <p className="eyebrow text-blue">Web Development</p>
-          <h2 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
+        <div className="nl-work-heading mb-12">
+          <p className="nl-eyebrow">Proiecte digitale. Experiențe reale.</p>
+          <h2 id="work-title" className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
             Site-uri pe care le-am construit
           </h2>
-          <p className="mx-auto mt-3 max-w-xl text-base text-ink-soft">
+          <p className="mt-3 max-w-xl text-base text-ink-soft">
             O parte din proiectele web dezvoltate pentru clienții noștri.
           </p>
         </div>
@@ -21,8 +21,8 @@ export default function WebDevelopment() {
             Selecția de proiecte web este în curs de actualizare.
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {webProjects.map((project) => (
+          <div className="nl-work-grid grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {webProjects.map((project, index) => (
               <ProjectPreview
                 key={project.url || project.title}
                 url={project.url}
@@ -31,7 +31,7 @@ export default function WebDevelopment() {
                   src={project.thumbnail}
                   alt={`Site-ul ${project.title}`}
                   fill
-                  sizes="(min-width: 1024px) 400px, (min-width: 640px) 50vw, 100vw"
+                  sizes={`(min-width: 1024px) ${index < 2 ? 640 : 400}px, (min-width: 640px) 50vw, 100vw`}
                   className={`h-full w-full object-cover motion-safe:transition motion-safe:duration-300 ${project.previewCrop ? "scale-[1.35] object-center motion-safe:group-hover:scale-[1.39]" : "object-top motion-safe:group-hover:scale-105"}`}
                 />}
               >

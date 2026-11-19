@@ -46,6 +46,14 @@ operations and authentication unchanged.
 - The four-step presentation-site questionnaire now uses the same shared cards,
   pictograms, accessible inputs and progress bar as the advanced questionnaire.
   Original choice values, defaults and API payload are preserved.
+- The public homepage now has a pearl/electric-blue spatial design, larger web
+  project cards, illustrated service cards, an explicit four-stage process and
+  a shared floating header with a keyboard-accessible mobile menu. Decorative
+  visuals are local CSS/SVG and preserve reduced-motion preferences. References:
+  https://www.figma.com/resource-library/web-design-trends/ and
+  https://webflow.com/blog/web-design-trends-2026, plus the owner's UI examples.
+- The agency's public phone/WhatsApp number and web-offer template use
+  +40 712 345 002. No issued financial documents or database records were edited.
 
 ## Verification
 

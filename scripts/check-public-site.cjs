@@ -34,7 +34,9 @@ const publicFont = require('../docs/fonts/nextlevel-inter-latin.json');
     assert.ok(html.includes('name="description"'), `Description on ${path}`);
     assert.ok(html.includes('property="og:url"'), `OpenGraph URL on ${path}`);
     assert.ok(!html.includes("https://nextlevelagency.ro"), `Old wrong domain on ${path}`);
-    for (const json of html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)) JSON.parse(json[1]);
+      for (const json of html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)) JSON.parse(json[1]);
+      assert.ok(!html.includes('40740565663') && !html.includes('+40 740 565 663'), 'The old agency contact number must not remain in public pages');
+      assert.ok(html.includes('tel:+40712345002') && html.includes('wa.me/40712345002'), 'Phone and WhatsApp links use the new agency number');
     if (path === "/") {
       assert.ok(!html.includes("/hero/nextlevel-core.webp") && !html.includes("%2Fhero%2Fnextlevel-core.webp"), 'No old orthographic/mismatched poster during the initial hero load');
       for (const frame of ['mobile', 'tablet', 'desktop']) assert.ok(html.includes(`/hero/nextlevel-core-runtime-${frame}.webp`), `Matching perspective preview for ${frame}`);

@@ -185,7 +185,7 @@ export default function ProjectPreview({ url, title, thumbnail, children }: {
 
   return (
     <article
-      className="group overflow-hidden rounded-2xl border border-line-light bg-paper-soft motion-safe:transition hover:border-blue/40 hover:shadow-lg hover:shadow-blue/10 motion-safe:hover:-translate-y-1"
+      className="nl-project-card group overflow-hidden rounded-2xl border border-line-light bg-paper-soft motion-safe:transition hover:border-blue/40 hover:shadow-lg hover:shadow-blue/10 motion-safe:hover:-translate-y-1"
       onPointerEnter={event => { if (event.pointerType === "mouse") requestAutomatic(); }}
       onPointerLeave={event => { if (event.pointerType === "mouse") stop(); }}
       onFocus={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) requestAutomatic(); }}

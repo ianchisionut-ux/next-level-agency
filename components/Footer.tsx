@@ -7,7 +7,7 @@ import CookieSettingsLink from "./CookieSettingsLink";
 
 export default function Footer() {
   return (
-    <footer className="border-t border-white/10 bg-ink">
+    <footer className="public-marketing-footer border-t border-white/10 bg-ink">
       <div className="mx-auto max-w-7xl px-6 py-14">
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div>

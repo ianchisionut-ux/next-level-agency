@@ -20,6 +20,7 @@ export default function HomeHero() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/hero/hero-circuit-background.jpg" alt="" width={1408} height={768} fetchPriority="high" loading="eager" decoding="async" />
       </picture>
+      <div className="nl-hero-atmosphere" aria-hidden="true" />
       <div className="nl-hero-main">
         <div className="nl-hero-art">
           <div className="nl-orbit-halo" aria-hidden="true" />
@@ -28,7 +29,7 @@ export default function HomeHero() {
         </div>
         <div className="nl-hero-content">
         <div className="nl-hero-copy">
-          <p className="nl-live-badge"><span aria-hidden="true" /> Next Level · Digital growth studio</p>
+          <p className="nl-live-badge"><span aria-hidden="true" /> Next Level · Design. Tehnologie. Impact.</p>
           <h1 id="hero-title">Marketing digital.<br />Web design.<br /><span className="nl-gradient-text">Totul, la alt nivel.</span></h1>
           <p className="nl-hero-description">Conectăm strategia, designul și automatizările într-un singur ecosistem. Pentru afaceri din Zalău, Sălaj și din toată România care vor să crească online.</p>
           <div className="nl-hero-actions">

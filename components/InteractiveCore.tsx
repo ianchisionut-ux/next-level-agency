@@ -368,6 +368,7 @@ export default function InteractiveCore() {
         </div>
       </div>
       <div className="nl-core-controls">
+        <span className="nl-core-gesture">Trage pentru rotire</span>
         <div>
           <button type="button" onClick={() => { api.current?.pulse(); setStatus("Impuls luminos activat în ecosistemul 3D."); }} disabled={!ready || failed} aria-label="Activează impulsul luminos"><Sparkles size={15} aria-hidden="true" /></button>
           <button type="button" onClick={togglePause} disabled={!ready || failed} aria-label={paused ? "Pornește rotirea automată" : "Oprește rotirea automată"} aria-pressed={paused}>{paused ? <Play size={15} aria-hidden="true" /> : <Pause size={15} aria-hidden="true" />}</button>

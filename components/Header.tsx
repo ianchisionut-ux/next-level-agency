@@ -3,6 +3,7 @@ import { BriefcaseBusiness, BookOpenText, Images, LogIn, Mail, UsersRound, Clipb
 import { BrandMark, IconWhatsapp, IconFacebook, IconInstagram, IconTiktok } from "./Icons";
 import { siteConfig } from "@/lib/data";
 import publicFont from "@/docs/fonts/nextlevel-inter-latin.json";
+import PublicMobileMenu from "./PublicMobileMenu";
 
 const navItems = [
   { href: "/servicii", label: "Servicii", icon: BriefcaseBusiness },
@@ -17,7 +18,7 @@ export default function Header() {
   return (
     <header className="public-marketing-header sticky top-0 z-40 border-b border-white/10 bg-navy/90 backdrop-blur">
       <link rel="preload" as="font" href={publicFont.asset} type="font/woff2" crossOrigin="anonymous" />
-      <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-4 lg:px-6">
+      <div className="public-header-inner mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-4 lg:px-6">
         <Link href="/" className="flex shrink-0 items-center gap-3">
           <BrandMark className="h-9 w-9" />
           <span className="leading-tight">
@@ -96,7 +97,7 @@ export default function Header() {
           href={`https://wa.me/${siteConfig.whatsappNumber}?text=${encodeURIComponent(siteConfig.whatsappMessage)}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="hidden shrink-0 items-center gap-2 whitespace-nowrap rounded-lg bg-blue-glow px-4 py-2.5 text-sm font-semibold text-[#ffffff] transition hover:bg-blue-800 sm:flex"
+          className="public-header-cta hidden shrink-0 items-center gap-2 whitespace-nowrap rounded-lg bg-blue-glow px-4 py-2.5 text-sm font-semibold text-[#ffffff] transition hover:bg-blue-800 sm:flex"
         >
           Programează o discuție
         </a>
@@ -111,28 +112,13 @@ export default function Header() {
         >
           <IconWhatsapp className="h-5 w-5" />
         </a>
+        <PublicMobileMenu>
+          {navItems.map(item => <Link href={item.href} key={item.href} className="public-mobile-link"><item.icon size={19} aria-hidden="true" /><span>{item.label}</span></Link>)}
+          <Link href="/login" className="public-mobile-link"><LogIn size={19} aria-hidden="true" /><span>Login</span></Link>
+          <a href={`tel:${siteConfig.phone.replace(/\s/g, "")}`} className="public-mobile-phone">{siteConfig.phone}</a>
+        </PublicMobileMenu>
       </div>
 
-      {/* Mobile nav */}
-      <nav className="flex items-center gap-5 overflow-x-auto whitespace-nowrap border-t border-white/10 px-4 py-2 xl:hidden">
-        {navItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="marketing-nav-link whitespace-nowrap text-xs font-medium text-white/70"
-          >
-            <item.icon className="marketing-nav-icon h-4 w-4" aria-hidden="true" />
-            <span>{item.label.toUpperCase()}</span>
-          </Link>
-        ))}
-        <Link
-          href="/login"
-          className="marketing-nav-link whitespace-nowrap text-xs font-semibold text-blue-bright"
-        >
-          <LogIn className="marketing-nav-icon h-4 w-4" aria-hidden="true" />
-          <span>LOGIN</span>
-        </Link>
-      </nav>
     </header>
   );
 }

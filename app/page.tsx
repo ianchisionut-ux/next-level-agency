@@ -6,162 +6,46 @@ import WebDevelopment from "@/components/WebDevelopment";
 import TrustMarquee from "@/components/TrustMarquee";
 import HomeHero from "@/components/HomeHero";
 import HomeMotion from "@/components/HomeMotion";
+import HomeServices from "@/components/HomeServices";
+import HomeProcess from "@/components/HomeProcess";
 import JsonLd from "@/components/JsonLd";
 import { businessSchema, DEFAULT_DESCRIPTION, pageMetadata } from "@/lib/seo";
+import { trustedBy, siteConfig } from "@/lib/data";
+import { Mail, MessageCircle } from "lucide-react";
 import "./home-motion.css";
-import {
-  IconTarget,
-  IconChart,
-  IconCode,
-  IconBot,
-  IconSearch,
-} from "@/components/Icons";
-import {
-  trustedBy,
-  services,
-  siteConfig,
-} from "@/lib/data";
-
-const serviceIcons = {
-  target: IconTarget,
-  chart: IconChart,
-  code: IconCode,
-  bot: IconBot,
-  search: IconSearch,
-};
-
-const serviceAnchors = {
-  target: "branding-identitate",
-  chart: "performance-marketing",
-  code: "web-development",
-  bot: "ai-automatizari",
-  search: "seo-content-marketing",
-};
+import "./future-landing.css";
 
 export const metadata = pageMetadata("Marketing digital și web design Zalău | Next Level", DEFAULT_DESCRIPTION, "/");
 
 export default function HomePage() {
-  return (
-    <HomeMotion>
-      <JsonLd data={businessSchema} />
-      <a className="nl-skip" href="#main-content">Sari la conținut</a>
-      <Header />
-      <main id="main-content">
-        {/* ---------------------------------------------------------------- */}
-        {/* HERO — interactive 3D ecosystem on white */}
-        {/* ---------------------------------------------------------------- */}
-        <HomeHero />
-
-        {/* ---------------------------------------------------------------- */}
-        {/* TRUST BAR — dark                                                  */}
-        {/* ---------------------------------------------------------------- */}
-        <section className="border-y border-white/10 bg-navy py-8">
-          <div className="mx-auto max-w-7xl px-6">
-            <p className="mb-5 text-center text-xs font-semibold tracking-widest text-white/40">
-              PLATFORME CU CARE LUCRĂM
-            </p>
-            <TrustMarquee items={trustedBy} />
-          </div>
-        </section>
-
-        {/* OUR CLIENTS — light (editable in lib/data.ts) */}
-        <ClientsSection />
-        <WebDevelopment />
-
-        {/* ---------------------------------------------------------------- */}
-        {/* SERVICES */}
-        {/* ---------------------------------------------------------------- */}
-        <section id="servicii" className="nl-services-section py-24 scroll-mt-24">
-          <div className="mx-auto max-w-7xl px-6">
-            <div className="mb-14 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-              <div>
-                <p className="eyebrow text-blue-bright">Serviciile noastre</p>
-                <h2 className="mt-3 max-w-xl text-3xl font-extrabold tracking-tight sm:text-4xl">
-                  Soluții complete pentru creșterea afacerii tale
-                </h2>
-              </div>
-              <p className="max-w-md text-sm text-white/50">
-                Oferim servicii integrate, de la strategie la implementare,
-                pentru a-ți aduce brandul la nivelul următor.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
-              {services.map((service) => {
-                const Icon = serviceIcons[service.icon];
-                return (
-                  <div
-                    key={service.title}
-                    data-spotlight data-reveal
-                    className="rounded-2xl border border-white/10 bg-navy-soft p-6 transition hover:border-blue/40"
-                  >
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue/15 text-blue-bright">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <h3 className="mt-5 text-sm font-bold uppercase tracking-wide"><Link href={`/servicii#${serviceAnchors[service.icon]}`} className="underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-bright">{service.title}</Link></h3>
-                    <p className="mt-2 text-sm leading-relaxed text-white/50">
-                      {service.description}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-10 text-center">
-              <Link
-                href="/servicii"
-                className="inline-block rounded-lg border border-white/25 px-6 py-3 text-sm font-bold tracking-wide transition hover:border-white/50"
-              >
-                VEZI TOATE SERVICIILE
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* ================================================================ */}
-        {/* LIGHT BAND START                                                  */}
-        {/* ================================================================ */}
-
-        {/* ================================================================ */}
-        {/* LIGHT BAND END                                                    */}
-        {/* ================================================================ */}
-
-        <section className="nl-faq bg-navy py-24" aria-labelledby="faq-title">
-          <div className="mx-auto max-w-4xl px-6">
-            <p className="eyebrow text-blue-bright">Înainte să începem</p>
-            <h2 id="faq-title" className="mt-3 mb-9 text-3xl font-extrabold tracking-tight">Întrebări despre proiectul tău digital</h2>
-            <details><summary>Ce servicii oferă Next Level?</summary><p>Conectăm strategia de brand, campaniile de marketing digital, web designul, SEO și automatizările. Vezi <Link href="/servicii">serviciile noastre</Link> și alegem împreună ce susține obiectivele afacerii tale.</p></details>
-            <details><summary>Lucrați doar cu afaceri din Zalău și Sălaj?</summary><p>Suntem în Sălaj și colaborăm și la distanță cu afaceri din România. Putem discuta proiectul online, iar brief-ul și etapele de lucru sunt stabilite împreună.</p></details>
-            <details><summary>Cât costă un site sau o campanie de marketing?</summary><p>Costul depinde de pagini, funcționalități, conținut și obiective. Completează <Link href="/chestionar-audit">brief-ul proiectului</Link> pentru o propunere adaptată nevoilor tale; pentru un site simplu există și <Link href="/chestionar-site-prezentare">chestionarul rapid</Link>.</p></details>
-            <details><summary>Cum începem colaborarea?</summary><p>Ne spui despre afacerea ta, analizăm obiectivele și stabilim soluția și etapele înainte de implementare. Poți vedea <Link href="/portofoliu">proiectele din portofoliu</Link> sau ne poți scrie din <Link href="/contact">pagina de contact</Link>.</p></details>
-          </div>
-        </section>
-
-        {/* CTA — dark */}
-        <section className="bg-navy pb-24">
-          <div className="mx-auto max-w-7xl px-6">
-            <div className="grain flex flex-col items-center justify-between gap-6 rounded-2xl border border-blue/30 bg-navy-soft p-10 text-center sm:flex-row sm:text-left">
-              <div>
-                <h3 className="text-xl font-extrabold tracking-tight sm:text-2xl">
-                  EȘTI PREGĂTIT SĂ DUCI AFACEREA TA LA NEXT LEVEL?
-                </h3>
-                <p className="mt-2 text-sm text-white/50">
-                  Hai să discutăm despre cum putem obține rezultate reale pentru tine.
-                </p>
-              </div>
-              <a
-                href={`https://wa.me/${siteConfig.whatsappNumber}?text=${encodeURIComponent(siteConfig.whatsappMessage)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="whitespace-nowrap rounded-lg bg-blue-glow px-6 py-3.5 text-sm font-bold tracking-wide text-[#ffffff] transition hover:bg-blue-800"
-              >
-                PROGRAMEAZĂ O DISCUȚIE GRATUITĂ
-              </a>
-            </div>
-          </div>
-        </section>
-      </main>
-      <Footer />
-    </HomeMotion>
-  );
+  return <HomeMotion>
+    <JsonLd data={businessSchema} />
+    <a className="nl-skip" href="#main-content">Sari la conținut</a>
+    <Header />
+    <main id="main-content">
+      <HomeHero />
+      <section className="nl-platforms" aria-label="Platforme cu care lucrăm"><div className="nl-section-shell"><p>Platformele tale.<br /><strong>Un ecosistem conectat.</strong></p><TrustMarquee items={trustedBy} /></div></section>
+      <ClientsSection />
+      <WebDevelopment />
+      <HomeServices />
+      <HomeProcess />
+      <section className="nl-faq" aria-labelledby="faq-title"><div className="nl-section-shell nl-faq-layout">
+        <div><p className="nl-eyebrow">Să clarificăm lucrurile</p><h2 id="faq-title">Întrebări despre proiectul tău digital</h2><p className="nl-faq-intro">Ai o idee, dar nu știi de unde să începi? Începem cu ce contează pentru afacerea ta.</p><Link href="/chestionar-audit" className="nl-text-link">Spune-ne despre proiect</Link></div>
+        <div className="nl-faq-list">
+          <details><summary>Ce servicii oferă Next Level?</summary><p>Conectăm strategia de brand, campaniile de marketing digital, web designul, SEO și automatizările. Vezi <Link href="/servicii">serviciile noastre</Link> și alegem împreună ce susține obiectivele afacerii tale.</p></details>
+          <details><summary>Lucrați doar cu afaceri din Zalău și Sălaj?</summary><p>Suntem în Sălaj și colaborăm și la distanță cu afaceri din România. Putem discuta proiectul online, iar brief-ul și etapele de lucru sunt stabilite împreună.</p></details>
+          <details><summary>Cât costă un site sau o campanie de marketing?</summary><p>Costul depinde de pagini, funcționalități, conținut și obiective. Completează <Link href="/chestionar-audit">brief-ul proiectului</Link> pentru o propunere adaptată nevoilor tale; pentru un site simplu există și <Link href="/chestionar-site-prezentare">chestionarul rapid</Link>.</p></details>
+          <details><summary>Cum începem colaborarea?</summary><p>Ne spui despre afacerea ta, analizăm obiectivele și stabilim soluția și etapele înainte de implementare. Poți vedea <Link href="/portofoliu">proiectele din portofoliu</Link> sau ne poți scrie din <Link href="/contact">pagina de contact</Link>.</p></details>
+        </div>
+      </div></section>
+      <section className="nl-next-level" aria-labelledby="next-level-title"><div className="nl-section-shell"><div className="nl-next-card" data-spotlight>
+        <div className="nl-next-orbits" aria-hidden="true"><i /><i /><i /></div>
+        <p className="nl-eyebrow">Ideea ta merită să prindă formă</p><h2 id="next-level-title">Următorul nivel începe<br />cu o conversație.</h2>
+        <p>Spune-ne ce ai în minte. Găsim împreună direcția potrivită.</p>
+        <div className="nl-next-actions"><Link href="/chestionar-audit" className="nl-primary-cta">Hai să construim ceva</Link><a href={`https://wa.me/${siteConfig.whatsappNumber}?text=${encodeURIComponent(siteConfig.whatsappMessage)}`} target="_blank" rel="noopener noreferrer" className="nl-next-contact"><MessageCircle size={18} aria-hidden="true" />{siteConfig.phone}</a></div>
+        <a className="nl-next-mail" href={`mailto:${siteConfig.email}`}><Mail size={16} aria-hidden="true" />{siteConfig.email}</a>
+      </div></div></section>
+    </main>
+    <Footer />
+  </HomeMotion>;
 }
