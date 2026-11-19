@@ -90,6 +90,40 @@ for material in bpy.data.materials:
         if peak > 2.3:
             strength.default_value *= 2.3 / peak
 
+# Static counterpart of the runtime energy field; kept inside the glass shell.
+# It is rendered only into the fallback images, never baked into the GLB twice.
+nucleus = next(obj for obj in meshes if 'dynamicglassnucleus' in re.sub('[^a-z0-9]', '', obj.name.lower()))
+energy_center = nucleus.matrix_world.translation.copy()
+energy_radius = max(nucleus.dimensions) / 2
+energy_material = bpy.data.materials.new('Preview / cyan energy filaments')
+energy_material.use_nodes = True
+energy_node = next(node for node in energy_material.node_tree.nodes if node.type == 'BSDF_PRINCIPLED')
+energy_node.inputs['Base Color'].default_value = (.01, .48, .8, 1)
+energy_node.inputs['Emission Color'].default_value = (.01, .55, .9, 1)
+energy_node.inputs['Emission Strength'].default_value = 1.4
+for strand in range(5):
+    curve = bpy.data.curves.new(f'Preview energy {strand}', 'CURVE')
+    curve.dimensions = '3D'
+    curve.bevel_depth = energy_radius * .0065
+    curve.bevel_resolution = 1
+    spline = curve.splines.new('POLY')
+    spline.points.add(128)
+    from mathutils import Euler
+    rotation = Euler((strand * .68, strand * .91, strand * .34)).to_matrix()
+    for index, point in enumerate(spline.points):
+        phase = index / 128 * math.tau
+        latitude = math.sin(phase * 3 + strand * 1.7) * .62
+        radius = energy_radius * (.43 + .17 * math.sin(phase * 2 + strand))
+        xyz = rotation @ Vector((math.cos(phase * 2 + strand) * radius, math.sin(phase * 2 + strand) * radius, math.sin(latitude) * energy_radius * .68))
+        xyz = Vector((xyz.x, -xyz.z, xyz.y)) + energy_center
+        point.co = (*xyz, 1)
+    spline.use_cyclic_u = True
+    obj = bpy.data.objects.new(f'Preview energy {strand}', curve)
+    scene.collection.objects.link(obj)
+    obj.data.materials.append(energy_material)
+bpy.ops.mesh.primitive_uv_sphere_add(segments=20, ring_count=12, radius=energy_radius * .16, location=energy_center)
+bpy.context.object.data.materials.append(energy_material)
+
 def pixel(point):
     coordinate = world_to_camera_view(scene, camera, point)
     return (coordinate.x * scene.render.resolution_x, (1 - coordinate.y) * scene.render.resolution_y)
@@ -112,6 +146,8 @@ for frame in golden["frames"]:
         for node in material.node_tree.nodes:
             if node.type == "BSDF_PRINCIPLED":
                 node.inputs["Transmission Weight"].default_value = min(original_transmission[material.name], frame["transmission"])
+                if material.name.startswith('NL / Dynamic optical glass'):
+                    node.inputs['Alpha'].default_value = .2 if frame['transmission'] == 0 else .68
     bpy.context.view_layer.update()
     checks = [(pixel(Vector()), frame["origin"])]
     for name, expected in frame["anchors"].items():

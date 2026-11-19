@@ -3,6 +3,8 @@ import Link from "@/components/IntentLink";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SimplePresentationForm from "./SimplePresentationForm";
+import { Sparkles } from "lucide-react";
+import "../chestionar-audit/audit-form.css";
 
 export const metadata = pageMetadata("Ofertă site de prezentare pentru firmă | Next Level", "Spune-ne ce site de prezentare îți dorești. Un chestionar rapid despre afacerea, paginile și obiectivele tale, pentru o ofertă personalizată.", "/chestionar-site-prezentare");
 
@@ -10,34 +12,15 @@ export default function SimplePresentationQuestionnairePage() {
   return (
     <>
       <Header />
-      <main className="questionnaire-page">
-        <section className="grain bg-navy py-9 text-center sm:py-12">
-          <div className="mx-auto max-w-3xl px-6">
-            <p className="eyebrow text-blue-bright">Site de prezentare</p>
-            <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
-              Spune-ne pe scurt ce site îți dorești
-            </h1>
-            <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-white/60">
-              Varianta rapidă pentru un site de firmă clar, modern și ușor de folosit.
-              Durează aproximativ 2 minute.
-            </p>
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <span className="rounded-full bg-blue px-5 py-2.5 text-sm font-bold text-white">
-                Site simplu de prezentare
-              </span>
-              <Link
-                href="/chestionar-audit"
-                className="rounded-full border border-white/25 px-5 py-2.5 text-sm font-bold text-white transition hover:border-blue-bright hover:text-blue-bright"
-              >
-                Am nevoie de o soluție avansată
-              </Link>
-            </div>
-          </div>
+      <main className="questionnaire-page audit-page">
+        <section className="audit-hero">
+          <p className="audit-hero-kicker"><Sparkles size={17} aria-hidden="true" /> Un site simplu. Un început bun.</p>
+          <h1>Hai să prezentăm <span>afacerea ta.</span></h1>
+          <p className="audit-hero-description">Câteva întrebări despre firmă, pagini și stil. Alegi ce ți se potrivește, iar detaliile le stabilim împreună.</p>
+          <Link href="/chestionar-audit" className="audit-simple-link">Ai nevoie de magazin, rezervări sau alte funcții? Vezi chestionarul complet.</Link>
         </section>
-        <section className="bg-paper py-8 text-slate-900 sm:py-12">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <SimplePresentationForm />
-          </div>
+        <section className="audit-form-section" aria-label="Chestionar pentru site de prezentare">
+          <SimplePresentationForm />
         </section>
       </main>
       <Footer />

@@ -1,6 +1,6 @@
 {
-  "modelSha256": "a7de20cbf39d51cabdbcd89dc307f1b50ba1f5c389245d9707f9202333daf00f",
-  "framingSha256": "70562f119c1885f49f6dcd4a38e5f0d5a998cca3db9ae739a81f3b2ea846b036",
+  "modelSha256": "d41ca827139ce4fa801abe70fd56a0e3c18374be877b53a40fbf39aaf0fd4414",
+  "framingSha256": "111ac5566a61f5923cd4d3845ab9648f4dc2c25a850fd5f37e087cfe9aadc288",
   "fov": 38,
   "radius": 2.6556029340700036,
   "renderer": "Blender Cycles",
@@ -15,52 +15,52 @@
       "name": "mobile",
       "asset": "/hero/nextlevel-core-runtime-mobile.webp",
       "width": 412,
-      "height": 494,
+      "height": 528,
       "wide": false,
       "transmission": 0,
-      "projectionErrorPx": 0.00010857555762795951,
+      "projectionErrorPx": 9.011911225613155e-05,
       "bounds": [
-        75.8229615688324,
-        128.75417017936707,
-        350.1208622455597,
-        323.8840282559395
+        63.28878974914551,
+        121.09820079803467,
+        365.3821015357971,
+        336.33082008361816
       ],
-      "sha256": "ef4ac8a66cdd2e4e055d3f11a41a864f5e6564187f7fa4a2e0267c47cbfb9af6",
-      "bytes": 17956
+      "sha256": "e5ac537011ddd69d530e40502d4c4156889a60357db12454fbefe256857daedf",
+      "bytes": 32294
     },
     {
       "name": "tablet",
       "asset": "/hero/nextlevel-core-runtime-tablet.webp",
       "width": 900,
-      "height": 650,
+      "height": 700,
       "wide": false,
       "transmission": 0,
-      "projectionErrorPx": 0.00014662247258117271,
+      "projectionErrorPx": 0.0001632545451127196,
       "bounds": [
-        261.7240011692047,
-        163.7443095445633,
-        653.0676305294037,
-        443.32081228494644
+        232.72457420825958,
+        147.357177734375,
+        697.2414135932922,
+        481.04901909828186
       ],
-      "sha256": "ff8e2b9dcf4be35baed6e3d2dd489c6c53c2c41b2fd73e5551ea9ffde6bf8aa3",
-      "bytes": 29160
+      "sha256": "04496db57349489f61fd45bfe77f99951e39d92aa0a445124daa639a3f1f0502",
+      "bytes": 59680
     },
     {
       "name": "desktop",
       "asset": "/hero/nextlevel-core-runtime-desktop.webp",
       "width": 1350,
-      "height": 733,
+      "height": 780,
       "wide": true,
-      "transmission": 0.58,
-      "projectionErrorPx": 0.0001560069024692304,
+      "transmission": 0.74,
+      "projectionErrorPx": 0.000167057598446263,
       "bounds": [
-        762.2361391782761,
-        176.9580425620079,
-        1248.6411452293396,
-        526.3731628060341
+        715.2814149856567,
+        171.14928603172302,
+        1263.8170838356018,
+        566.5938967466354
       ],
-      "sha256": "62d337368728f10429a4873a8e31e3f24807842b8a3f13ba29907313ee026382",
-      "bytes": 40152
+      "sha256": "9b3a6ab15b93f9dd9f79d3e73a8722c7bcb3f664851edd2a75487f5a36e009b8",
+      "bytes": 78614
     }
   ]
 }

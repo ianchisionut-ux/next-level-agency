@@ -133,12 +133,12 @@ export function MultiChoice({ options, values, onChange }: { options: string[]; 
   </>;
 }
 
-export function QuestionnaireProgress({ step, titles }: { step: number; titles: string[] }) {
+export function QuestionnaireProgress({ step, titles, icons = STEP_ICONS }: { step: number; titles: string[]; icons?: LucideIcon[] }) {
   return <div className="audit-progress">
     <div className="audit-progress-meta"><span>Pasul {step + 1} din {titles.length}</span><span>{step === titles.length - 1 ? "Aproape gata" : "Răspunsurile rămân când revii înapoi"}</span></div>
     <div className="audit-progress-track" role="progressbar" aria-label="Progresul chestionarului" aria-valuemin={0} aria-valuemax={titles.length} aria-valuenow={step + 1} aria-valuetext={`Pasul ${step + 1} din ${titles.length}: ${titles[step]}`}><span style={{ width: `${((step + 1) / titles.length) * 100}%` }} /></div>
-    <ol className="audit-progress-steps" aria-label="Pașii chestionarului">{titles.map((title, index) => {
-      const Icon = index < step ? Check : STEP_ICONS[index];
+    <ol className="audit-progress-steps" style={{ gridTemplateColumns: `repeat(${titles.length}, minmax(0, 1fr))` }} aria-label="Pașii chestionarului">{titles.map((title, index) => {
+      const Icon = index < step ? Check : icons[index];
       return <li key={title} data-state={index === step ? "current" : index < step ? "complete" : "upcoming"} aria-current={index === step ? "step" : undefined}><span><Icon size={17} aria-hidden="true" /></span><small>{title}</small></li>;
     })}</ol>
   </div>;

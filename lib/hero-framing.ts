@@ -77,9 +77,9 @@ export function layoutHeroLabels(
 /** Fit a bounding sphere inside a safe area, including every orbital angle. */
 export function heroFraming(width: number, height: number, radius: number, wide = width >= 1024) {
   if (![width, height, radius].every(value => Number.isFinite(value) && value > 0)) throw new Error("Invalid hero dimensions");
-  const left = wide ? width * 0.49 : Math.min(24, width * 0.06);
-  const right = width - Math.min(32, width * 0.06);
-  const top = wide ? Math.min(32, height * 0.07) : Math.min(48, height * 0.10);
+  const left = wide ? width * 0.45 : Math.min(16, width * 0.04);
+  const right = width - Math.min(16, width * 0.04);
+  const top = Math.min(20, height * 0.05);
   const bottom = height - (wide ? Math.min(60, height * 0.12) : Math.min(90, height * 0.18));
   const safeWidth = right - left;
   const safeHeight = bottom - top;
@@ -88,7 +88,7 @@ export function heroFraming(width: number, height: number, radius: number, wide 
   const minDistance = radius / Math.sin(halfAngle) * 1.025;
   const centerX = (left + right) / 2;
   const centerY = (top + bottom) / 2;
-  return { minDistance, maxDistance: minDistance * 1.85, initialDistance: minDistance * 1.05,
+  return { minDistance, maxDistance: minDistance * 1.85, initialDistance: minDistance * 1.015,
     offsetX: width / 2 - centerX, offsetY: height / 2 - centerY,
     left, right, top, bottom, centerX, centerY };
 }

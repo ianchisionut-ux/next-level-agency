@@ -38,7 +38,9 @@ const publicFont = require('../docs/fonts/nextlevel-inter-latin.json');
     if (path === "/") {
       assert.ok(!html.includes("/hero/nextlevel-core.webp") && !html.includes("%2Fhero%2Fnextlevel-core.webp"), 'No old orthographic/mismatched poster during the initial hero load');
       for (const frame of ['mobile', 'tablet', 'desktop']) assert.ok(html.includes(`/hero/nextlevel-core-runtime-${frame}.webp`), `Matching perspective preview for ${frame}`);
-      assert.ok(html.includes('Explorează în 3D'), 'Explicit mobile activation is server-rendered');
+        assert.ok(!html.includes('Explorează în 3D') && html.includes('Ecosistemul 3D pornește automat.'), 'Hero autostarts without a Play gate');
+        assert.ok(!html.includes('Conținut video pentru branduri'), 'Removed video showcase stays out of the homepage');
+        assert.ok(html.indexOf('Clienți și proiecte Next Level') < html.indexOf('Site-uri pe care le-am construit') && html.indexOf('Site-uri pe care le-am construit') < html.indexOf('Soluții complete pentru creșterea afacerii tale'), 'Web projects follow clients before services');
       assert.ok(!/<(?:link|img)[^>]+(?:href|src)=[^>]*nextlevel-core\.glb/.test(html), 'The model is not an eager image/preload');
       assert.ok(!html.includes("/video/hero-bg.mp4"));
       assert.ok(html.includes("ProfessionalService"));

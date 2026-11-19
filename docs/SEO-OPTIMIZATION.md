@@ -1,4 +1,4 @@
-# Public website optimization — 18 November 2026
+# Public website optimization — 19 November 2026
 
 This release keeps public content server rendered and leaves invoicing, mailbox
 operations and authentication unchanged.
@@ -21,14 +21,19 @@ operations and authentication unchanged.
   original Inter fallback. Only the content-hashed public font is preloaded and
   cached immutably; the dashboard keeps its original font stack. Reproduction,
   provenance and the OFL license are in `docs/fonts/`.
-- All devices keep an accurate rendered preview until the visitor chooses to
-  explore the 3D model. Background gradients are static; compact screens, coarse
-  pointers, reduced motion and Save-Data also avoid decorative motion work.
-  Model geometry and preview provenance are checked against the GLB and camera.
+- The hero starts its 3D ecosystem automatically when visible, with a smooth
+  Blender glass sphere, procedural energy filaments and orbital particles. It
+  pauses offscreen and in hidden tabs. Compact/touch devices cap DPR at 1 and
+  animation at 24 fps; reduced motion and Save-Data show the scene without
+  automatic animation. Public text is always server rendered. This visible
+  animation takes more GPU work than the previous click-to-start experience;
+  the previous 100/99 performance measurements do not certify this new version.
+  Preview provenance is checked against the updated GLB and safe camera framing.
 - Public links keep their normal URLs and Next.js navigation, while prefetch
   waits for actual pointer or keyboard intent instead of loading other pages
   during the initial visit.
-- Video players connect to Vimeo after Play. Portfolio live previews start after
+- The homepage video showcase has been removed. Web projects follow the client
+  logos. Portfolio live previews start after
   hover/focus intent or a button, with at most one active frame. Their layout
   measurements and resize observers also wait until activation. Daily Menu,
   BookEasy and ELMONT retain their static previews and external links because
@@ -38,6 +43,9 @@ operations and authentication unchanged.
 - The project questionnaire uses a single column, plain Romanian labels and
   pictograms, with optional details expandable. Its payload and required-field
   validation remain unchanged; the old visual guide and mock preview are removed.
+- The four-step presentation-site questionnaire now uses the same shared cards,
+  pictograms, accessible inputs and progress bar as the advanced questionnaire.
+  Original choice values, defaults and API payload are preserved.
 
 ## Verification
 
@@ -46,6 +54,7 @@ scripts; the public-site audit itself needs only `npx next build` and `next star
 
 ```text
 npm run test:hero
+npm run test:simple-presentation
 npm run test:project-preview
 npm run test:intent-link
 node scripts/audit-public-seo.cjs --self-test

@@ -176,7 +176,7 @@ export default function AuditForm() {
       <span className="audit-success-icon"><CheckCircle2 size={32} aria-hidden="true" /></span>
       <h2>Mulțumim, am primit răspunsurile tale!</h2>
       <p>Echipa Next Level le analizează și te contactează pentru a discuta pașii următori.</p>
-      <a href="https://wa.me/40740565663" target="_blank" rel="noopener noreferrer" className="audit-primary-link">Ne poți scrie și pe WhatsApp <ArrowRight size={17} aria-hidden="true" /></a>
+      <a href="https://wa.me/40712345002" target="_blank" rel="noopener noreferrer" className="audit-primary-link">Ne poți scrie și pe WhatsApp <ArrowRight size={17} aria-hidden="true" /></a>
     </div>;
   }
 
@@ -613,7 +613,7 @@ export default function AuditForm() {
                 <a href="mailto:contact@nextlevel-agency.ro" className="underline">
                   contact@nextlevel-agency.ro
                 </a>{" "}
-                sau la +40 740 565 663.
+                sau la +40 712 345 002.
               </p>
             )}
           </>

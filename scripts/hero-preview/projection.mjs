@@ -25,7 +25,7 @@ model.scene.traverse(object => {
 });
 const radius = Math.sqrt(Math.max(...positions.map(point => point.lengthSq()))) * 1.025;
 const frames = [];
-for (const [name, width, height, wide, transmission] of [['mobile', 412, 494, false, 0], ['tablet', 900, 650, false, 0], ['desktop', 1350, 733, true, .58]]) {
+for (const [name, width, height, wide, transmission] of [['mobile', 412, 528, false, 0], ['tablet', 900, 700, false, 0], ['desktop', 1350, 780, true, .74]]) {
   const framing = api.heroFraming(width, height, radius, wide);
   const camera = new THREE.PerspectiveCamera(api.HERO_FIELD_OF_VIEW, width / height, .1, 200);
   camera.position.set(3, 1.7, 6.9).normalize().multiplyScalar(framing.initialDistance);

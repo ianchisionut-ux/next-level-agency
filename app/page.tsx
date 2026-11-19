@@ -2,7 +2,6 @@ import Link from "@/components/IntentLink";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ClientsSection from "@/components/ClientsSection";
-import OurWork from "@/components/OurWork";
 import WebDevelopment from "@/components/WebDevelopment";
 import TrustMarquee from "@/components/TrustMarquee";
 import HomeHero from "@/components/HomeHero";
@@ -49,7 +48,7 @@ export default function HomePage() {
       <Header />
       <main id="main-content">
         {/* ---------------------------------------------------------------- */}
-        {/* HERO — dark, video de fundal în buclă (stil disruptiveadvertising.com) */}
+        {/* HERO — interactive 3D ecosystem on white */}
         {/* ---------------------------------------------------------------- */}
         <HomeHero />
 
@@ -67,6 +66,7 @@ export default function HomePage() {
 
         {/* OUR CLIENTS — light (editable in lib/data.ts) */}
         <ClientsSection />
+        <WebDevelopment />
 
         {/* ---------------------------------------------------------------- */}
         {/* SERVICES */}
@@ -121,10 +121,6 @@ export default function HomePage() {
         {/* ================================================================ */}
         {/* LIGHT BAND START                                                  */}
         {/* ================================================================ */}
-
-        <OurWork />
-
-        <WebDevelopment />
 
         {/* ================================================================ */}
         {/* LIGHT BAND END                                                    */}
