@@ -4,7 +4,12 @@ This release keeps public content server rendered and leaves invoicing, mailbox
 operations and authentication unchanged.
 
 - Five service sections describe scope, possible deliverables, process and offer
-  requirements. Related guides and service anchors connect the public pages.
+  requirements. Web development, performance marketing and AI automation also
+  have dedicated, prerendered pages with canonical metadata, Service and
+  BreadcrumbList structured data, four-stage interactive explanations and
+  three original lightweight WebP illustrations. The 3D labels, homepage
+  cards, service index and footer connect to those pages. Illustration prompts
+  and provenance are in `docs/services/IMAGE-PROMPTS.md`.
 - Unverified ratings, percentages and testimonials have been removed. Revised
   articles keep their publication dates and declare their actual update date.
 - Sitemap modification dates are explicit and limited to meaningful content
@@ -28,7 +33,10 @@ operations and authentication unchanged.
   automatic animation. Public text is always server rendered. This visible
   animation takes more GPU work than the previous click-to-start experience;
   the previous 100/99 performance measurements do not certify this new version.
-  Preview provenance is checked against the updated GLB and safe camera framing.
+  Normal startup shows the luminous background and a subtle loader directly
+  before the real canvas, without fetching or displaying a static poster.
+  Matching responsive posters remain only for a loading failure or disabled
+  JavaScript. Their provenance is checked against the GLB and safe framing.
 - Public links keep their normal URLs and Next.js navigation, while prefetch
   waits for actual pointer or keyboard intent instead of loading other pages
   during the initial visit.
@@ -38,6 +46,9 @@ operations and authentication unchanged.
   measurements and resize observers also wait until activation. Daily Menu,
   BookEasy and ELMONT retain their static previews and external links because
   their existing framing policies block embedding.
+- Pro Bloc Manager is included on both portfolio surfaces with a captured
+  1280×720 screenshot and an allowlisted live preview. Public headers and the
+  actual embedded rendering were verified; six cards form a uniform 3×2 grid.
 - Portfolio screenshots supplied by the owner were cropped and optimized as
   local WebP thumbnails. The legacy ELMONT image redirects to a valid WebP.
 - The project questionnaire uses a single column, plain Romanian labels and

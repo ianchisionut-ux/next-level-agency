@@ -3,6 +3,7 @@ import Image from "next/image";
 import { IconFacebook, IconInstagram, IconTiktok } from "./Icons";
 import { siteConfig } from "@/lib/data";
 import { serviceContent } from "@/lib/service-content";
+import { serviceHref } from "@/lib/service-links";
 import CookieSettingsLink from "./CookieSettingsLink";
 
 export default function Footer() {
@@ -73,7 +74,7 @@ export default function Footer() {
           <div>
             <h2 className="text-xs font-bold uppercase tracking-widest text-white/40">Servicii</h2>
             <ul className="mt-4 space-y-2 text-sm text-white/60">
-              {serviceContent.map(service => <li key={service.id}><Link href={`/servicii#${service.id}`} className="hover:text-white">{service.title}</Link></li>)}
+              {serviceContent.map(service => <li key={service.id}><Link href={serviceHref(service.id)} className="hover:text-white">{service.title}</Link></li>)}
             </ul>
           </div>
 

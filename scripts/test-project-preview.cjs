@@ -23,7 +23,7 @@ function previewRuntime(react = React, globals = {}) {
   return api;
 }
 const api = previewRuntime();
-const urls = ['https://www.pmcustoms.us', 'https://www.draculasoil.com'];
+const urls = ['https://www.pmcustoms.us', 'https://www.draculasoil.com', 'https://www.pro-bloc-manager.ro/'];
 for (const url of urls) assert.equal(api.projectPreviewUrl(url), url);
 for (const url of ['https://www.dailym.ro/pentru-restaurante', 'https://www.bookeasy.ro/descopera', 'https://elmontz.vercel.app', 'https://www.pmcustoms.us.evil.example', 'http://www.pmcustoms.us', 'javascript:alert(1)']) assert.equal(api.projectPreviewUrl(url), null);
 
@@ -84,8 +84,8 @@ vm.runInNewContext(compile('components/WebDevelopment.tsx'), { exports: web,
 });
 const html = renderToStaticMarkup(React.createElement(web.default));
 assert.equal((html.match(/<iframe\b/g) || []).length, 0, 'No third-party iframe or page request in initial HTML');
-assert.equal((html.match(/<img\b/g) || []).length, 5, 'Every static thumbnail remains server-rendered');
-assert.equal((html.match(/<button\b/g) || []).length, 2, 'Only permitted projects offer live activation');
+assert.equal((html.match(/<img\b/g) || []).length, data.webProjects.length, 'Every static thumbnail remains server-rendered');
+assert.equal((html.match(/<button\b/g) || []).length, urls.length, 'Only permitted projects offer live activation');
 assert.equal((html.match(/Explorează site-ul într-o filă nouă\./g) || []).length, 3);
 for (const project of data.webProjects) {
   assert.ok(html.includes(`href="${project.url}"`));
@@ -254,4 +254,4 @@ for (const intersectionSupported of [false, true]) for (const resizeSupported of
   fallback.cleanup(); assert.equal(fallback.resizeObservers(), 0); assert.equal(fallback.clock.jobs.size, 0);
   assert.equal(fallback.listeners('resize'), 0); assert.equal(fallback.listeners('scroll'), 0);
 }
-console.log('Project preview passed: 5 SSR thumbnails/links, zero initial iframes/layout reads/resize observers, 2 exact allowed sites, 16 policy states, 350ms intent, single active iframe, active-only geometry/resize, all IO/RO support combinations, loading fallback, manual preferences and pointer/keyboard/offscreen/hidden/unmount cleanup. No network or database.');
+console.log(`Project preview passed: ${data.webProjects.length} SSR thumbnails/links, zero initial iframes/layout reads/resize observers, ${urls.length} exact allowed sites, 16 policy states, 350ms intent, single active iframe, active-only geometry/resize, all IO/RO support combinations, loading fallback, manual preferences and pointer/keyboard/offscreen/hidden/unmount cleanup. No network or database.`);

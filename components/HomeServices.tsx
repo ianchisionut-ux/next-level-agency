@@ -1,6 +1,7 @@
 import Link from "@/components/IntentLink";
 import { Code2, Fingerprint, MousePointer2, Search, Sparkles, Workflow } from "lucide-react";
 import { services } from "@/lib/data";
+import { serviceHref } from "@/lib/service-links";
 
 const details = {
   code: { title: "Experiențe digitale. Un alt nivel.", label: "Web design & development", href: "web-development", icon: Code2 },
@@ -8,7 +9,7 @@ const details = {
   chart: { title: "Idei creative. Direcție măsurabilă.", label: "Performance marketing", href: "performance-marketing", icon: MousePointer2 },
   target: { title: "Un brand care te reprezintă.", label: "Strategie & identitate", href: "branding-identitate", icon: Fingerprint },
   search: { title: "Conținut clar. Structură cu sens.", label: "SEO & content", href: "seo-content-marketing", icon: Search },
-};
+} as const;
 
 function ServiceArtwork({ kind }: { kind: keyof typeof details }) {
   if (kind === "code") return <div className="nl-design-art" aria-hidden="true">
@@ -28,7 +29,7 @@ export default function HomeServices() {
       <div className="nl-capability-grid">
         {(["code", "bot", "chart", "target", "search"] as const).map(kind => {
           const item = details[kind], Icon = item.icon, service = services.find(service => service.icon === kind)!;
-          return <Link key={kind} href={`/servicii#${item.href}`} className={`nl-capability nl-capability--${kind}`} data-spotlight data-reveal>
+          return <Link key={kind} href={serviceHref(item.href)} className={`nl-capability nl-capability--${kind}`} data-spotlight data-reveal>
             <div className="nl-capability-label"><Icon size={19} aria-hidden="true" /><span>{item.label}</span></div>
             <h3>{item.title}</h3><p>{service.description}</p><ServiceArtwork kind={kind} /><span className="nl-card-link">Explorează serviciul</span>
           </Link>;

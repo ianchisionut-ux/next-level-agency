@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "@/components/IntentLink";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ArrowUpRight, Pause, Play, RotateCcw, Sparkles } from "lucide-react";
@@ -14,10 +13,18 @@ export function heroRuntimePolicy(preferences: { compact: boolean; coarse: boole
   return { activation: "visible" as const, autoRotate: !preferences.reduced && !preferences.saveData, pixelRatioCap: compact ? 1 : 1.5, environmentSize: compact ? 64 : 128, maxFps: compact ? 24 : 30, transmissionCap: compact ? 0 : 0.74, compact };
 }
 const coreServices = [
-  { key: "web", title: "Web & App Dev", description: "Experiențe care convertesc", href: "/servicii#web-development", mesh: "NL / Web glass panel" },
-  { key: "marketing", title: "Performance Marketing", description: "Campanii. Rezultate. Creștere.", href: "/servicii#performance-marketing", mesh: "NL / Growth bar 5" },
-  { key: "automation", title: "AI & Automatizări", description: "Mai mult impact. Mai puțin efort.", href: "/servicii#ai-automatizari", mesh: "NL / Automation module 1" },
+  { key: "web", title: "Web & App Dev", description: "Experiențe care convertesc", href: "/servicii/web-design-dezvoltare", mesh: "NL / Web glass panel" },
+  { key: "marketing", title: "Performance Marketing", description: "Campanii. Rezultate. Creștere.", href: "/servicii/performance-marketing", mesh: "NL / Growth bar 5" },
+  { key: "automation", title: "AI & Automatizări", description: "Mai mult impact. Mai puțin efort.", href: "/servicii/ai-automatizari", mesh: "NL / Automation module 1" },
 ] as const;
+
+// Fixed, trusted markup is shared by the error state and noscript. Keeping it
+// inside noscript during normal SSR prevents image requests and React preloads.
+const fallbackPictureHtml = `<picture>
+  <source media="(min-width: 1024px)" srcset="/hero/nextlevel-core-runtime-desktop.webp" type="image/webp" />
+  <source media="(min-width: 481px)" srcset="/hero/nextlevel-core-runtime-tablet.webp" type="image/webp" />
+  <img src="/hero/nextlevel-core-runtime-mobile.webp" alt="Ecosistem Next Level: sferă de sticlă, orbite, panou web, automatizări și grafic de marketing" width="412" height="528" decoding="async" class="nl-core-render nl-core-fallback nl-core-runtime-preview" />
+</picture>`;
 
 /** Start automatically when the hero is visible; suspend all frames offscreen. */
 export default function InteractiveCore() {
@@ -28,7 +35,6 @@ export default function InteractiveCore() {
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [paused, setPaused] = useState(false);
-  const [booting, setBooting] = useState(false);
   const [status, setStatus] = useState("Ecosistemul 3D pornește automat.");
 
   useEffect(() => {
@@ -48,7 +54,7 @@ export default function InteractiveCore() {
     const init = async () => {
       if (disposed || started) return;
       started = true;
-      setBooting(true); setStatus("Se pregătește ecosistemul 3D.");
+      setStatus("Se pregătește ecosistemul 3D.");
       const quality = readPolicy();
       pausedRef.current = !quality.autoRotate;
       setPaused(pausedRef.current);
@@ -310,10 +316,10 @@ export default function InteractiveCore() {
           zoom: factor => { const length = Math.max(controls.minDistance, Math.min(controls.maxDistance, camera.position.length() * factor)); camera.position.setLength(length); controls.update(); schedule(); },
         };
         renderer.render(scene, camera); projectLabels();
-        setReady(true); setBooting(false); setStatus("Modelul Blender este interactiv. Trage cu mouse-ul sau degetul pentru rotire.");
+        setReady(true); setStatus("Modelul Blender este interactiv. Trage cu mouse-ul sau degetul pentru rotire.");
         schedule();
       } catch {
-        if (!disposed) { release(); setFailed(true); setBooting(false); setStatus("Modelul 3D nu se poate încărca. Se afișează imaginea de rezervă."); }
+        if (!disposed) { release(); setFailed(true); setStatus("Modelul 3D nu se poate încărca. Se afișează imaginea de rezervă."); }
       }
     };
     const intersection = new IntersectionObserver(entries => {
@@ -350,13 +356,10 @@ export default function InteractiveCore() {
       <style>{`.nl-core-fallback.nl-core-runtime-preview{left:0;right:0;width:100%;height:100%;object-position:50% 50%}@media(min-width:1024px){.nl-core-fallback.nl-core-runtime-preview{object-position:75% 50%}}`}</style>
       <div className="nl-core-stage" tabIndex={ready && !failed ? 0 : -1} role="group" aria-label="Ecosistem 3D Next Level, rotire interactivă" aria-describedby="nl-core-help" onKeyDown={keyboard}>
         <span id="nl-core-help" className="sr-only">Folosește săgețile pentru rotire, plus și minus pentru zoom, Home pentru resetare și spațiu pentru pauză.</span>
-        <picture>
-          <source media="(min-width: 1024px)" srcSet="/hero/nextlevel-core-runtime-desktop.webp" type="image/webp" />
-          <source media="(min-width: 481px)" srcSet="/hero/nextlevel-core-runtime-tablet.webp" type="image/webp" />
-          <Image src="/hero/nextlevel-core-runtime-mobile.webp" alt="Ecosistem Next Level: sferă de sticlă, orbite, panou web, automatizări și grafic de marketing" width={412} height={494} unoptimized loading="eager" className="nl-core-render nl-core-fallback nl-core-runtime-preview" />
-        </picture>
+        {failed && <div className="nl-core-failure-preview" dangerouslySetInnerHTML={{ __html: fallbackPictureHtml }} />}
+        <noscript dangerouslySetInnerHTML={{ __html: `<style>.nl-core-loading,.nl-core-live-status{display:none}</style>${fallbackPictureHtml}<p class="sr-only">Previzualizare statică. Rotirea interactivă necesită JavaScript.</p>` }} />
         <div ref={host} className="nl-core-canvas" aria-hidden="true" />
-        {!ready && !failed && booting && <span className="nl-core-loading" aria-hidden="true"><Sparkles size={15} /> Se pregătește ecosistemul…</span>}
+        {!ready && !failed && <span className="nl-core-loading" aria-hidden="true"><Sparkles size={15} /> Se pregătește ecosistemul…</span>}
         <div className="nl-core-services" aria-label="Explorează serviciile din ecosistem">
           {coreServices.map((service, index) => <div key={service.key} ref={element => { serviceLabels.current[index] = element; }} className={`nl-core-service-label nl-core-service-${service.key}`}>
             <span className="nl-core-service-connector" aria-hidden="true" />
@@ -375,7 +378,7 @@ export default function InteractiveCore() {
           <button type="button" onClick={() => api.current?.reset()} disabled={!ready || failed} aria-label="Resetează perspectiva 3D"><RotateCcw size={15} aria-hidden="true" /></button>
         </div>
       </div>
-      <p className="sr-only" role="status" aria-live="polite">{status}</p>
+      <p className="nl-core-live-status sr-only" role="status" aria-live="polite">{status}</p>
     </div>
   );
 }

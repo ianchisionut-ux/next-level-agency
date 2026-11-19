@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 
-const PREVIEW_URLS = new Set(["https://www.pmcustoms.us", "https://www.draculasoil.com"]);
+const PREVIEW_URLS = new Set(["https://www.pmcustoms.us", "https://www.draculasoil.com", "https://www.pro-bloc-manager.ro/"]);
 const VIEWPORT_WIDTH = 1280;
 const VIEWPORT_HEIGHT = 720;
 const INTENT_DELAY = 350;

@@ -11,6 +11,7 @@ import {
 } from "@/components/Icons";
 import { siteConfig } from "@/lib/data";
 import { serviceContent, serviceQuestions } from "@/lib/service-content";
+import { serviceDetailPaths, serviceHref } from "@/lib/service-links";
 import { posts } from "@/lib/blog";
 
 export const metadata = pageMetadata("Servicii de marketing digital, web design și SEO | Next Level", "Branding, campanii Google și Meta, web design, SEO și automatizări. Află cui se adresează, ce poate include un proiect și cum începem colaborarea.", "/servicii");
@@ -84,6 +85,7 @@ export default function ServiciiPage() {
                     <div className="mt-7 rounded-xl border border-line-light p-5"><h3 className="font-bold">Ce clarificăm înainte de ofertă</h3><ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed text-ink-soft">{service.beforeQuote.map(question => <li key={question}>{question}</li>)}</ul></div>
                     <p className="mt-7 rounded-xl border border-line-light bg-paper p-4 text-sm leading-relaxed text-ink-soft">{service.expectation}</p>
                     <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
+                      {service.id in serviceDetailPaths && <Link href={serviceHref(service.id)} className="rounded-lg bg-blue px-4 py-3 text-sm font-bold text-[#ffffff] hover:bg-blue-800">Explorează serviciul vizual →</Link>}
                       <Link href={service.id === "web-development" ? "/chestionar-site-prezentare" : "/contact"} className="font-semibold text-blue hover:underline">{service.id === "web-development" ? "Descrie site-ul de care ai nevoie" : `Discută despre ${service.shortTitle.toLocaleLowerCase("ro-RO")}`} →</Link>
                       <Link href="/portofoliu" className="text-sm font-semibold text-blue hover:underline">Vezi proiectele din portofoliu →</Link>
                     </div>

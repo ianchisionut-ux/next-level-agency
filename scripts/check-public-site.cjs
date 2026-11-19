@@ -6,6 +6,7 @@ const base = new URL(process.argv[2] || "http://127.0.0.1:3003");
 assert.ok(["127.0.0.1", "localhost"].includes(base.hostname), "This check only runs against a local isolated server.");
 const canonicalOrigin = "https://www.nextlevel-agency.ro";
 const publicFont = require('../docs/fonts/nextlevel-inter-latin.json');
+const heroServicePages = ['/servicii/web-design-dezvoltare', '/servicii/performance-marketing', '/servicii/ai-automatizari'];
 
 (async () => {
   const robots = await fetch(new URL("/robots.txt", base));
@@ -17,6 +18,7 @@ const publicFont = require('../docs/fonts/nextlevel-inter-latin.json');
   assert.equal(new Set(paths).size, paths.length);
   assert.ok(paths.length >= 20);
   assert.ok(paths.every(path => !/^\/(api|dashboard|login|signup|invite|reset-password)/.test(path)));
+  for (const path of heroServicePages) assert.ok(paths.includes(path), `Dedicated hero service page appears in the sitemap: ${path}`);
   const titles = new Set();
   for (const path of paths) {
     const response = await fetch(new URL(path, base));
@@ -39,14 +41,24 @@ const publicFont = require('../docs/fonts/nextlevel-inter-latin.json');
       assert.ok(html.includes('tel:+40712345002') && html.includes('wa.me/40712345002'), 'Phone and WhatsApp links use the new agency number');
     if (path === "/") {
       assert.ok(!html.includes("/hero/nextlevel-core.webp") && !html.includes("%2Fhero%2Fnextlevel-core.webp"), 'No old orthographic/mismatched poster during the initial hero load');
-      for (const frame of ['mobile', 'tablet', 'desktop']) assert.ok(html.includes(`/hero/nextlevel-core-runtime-${frame}.webp`), `Matching perspective preview for ${frame}`);
+      const noScriptHero = [...html.matchAll(/<noscript\b[^>]*>([\s\S]*?)<\/noscript>/gi)].map(match => match[1]).find(markup => markup.includes('nextlevel-core-runtime-'));
+      assert.ok(noScriptHero, 'JS-disabled visitors retain the matching hero fallback');
+      for (const frame of ['mobile', 'tablet', 'desktop']) assert.ok(noScriptHero.includes(`/hero/nextlevel-core-runtime-${frame}.webp`), `Matching noscript fallback for ${frame}`);
+      const scriptEnabledHtml = html.replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, '');
+      assert.ok(!/<(?:img|source)\b[^>]*\b(?:src|srcset)=["'][^"']*nextlevel-core-runtime-/i.test(scriptEnabledHtml), 'Normal startup has no static hero picture');
+      assert.ok(!/<link\b[^>]*\bhref=["'][^"']*nextlevel-core-runtime-/i.test(scriptEnabledHtml), 'Normal startup does not preload a static hero picture');
         assert.ok(!html.includes('Explorează în 3D') && html.includes('Ecosistemul 3D pornește automat.'), 'Hero autostarts without a Play gate');
         assert.ok(!html.includes('Conținut video pentru branduri'), 'Removed video showcase stays out of the homepage');
         assert.ok(html.indexOf('Clienți și proiecte Next Level') < html.indexOf('Site-uri pe care le-am construit') && html.indexOf('Site-uri pe care le-am construit') < html.indexOf('Soluții complete pentru creșterea afacerii tale'), 'Web projects follow clients before services');
       assert.ok(!/<(?:link|img)[^>]+(?:href|src)=[^>]*nextlevel-core\.glb/.test(html), 'The model is not an eager image/preload');
       assert.ok(!html.includes("/video/hero-bg.mp4"));
       assert.ok(html.includes("ProfessionalService"));
-      for (const anchor of ['web-development', 'performance-marketing', 'ai-automatizari']) assert.ok(html.includes(`/servicii#${anchor}`), `Clickable 3D service link ${anchor}`);
+      for (const path of heroServicePages) assert.ok(html.includes(`href="${path}"`), `Clickable 3D service page ${path}`);
+    }
+    if (heroServicePages.includes(path)) {
+      assert.ok(html.includes('"@type":"Service"') && html.includes('BreadcrumbList'), `Service and breadcrumb schema on ${path}`);
+      assert.ok(html.includes('Exemplu ilustrativ') && html.includes('aria-pressed="true"'), `Visual explainer remains usable from its initial HTML on ${path}`);
+      for (const other of heroServicePages.filter(item => item !== path)) assert.ok(html.includes(`href="${other}"`), `Related service link ${other}`);
     }
     if (path === '/servicii') for (const anchor of ['web-development', 'performance-marketing', 'ai-automatizari']) assert.ok(html.includes(`id="${anchor}"`), `Service destination ${anchor}`);
     if (path.startsWith("/blog/")) assert.ok(html.includes("BlogPosting") && html.includes("BreadcrumbList"));
@@ -101,5 +113,6 @@ const publicFont = require('../docs/fonts/nextlevel-inter-latin.json');
   assert.equal(image.status, 200);
   assert.ok(image.headers.get("content-type").startsWith("image/"));
   assert.equal((await fetch(new URL("/blog/not-a-real-article", base))).status, 404);
+  assert.equal((await fetch(new URL("/servicii/not-a-real-service", base))).status, 404);
   console.log(`Public-site verification passed: ${paths.length} pages, unique titles, canonicals, structured data, sitemap, robots, private noindex and social image. No financial mutations.`);
 })().catch(error => { console.error(error); process.exitCode = 1; });

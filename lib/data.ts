@@ -183,4 +183,5 @@ export const webProjects: WebProject[] = [
    { title: "Dracula’s Soil", url: "https://www.draculasoil.com", thumbnail: "/web-projects/dracula-soil-2026-11-18.webp" },
    { title: "BookEasy", url: "https://www.bookeasy.ro/descopera", thumbnail: "/web-projects/bookeasy-2026-11-18.webp" },
    { title: "ELMONT S.A.", url: "https://elmontz.vercel.app", thumbnail: "/web-projects/elmont-2026-11-18.webp" },
+   { title: "Pro Bloc Manager", url: "https://www.pro-bloc-manager.ro/", thumbnail: "/web-projects/pro-bloc-manager-2026-11-19.jpg" },
 ];
