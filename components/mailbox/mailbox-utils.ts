@@ -1,7 +1,7 @@
 export type MailboxStatus = { configured: boolean; address: string; inboxId?: string; sendingReady: boolean; receivingReady: boolean; domainStatus?: string; message?: string; setupRequired?: string[]; archiveReady?: boolean; archive?: { emails?: number; attachments?: number; pending?: number; deferred?: number } };
 export type MailFolder = "inbox" | "sent" | "archive" | "drafts";
 export type MailThread = { id: string; subject: string; from: string; to: string[]; preview: string; lastMessageAt: string; unread: boolean; messageCount: number; archived?: boolean };
-export type MailEmail = { id: string; from: string; to: string[]; cc?: string[]; bcc?: string[]; replyTo?: string[]; subject: string; text: string; html?: string; createdAt: string; direction: string; attachments?: { id: string; filename: string; contentType: string; size: number; contentId?: string; inline?: boolean }[] };
+export type MailEmail = { id: string; from: string; to: string[]; cc?: string[]; bcc?: string[]; replyTo?: string[]; subject: string; text: string; html?: string; createdAt: string; direction: string; deliveryStatus?: string; attachments?: { id: string; filename: string; contentType: string; size: number; contentId?: string; inline?: boolean }[] };
 export type MailDetail = { thread: MailThread; emails: MailEmail[]; nextCursor?: string | null; warning?: string };
 export type DraftAttachment = { filename: string; contentType: string; content: string; size: number };
 export type MailDraft = { to: string; cc: string; bcc: string; subject: string; text: string; html: string; attachments: DraftAttachment[]; operationKey: string; threadId?: string; emailId?: string; kind?: "new" | "reply" | "forward"; serverId?: string; attempted: boolean; updatedAt?: string };

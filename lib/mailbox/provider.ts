@@ -83,6 +83,7 @@ export function normalizeEmail(email: Json) {
     id: providerId(email.id, "Mesajul"), from: string(email.from), to: strings(email.to), cc: strings(email.cc), bcc: strings(email.bcc), replyTo: strings(email.reply_to),
     subject: string(email.subject, 500), text: string(email.text, 1_000_000), html: string(email.html, 2_000_000), createdAt: string(email.received_at || email.created_at), direction: email.direction === "outbound" ? "outbound" : "inbound",
     attachments: rows(email.attachments).map(file => ({ id: providerId(file.id, "Atașamentul"), filename: string(file.filename, 255) || "atasament", contentType: string(file.content_type) || "application/octet-stream", size: Number.isSafeInteger(file.size) && Number(file.size) >= 0 ? Number(file.size) : 0, contentId: string(file.content_id), inline: file.content_disposition === "inline" || Boolean(file.content_id) })),
+    ...(email.delivery_status ? { deliveryStatus: string(email.delivery_status, 40) } : {}),
   };
 }
 

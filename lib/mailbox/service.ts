@@ -41,6 +41,11 @@ export async function mailboxThreads(folder: string, after?: string | null) {
 
 export async function mailboxThread(id: string, after?: string | null) {
   const inbox = await readInbox();
+  if (id.startsWith("legacy_")) {
+    const cached = await getArchivedThread(inbox.id, id, after);
+    if (!cached) throw new MailboxError("Mesajul recuperat nu există în arhiva locală.", 404, "THREAD_NOT_FOUND");
+    return { ...cached, warning: "Mesaj recuperat din istoricul ofertelor Resend, fără retrimitere. Continuarea sau redirecționarea creează un mesaj nou." };
+  }
   if (inbox.online) {
     try {
       const data = await threadDetails(id, after, inbox.id);
@@ -66,7 +71,7 @@ export async function mailboxUpdate(id: string, input: unknown) {
   if ((value.archived !== undefined && typeof value.archived !== "boolean") || (value.unread !== undefined && typeof value.unread !== "boolean") || (value.archived === undefined && value.unread === undefined)) throw new MailboxError("Starea conversației nu este validă.");
   const inbox = await readInbox();
   let remote: Awaited<ReturnType<typeof updateThread>> | null = null;
-  if (inbox.online) {
+  if (inbox.online && !id.startsWith("legacy_")) {
     try { remote = await updateThread(id, input); }
     catch (error) { if (!(error instanceof ProviderError)) throw error; }
   }
@@ -101,8 +106,9 @@ export async function mailboxAttachment(threadId: string, emailId: string, attac
   return new Response(new Uint8Array(data), { headers: safeFileHeaders(file.filename, file.contentType, inline) });
 }
 
-export async function synchronizeMailbox(options: { maxScanSteps?: number; scanBudgetMs?: number } = {}) {
+export async function synchronizeMailbox(options: { maxScanSteps?: number; scanBudgetMs?: number; recoverLegacyOffers?: boolean } = {}) {
   const inbox = await resolveInbox();
+  const legacy = options.recoverLegacyOffers ? await (await import("./legacy-offers")).synchronizeLegacyOffers(inbox.id) : null;
   const deadline = Date.now() + Math.max(1000, Math.min(options.scanBudgetMs ?? 15_000, 45_000));
   const maximum = Math.max(1, Math.min(Number.isInteger(options.maxScanSteps) ? options.maxScanSteps! : 36, 100));
   type FolderScan = { folder: string; checkpoint: MailboxArchiveScan | null; finished: boolean; blocked: boolean; error?: string; rows: Map<string, Record<string, unknown>> };
@@ -174,7 +180,7 @@ export async function synchronizeMailbox(options: { maxScanSteps?: number; scanB
   const archive = await mailboxArchiveStatus(inbox.id);
   const scanPartial = scans.some(scan => !scan.finished);
   const cursors = scans.map(scan => ({ folder: scan.folder, after: scan.checkpoint?.afterCursor ?? null, thread: scan.checkpoint?.threadIds[0] ?? null, emailAfter: scan.checkpoint?.emailCursor ?? null, remaining: scan.checkpoint?.threadIds.length ?? null, next: scan.checkpoint?.nextCursor ?? null, complete: scan.finished, busy: !scan.checkpoint, lastCompletedAt: scan.checkpoint?.completedAt ?? null, ...(scan.error ? { error: scan.error } : {}) }));
-  return { threads, queued, ...processed, partial: scanPartial || processed.pending > 0 || processed.deferred > 0 || archive.pending > 0 || archive.deferred > 0, scanPartial, cursors, archive };
+  return { threads, queued, ...processed, partial: Boolean(legacy?.partial) || scanPartial || processed.pending > 0 || processed.deferred > 0 || archive.pending > 0 || archive.deferred > 0, scanPartial, cursors, archive, ...(legacy ? { legacy } : {}) };
 }
 
 export async function mailboxOverview() {

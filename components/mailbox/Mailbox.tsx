@@ -49,6 +49,7 @@ function Message({ email, threadId }: { email: MailEmail; threadId: string }) {
       <div className={styles.messageInfo}>
         <div className={styles.sender}><span>{email.from}</span><time dateTime={email.createdAt}>{mailDate(email.createdAt, true)}</time></div>
         <div className={styles.recipients}>Către: {(email.to || []).join(", ")}{Boolean(email.cc?.length) && <> · Cc: {email.cc?.join(", ")}</>}</div>
+        {email.deliveryStatus && <div className={styles.recipients}>Stare Resend: {({ delivered: "Livrat", sent: "Acceptat pentru trimitere", delivery_delayed: "Livrare întârziată", bounced: "Respins de destinatar", failed: "Trimitere eșuată", suppressed: "Trimitere blocată", complained: "Raportat ca spam", opened: "Deschidere raportată", clicked: "Click raportat" } as Record<string, string>)[email.deliveryStatus] || "Necunoscută"}</div>}
       </div>
     </div>
     {html !== null ? <iframe loading="lazy" className={styles.htmlFrame} title={`Mesaj: ${email.subject || "fără subiect"}`} sandbox="allow-popups allow-popups-to-escape-sandbox" referrerPolicy="no-referrer" srcDoc={html} /> : <div className={styles.body}>{email.text?.trim() || "Mesaj fără conținut text."}</div>}
@@ -57,10 +58,10 @@ function Message({ email, threadId }: { email: MailEmail; threadId: string }) {
   </article>;
 }
 
-export default function Mailbox() {
+export default function Mailbox({ initialFolder = "inbox" }: { initialFolder?: MailFolder } = {}) {
   const [status, setStatus] = useState<MailboxStatus | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
-  const [folder, setFolder] = useState<MailFolder>("inbox");
+  const [folder, setFolder] = useState<MailFolder>(initialFolder);
   const [threads, setThreads] = useState<MailThread[]>([]);
   const [cursor, setCursor] = useState<string | undefined>();
   const [listLoading, setListLoading] = useState(false);
@@ -252,12 +253,13 @@ export default function Mailbox() {
       try { await persistDraft(draft); } catch (caught) { setError(caught instanceof Error ? caught.message : "Salvează ciorna curentă înainte de a începe alt mesaj."); return; }
     }
     const reply = kind === "reply", forward = kind === "forward";
+    const legacy = Boolean(detail?.thread.id.startsWith("legacy_"));
     const email = (reply || forward) && detail ? [...detail.emails].reverse().find(message => emailAddress(message.from).toLowerCase() !== ADDRESS) || detail.emails.at(-1) : null;
     const replyTo = email ? email.replyTo?.length ? email.replyTo.join(", ") : emailAddress(email.from).toLowerCase() !== ADDRESS ? emailAddress(email.from) : (email.to || []).filter(address => emailAddress(address).toLowerCase() !== ADDRESS).join(", ") : "";
     const subject = (reply || forward) && detail ? new RegExp(forward ? "^fwd?:" : "^re:", "i").test(detail.thread.subject) ? detail.thread.subject : `${forward ? "Fwd" : "Re"}: ${detail.thread.subject || "Mesaj"}` : "";
     try {
-      const text = signature ? `\n\n${signature}` : "";
-      storeDraft({ to: forward ? "" : replyTo, cc: "", bcc: "", subject, text, html: textMailHtml(text), attachments: [], kind, operationKey: crypto.randomUUID(), attempted: false, ...((reply || forward) && detail && email ? { threadId: detail.thread.id, emailId: email.id } : {}) });
+      const text = `${signature ? `\n\n${signature}` : ""}${legacy && email ? `\n\n--- Mesaj anterior ---\nDe la: ${email.from}\nCătre: ${email.to.join(", ")}\nSubiect: ${email.subject}\n\n${email.text || "Vezi mesajul original în istoricul Trimise."}` : ""}`;
+      storeDraft({ to: forward ? "" : replyTo, cc: "", bcc: "", subject, text, html: textMailHtml(text), attachments: [], kind: legacy ? "new" : kind, operationKey: crypto.randomUUID(), attempted: false, ...((reply || forward) && !legacy && detail && email ? { threadId: detail.thread.id, emailId: email.id } : {}) });
       setDraftSavedAt("");
       setComposeOpen(true);
     } catch { setError("Browserul nu poate salva ciorna. Activează stocarea locală înainte de a trimite un mesaj."); }
@@ -391,8 +393,9 @@ export default function Mailbox() {
     syncLock.current = true; setSyncBusy(true); setError(""); setNotice("");
     try {
       if (status?.configured) {
-        const result = await mailboxRequest<{ pending?: number; deferred?: number; partial?: boolean }>("/api/mailbox/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
-        setNotice(result.partial || result.pending || result.deferred ? "Mai există mesaje sau atașamente de importat. Folosește din nou sincronizarea pentru a continua." : "Mesajele și arhiva au fost actualizate.");
+        const result = await mailboxRequest<{ pending?: number; deferred?: number; partial?: boolean; legacy?: { imported: number; warning?: string } }>("/api/mailbox/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+        const recovered = result.legacy?.imported ? `Au fost recuperate ${result.legacy.imported} e-mailuri din oferte, fără retrimitere. ` : "";
+        setNotice(recovered + (result.legacy?.warning || (result.partial || result.pending || result.deferred ? "Mai există mesaje sau atașamente de importat. Folosește din nou sincronizarea pentru a continua." : "Mesajele și arhiva au fost actualizate.")));
       }
       await loadStatus(); if (status?.configured || folder === "drafts") await loadThreads();
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Sincronizarea nu a putut fi finalizată."); }

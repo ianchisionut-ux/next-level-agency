@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, FileDown, FileSignature, Loader2, Mail, MessageCircle, Plus, Save, Trash2, X } from "lucide-react";
 import { defaultWebOffer, formatLei, webOfferTotals, type WebOfferData, type WebsiteBriefOfferSource } from "@/lib/web-offer";
+import { offerPrintDocument, prepareOfferPrint } from "@/lib/web-offer-print";
 
 type EditorProps = {
   brief: WebsiteBriefOfferSource & { offerData?: WebOfferData | null };
@@ -16,6 +17,8 @@ export function WebOfferEditor({ brief, estimate, onClose, onSaved }: EditorProp
   const [busy, setBusy] = useState<"save" | "contract" | "email" | "whatsapp" | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const emailAttempt = useRef<{ key: string; fingerprint: string } | null>(null);
+  const callLock = useRef(false);
   const totals = useMemo(() => webOfferTotals(data), [data]);
 
   useEffect(() => () => {
@@ -44,29 +47,56 @@ export function WebOfferEditor({ brief, estimate, onClose, onSaved }: EditorProp
   }
 
   async function call(action: "sheet" | "send-email" | "send-whatsapp") {
+    if (callLock.current) return;
+    callLock.current = true;
     const mode = action === "sheet" ? "save" : action === "send-email" ? "email" : "whatsapp";
     setBusy(mode);
     setNotice("");
     setError("");
+    const attemptStorage = `nextlevel.offer.send.${brief.id}`;
+    const clearEmailAttempt = () => {
+      emailAttempt.current = null;
+      try { sessionStorage.removeItem(attemptStorage); } catch { /* In-memory guard remains available. */ }
+    };
     try {
+      let payload: WebOfferData & { operationKey?: string } = data;
+      if (action === "send-email") {
+        const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(data)));
+        const fingerprint = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+        if (!emailAttempt.current) {
+          try {
+            const saved = JSON.parse(sessionStorage.getItem(attemptStorage) || "null");
+            if (saved && typeof saved.key === "string" && typeof saved.fingerprint === "string") emailAttempt.current = saved;
+          } catch { /* Storage may be unavailable; keep the in-memory operation. */ }
+        }
+        if (emailAttempt.current && emailAttempt.current.fingerprint !== fingerprint) throw new Error("O trimitere anterioară nu este încă confirmată. Verifică E-mail → Trimise înainte să trimiți o ofertă modificată.");
+        emailAttempt.current ||= { key: crypto.randomUUID(), fingerprint };
+        try { sessionStorage.setItem(attemptStorage, JSON.stringify(emailAttempt.current)); } catch { /* Do not store message content in browser storage. */ }
+        payload = { ...data, operationKey: emailAttempt.current.key };
+      }
       const response = await fetch(`/api/oferte-web/${brief.id}/${action}`, {
         method: action === "sheet" ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.error || "Operațiunea nu a reușit.");
+      if (!response.ok) {
+        if (action === "send-email" && (result.definiteNoSend === true || response.status === 400 || response.status === 404)) clearEmailAttempt();
+        throw new Error(result.error || "Operațiunea nu a reușit.");
+      }
+      if (action === "send-email") clearEmailAttempt();
       if (result.offerData) setData(result.offerData);
       if (action === "send-whatsapp" && result.fallbackUrl) {
         window.open(result.fallbackUrl, "_blank", "noopener,noreferrer");
         setNotice("Am deschis WhatsApp cu oferta completată. Verifică mesajul și apasă Trimite.");
       } else {
-        setNotice(action === "sheet" ? "Oferta a fost salvată." : "Oferta a fost trimisă prin e-mail.");
+        setNotice(action === "sheet" ? "Oferta a fost salvată." : "Oferta a fost acceptată pentru trimitere. O găsești în E-mail → Trimise.");
       }
       onSaved?.();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Operațiunea nu a reușit.");
     } finally {
+      callLock.current = false;
       setBusy(null);
     }
   }
@@ -84,21 +114,14 @@ export function WebOfferEditor({ brief, estimate, onClose, onSaved }: EditorProp
       .map((node) => node.outerHTML)
       .join("\n");
     printWindow.document.open();
-    printWindow.document.write(`<!doctype html><html lang="ro"><head><meta charset="utf-8"><base href="${window.location.origin}/"><title>Oferta ${data.offerNumber}</title>${styles}<style>@page{size:A4;margin:0}html,body{margin:0!important;padding:0!important;background:#fff!important}.web-offer-paper{display:block!important;position:static!important;width:210mm!important;max-width:none!important;min-height:297mm!important;margin:0!important;padding:13mm 14mm!important;box-shadow:none!important}</style></head><body>${paper.outerHTML}</body></html>`);
+    printWindow.document.write(offerPrintDocument(paper.outerHTML, styles, window.location.origin, data.offerNumber));
     printWindow.document.close();
     printWindow.opener = null;
 
-    const printWhenReady = async () => {
-      const images = Array.from(printWindow.document.images);
-      await Promise.all(images.map((image) => image.complete ? Promise.resolve() : new Promise<void>((resolve) => {
-        image.addEventListener("load", () => resolve(), { once: true });
-        image.addEventListener("error", () => resolve(), { once: true });
-      })));
-      await printWindow.document.fonts?.ready;
-      printWindow.focus();
-      printWindow.print();
-    };
-    window.setTimeout(printWhenReady, 250);
+    void prepareOfferPrint(printWindow).catch(caught => {
+      setError(caught instanceof Error ? caught.message : "Oferta nu a putut fi pregătită pentru tipărire.");
+      printWindow.close();
+    });
   }
 
   async function downloadContract() {
@@ -151,7 +174,7 @@ export function WebOfferEditor({ brief, estimate, onClose, onSaved }: EditorProp
           </div>
         </header>
 
-        {(notice || error) && <div className={`no-print web-offer-notice ${error ? "error" : ""}`}>{error ? <X size={16} /> : <Check size={16} />}{error || notice}</div>}
+        {(notice || error) && <div className={`no-print web-offer-notice ${error ? "error" : ""}`}>{error ? <X size={16} /> : <Check size={16} />}{error || notice}{!error && notice.includes("Trimise") && <a href="/dashboard/email?folder=sent" style={{ textDecoration: "underline", marginLeft: 8 }}>Deschide Trimise</a>}</div>}
 
         <div className="web-offer-grid">
           <section className="web-offer-fields no-print">
@@ -222,7 +245,7 @@ function OfferPaper({ data, totals }: { data: WebOfferData; totals: ReturnType<t
         <div className="web-offer-logo"><img src="/brand/logo-mark.png" alt="Next Level" /><span><strong>NEXT LEVEL</strong><small>ADVERTISING AGENCY</small></span></div>
         <div><b>PROPUNERE COMERCIALĂ</b><span>Nr. {data.offerNumber}</span><small>{new Date(data.offerDate).toLocaleDateString("ro-RO")}</small></div>
       </header>
-      <div className="web-offer-paper-band"><small>STRATEGIE · DESIGN · DEZVOLTARE</small><h1>{data.projectTitle}</h1><p>O soluție construită pentru următorul nivel al brandului tău.</p></div>
+      <div className="web-offer-paper-band"><svg className="web-offer-band-art" viewBox="0 0 690 130" preserveAspectRatio="none" aria-hidden="true" focusable="false"><defs><linearGradient id="web-offer-band-gradient" x1="0" y1="0" x2="1" y2="1"><stop offset="15%" stopColor="#0a0f1e" /><stop offset="65%" stopColor="#1e3a8a" /><stop offset="100%" stopColor="#2563eb" /></linearGradient></defs><rect width="690" height="130" fill="url(#web-offer-band-gradient)" /><circle cx="643" cy="21" r="89" fill="none" stroke="#60a5fa" strokeWidth="30" strokeOpacity=".18" /></svg><small>STRATEGIE · DESIGN · DEZVOLTARE</small><h1>{data.projectTitle}</h1><p>O soluție construită pentru următorul nivel al brandului tău.</p></div>
       <section className="web-offer-paper-client"><div><small>PREGĂTITĂ PENTRU</small><strong>{data.customerName || "—"}</strong><span>{data.customerCompany || "—"}</span></div><div><small>CONTACT</small><strong>{data.customerPhone || "—"}</strong><span>{data.customerEmail || "—"}</span></div></section>
       <section><h2>Context și obiectiv</h2><p>{data.projectSummary || "Propunere personalizată pentru dezvoltarea prezenței digitale."}</p></section>
       <section><h2>Investiția propusă</h2><table className="web-offer-table"><thead><tr><th>#</th><th>Serviciu</th><th>Cant.</th><th>Preț unitar</th><th>Total</th></tr></thead><tbody>{data.items.map((item, index) => <tr key={item.id}><td>{index + 1}</td><td><strong>{item.description}</strong>{item.details && <small>{item.details}</small>}</td><td>{item.quantity} {item.unit}</td><td>{formatLei(item.unitPrice)}</td><td>{formatLei(item.quantity * item.unitPrice)}</td></tr>)}</tbody><tfoot><tr><td colSpan={4}>Subtotal</td><td>{formatLei(totals.net)}</td></tr><tr><td colSpan={4}>TVA ({data.vatRate}%)</td><td>{formatLei(totals.vat)}</td></tr><tr className="grand-total"><td colSpan={4}>TOTAL INVESTIȚIE</td><td>{formatLei(totals.gross)}</td></tr></tfoot></table></section>

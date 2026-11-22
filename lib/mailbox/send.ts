@@ -6,6 +6,7 @@ import { completeOperation, failOperation, rememberDraft, requestHash, reserveOp
 function address(value: string) { return (/<([^<>]+)>/.exec(value)?.[1] || value).trim().toLowerCase(); }
 
 export async function sendMessage(input: unknown, threadId?: string, forward = false, sourceDraftId?: string) {
+  if (threadId?.startsWith("legacy_")) throw new MailboxError("Pentru acest mesaj recuperat, continuă printr-un mesaj nou.", 400, "LEGACY_THREAD_NEW_MESSAGE");
   const body = messageInput(input, Boolean(threadId));
   if (threadId) providerId(threadId, "Conversația");
   const kind = forward ? "FORWARD" : threadId ? "REPLY" : "SEND";

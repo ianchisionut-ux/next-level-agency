@@ -41,8 +41,31 @@ Send operations use a durable operation identifier. An unknown result stays
 blocked until reviewed; retrying it does not silently create a new send.
 Provider acceptance alone does not establish delivery to the recipient.
 
+## Website offers and legacy Sent history
+
+Website offers now use the same native Inbox draft/send path as the mailbox.
+The editor retains a durable operation UUID across an unconfirmed retry (only
+the UUID and a SHA-256 fingerprint, not the offer body, are kept in session
+storage). A post-acceptance database failure must not unlock a new send.
+The success notice links directly to `/dashboard/email?folder=sent`.
+
+Manual mailbox synchronization also recovers older offers that used the
+transactional `/emails` API. It reads the original provider body and timestamp,
+matches the exact mailbox sender, offer number and saved recipient, and stores
+an encrypted local copy. It never sends or reconstructs the original offer.
+Imports are limited to five per run, an eight-second budget, and the most recent
+300 provider messages. A partial result is reported explicitly. This bounded
+recovery is not an unlimited migration of older account-wide email history.
+Imported `legacy_` threads are read locally; continuing or forwarding starts a
+new native message with the original text quoted, rather than calling nonexistent
+Inbox-thread endpoints. Provider delivery state is shown when available.
+
+Offer Print/PDF uses the preview HTML, print color preservation, an inline SVG
+hero graphic, asset readiness and measured scaling to one A4 sheet. Oversized
+offers that would require unreadable scaling are rejected with a clear message.
+
 ## Verification without real messages
 
-Run `npm run test:mailbox`, `npm run test:hero` and `npm run check:public-site`
+Run `npm run test:mailbox`, `npm run test:offer-print`, `npm run test:hero` and `npm run check:public-site`
 against the local server. Mailbox suites use mocked provider calls and isolated
 PostgreSQL. They do not access production data or send messages.
