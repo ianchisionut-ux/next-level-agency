@@ -1,3 +1,4 @@
+import PublicPageTransition from "@/components/PublicPageTransition";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -53,7 +54,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
 
   return <>
     <Header />
-    <main id="service-content" className={`service-detail-page sd-${service.kind}`}>
+    <PublicPageTransition key={service.slug}><main id="service-content" className={`service-detail-page sd-${service.kind}`}>
       <JsonLd data={businessSchema} />
       <JsonLd data={breadcrumbSchema([{ name: "Acasă", path: "/" }, { name: "Servicii", path: "/servicii" }, { name: service.label, path }])} />
       <JsonLd data={{ "@context": "https://schema.org", "@type": "Service", "@id": `${url}#service`, name: service.eyebrow, serviceType: service.eyebrow, description: service.metaDescription, url, image: new URL(illustration.src, SITE_URL).toString(), provider: { "@id": `${SITE_URL}/#organization` }, areaServed: { "@type": "Country", name: "România" } }} />
@@ -81,7 +82,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
       <section className="sd-related" aria-labelledby="related-title"><div className="sd-shell"><div className="sd-section-heading"><p className="sd-eyebrow">Părți din același ecosistem</p><h2 id="related-title">Când se leagă, funcționează mai bine.</h2></div><div className="sd-related-grid">{related.map(item => <Link key={item.slug} href={`/servicii/${item.slug}`} className="sd-related-card"><div className="sd-related-image"><Image src={artwork[item.kind].src} alt={artwork[item.kind].alt} fill sizes="(min-width: 1400px) 240px, (min-width: 1001px) 18vw, (min-width: 521px) 44vw, calc(100vw - 76px)" /></div><div><span className="sd-eyebrow">{item.eyebrow}</span><h3>{item.title}</h3><span className="sd-text-link">Explorează serviciul</span></div></Link>)}</div></div></section>
 
       <section className="sd-cta" aria-labelledby="service-cta-title"><div className="sd-shell"><div className="sd-cta-card"><Sparkles size={29} strokeWidth={1.4} aria-hidden="true" /><h2 id="service-cta-title">Hai să pornim de la ideea ta.</h2><p>Nu trebuie să ai toate răspunsurile. Spune-ne ce vrei să obții, iar detaliile le clarificăm împreună.</p><Link href={inquiryPath} className="sd-button">Spune-ne despre proiect</Link></div></div></section>
-    </main>
+    </main></PublicPageTransition>
     <Footer />
   </>;
 }

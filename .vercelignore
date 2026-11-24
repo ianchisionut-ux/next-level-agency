@@ -1,0 +1,9 @@
+node_modules
+.next
+.git
+.env*
+artifacts
+sites
+audit-facturare-2026-11-17.txt
+*.tsbuildinfo
+npm-debug.log*

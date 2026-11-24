@@ -1,3 +1,4 @@
+import PublicPageTransition from "@/components/PublicPageTransition";
 import type { Metadata } from "next";
 import Link from "@/components/IntentLink";
 import { notFound } from "next/navigation";
@@ -45,7 +46,7 @@ export default async function BlogPostPage({
       <JsonLd data={{ "@context": "https://schema.org", "@type": "BlogPosting", headline: post.title, description: post.excerpt, datePublished: `${post.publishedAt}T00:00:00+03:00`, dateModified: post.updatedAt ?? post.publishedAt, inLanguage: "ro-RO", mainEntityOfPage: `${SITE_URL}/blog/${post.slug}`, image: `${SITE_URL}/opengraph-image`, author: { "@type": "Organization", name: SITE_NAME, url: SITE_URL }, publisher: { "@type": "Organization", name: SITE_NAME, logo: { "@type": "ImageObject", url: `${SITE_URL}/brand/logo-full.png` } } }} />
       <JsonLd data={breadcrumbSchema([{ name: "Acasă", path: "/" }, { name: "Blog", path: "/blog" }, { name: post.title, path: `/blog/${post.slug}` }])} />
       <Header />
-      <main>
+      <PublicPageTransition key={post.slug}><main>
         <section className="grain bg-navy py-20">
           <div className="mx-auto max-w-3xl px-6">
             <Link href="/blog" className="text-sm font-semibold text-blue-bright hover:underline">
@@ -87,7 +88,7 @@ export default async function BlogPostPage({
           </div>
           {related.length > 0 && <section className="mx-auto mt-12 max-w-2xl px-6" aria-labelledby="related-articles-title"><h2 id="related-articles-title" className="text-2xl font-extrabold text-slate-900">Ghiduri pe teme apropiate</h2><ul className="mt-5 space-y-4">{related.map(item => <li key={item.slug}><Link href={`/blog/${item.slug}`} className="font-semibold text-blue hover:underline">{item.title}</Link><p className="mt-1 text-sm leading-relaxed text-ink-soft">{item.excerpt}</p></li>)}</ul></section>}
         </section>
-      </main>
+      </main></PublicPageTransition>
       <Footer />
     </>
   );

@@ -1,3 +1,4 @@
+import PublicPageTransition from "@/components/PublicPageTransition";
 import { pageMetadata } from "@/lib/seo";
 import Link from "@/components/IntentLink";
 import Header from "@/components/Header";
@@ -28,7 +29,7 @@ export default function ServiciiPage() {
   return (
     <>
       <Header />
-      <main>
+      <PublicPageTransition><main>
         {/* HERO — dark */}
         <section className="grain bg-navy py-20 text-center">
           <div className="mx-auto max-w-3xl px-6">
@@ -134,7 +135,7 @@ export default function ServiciiPage() {
             </div>
           </div>
         </section>
-      </main>
+      </main></PublicPageTransition>
       <Footer />
     </>
   );

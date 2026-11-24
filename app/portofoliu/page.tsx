@@ -1,3 +1,4 @@
+import PublicPageTransition from "@/components/PublicPageTransition";
 import { pageMetadata } from "@/lib/seo";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -13,7 +14,7 @@ export default function PortofoliuPage() {
   return (
     <>
       <Header />
-      <main className="nl-portfolio-page">
+      <PublicPageTransition><main className="nl-portfolio-page">
         {/* HERO — dark */}
         <section className="grain bg-navy py-20 text-center">
           <div className="mx-auto max-w-3xl px-6">
@@ -38,7 +39,7 @@ export default function PortofoliuPage() {
             <div className="mt-6 flex flex-wrap gap-5"><Link href="/servicii#web-development" className="font-semibold text-blue hover:underline">Ce poate include un proiect de web design →</Link><Link href="/chestionar-site-prezentare" className="font-semibold text-blue hover:underline">Pregătește brief-ul pentru un site de prezentare →</Link><Link href="/contact" className="font-semibold text-blue hover:underline">Discută un proiect de conținut sau promovare →</Link></div>
           </div>
         </section>
-      </main>
+      </main></PublicPageTransition>
       <Footer />
     </>
   );

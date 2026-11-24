@@ -16,7 +16,7 @@ const navItems = [
 
 export default function Header() {
   return (
-    <header className="public-marketing-header sticky top-0 z-40 border-b border-white/10 bg-navy/90 backdrop-blur">
+    <header style={{ viewTransitionName: "nl-public-header" }} className="public-marketing-header sticky top-0 z-40 border-b border-white/10 bg-navy/90 backdrop-blur">
       <link rel="preload" as="font" href={publicFont.asset} type="font/woff2" crossOrigin="anonymous" />
       <div className="public-header-inner mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-4 lg:px-6">
         <Link href="/" className="flex shrink-0 items-center gap-3">

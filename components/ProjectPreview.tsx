@@ -205,7 +205,7 @@ export default function ProjectPreview({ url, title, thumbnail, children }: {
           sandbox="allow-scripts allow-same-origin"
           allow="camera 'none'; microphone 'none'; geolocation 'none'; payment 'none'; autoplay 'none'; fullscreen 'none'; clipboard-read 'none'; clipboard-write 'none'"
           referrerPolicy="no-referrer"
-          className="absolute left-0 top-0 border-0"
+          className="absolute left-0 top-0 border-0 motion-safe:transition-opacity motion-safe:duration-200"
           style={{ width: VIEWPORT_WIDTH, height: VIEWPORT_HEIGHT, maxWidth: "none", transform: `scale(${scale})`, transformOrigin: "top left", pointerEvents: "none", opacity: loaded ? 1 : 0 }}
           onLoad={() => { if (previews.getSnapshot() === active) setLoadedSequence(active.sequence); }}
           onError={() => { if (previews.getSnapshot() === active) { stop(); setFailed(true); } }}

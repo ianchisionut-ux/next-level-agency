@@ -1,0 +1,30 @@
+/* Progressive motion on existing public content. No layout, color or type changes. */
+html:has(.public-marketing-header)::view-transition { pointer-events: none; }
+::view-transition-group(.nl-page-enter),
+::view-transition-group(.nl-page-exit),
+::view-transition-group(.nl-detail-change) { animation-duration: 200ms; pointer-events: none; }
+::view-transition-old(.nl-page-exit) { animation: nl-page-out 120ms ease-out both; }
+::view-transition-new(.nl-page-enter) { animation: nl-page-in 200ms cubic-bezier(.22,1,.36,1) both; }
+::view-transition-old(.nl-detail-change) { animation: nl-content-out 140ms ease-out both; }
+::view-transition-new(.nl-detail-change) { animation: nl-content-in 200ms ease-out both; }
+::view-transition-group(nl-public-header),
+::view-transition-old(nl-public-header),
+::view-transition-new(nl-public-header) { animation: none; }
+::view-transition-old(nl-public-header) { display: none; }
+
+@keyframes nl-page-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes nl-page-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes nl-content-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes nl-content-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes nl-menu-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .public-mobile-menu[open] > nav { animation: nl-menu-in 180ms cubic-bezier(.22,1,.36,1) both; }
+}
+@media (prefers-reduced-motion: reduce), print {
+  ::view-transition-group(.nl-page-enter), ::view-transition-group(.nl-page-exit),
+  ::view-transition-old(.nl-page-exit), ::view-transition-new(.nl-page-enter),
+  ::view-transition-group(.nl-detail-change), ::view-transition-old(.nl-detail-change),
+  ::view-transition-new(.nl-detail-change) { animation: none !important; }
+  .public-mobile-menu[open] > nav { animation: none; }
+}

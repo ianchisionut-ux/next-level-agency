@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./public-font.css";
+@import "./public-transitions.css";
 @source not "../artifacts";
 @source not "../sites";
 

@@ -1,6 +1,8 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, ViewTransition } from "react";
+import type {} from "react/canary";
+import { startPublicTransition } from "@/lib/public-transitions";
 import {
   BadgeCheck, Check, CheckCheck, ClipboardCheck, FileText, LayoutTemplate,
   ListFilter, Mail, MessageSquare, MousePointer2, PanelsTopLeft, RefreshCw,
@@ -95,13 +97,13 @@ export default function ServiceExplainer({ kind }: { kind: ServiceExplainerKind 
   return <div className={styles.explainer} role="group" aria-labelledby={`${id}-title`}>
     <div className={styles.intro}><h3 id={`${id}-title`}>{content.title}</h3><p>{content.intro}</p></div>
     <div className={styles.layout}>
-      <div className={styles.steps} aria-label="Alege etapa explicată">{content.steps.map(({ label, icon: StepIcon }, index) => <button type="button" key={label} aria-pressed={step === index} aria-controls={`${id}-panel`} className={step === index ? styles.stepActive : styles.step} onClick={() => setStep(index)}><span className={styles.stepIcon}><StepIcon size={22} strokeWidth={1.7} aria-hidden="true" /></span><span>{label}</span><Check size={17} className={styles.selectedCheck} aria-hidden="true" /></button>)}</div>
-      <div className={styles.panel} id={`${id}-panel`}>
+      <div className={styles.steps} aria-label="Alege etapa explicată">{content.steps.map(({ label, icon: StepIcon }, index) => <button type="button" key={label} aria-pressed={step === index} aria-controls={`${id}-panel`} className={step === index ? styles.stepActive : styles.step} onClick={() => startPublicTransition(() => setStep(index))}><span className={styles.stepIcon}><StepIcon size={22} strokeWidth={1.7} aria-hidden="true" /></span><span>{label}</span><Check size={17} className={styles.selectedCheck} aria-hidden="true" /></button>)}</div>
+      <ViewTransition update="nl-detail-change" default="none"><div className={styles.panel} id={`${id}-panel`}>
         <span className={styles.exampleLabel}>Exemplu ilustrativ</span>
         <div className={styles.visual}>{kind === "web" ? <WebVisual step={step} /> : kind === "marketing" ? <MarketingVisual step={step} /> : <AutomationVisual step={step} />}</div>
         <div className={styles.explanation} role="status" aria-live="polite" aria-atomic="true"><span><Icon size={21} aria-hidden="true" /></span><div><h4>{current.title}</h4><p>{current.text}</p></div></div>
-      </div>
+      </div></ViewTransition>
     </div>
-    <div className={styles.footer}><p>{content.note}</p><div><button type="button" onClick={() => setStep(0)} disabled={step === 0}>Reia exemplul</button><button type="button" onClick={() => setStep((step + 1) % content.steps.length)}>{step === content.steps.length - 1 ? "Vezi din nou" : "Etapa următoare"}</button></div></div>
+    <div className={styles.footer}><p>{content.note}</p><div><button type="button" onClick={() => startPublicTransition(() => setStep(0))} disabled={step === 0}>Reia exemplul</button><button type="button" onClick={() => startPublicTransition(() => setStep(currentStep => (currentStep + 1) % content.steps.length))}>{step === content.steps.length - 1 ? "Vezi din nou" : "Etapa următoare"}</button></div></div>
   </div>;
 }

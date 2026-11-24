@@ -48,7 +48,11 @@ export default function HomeMotion({ children }: { children: ReactNode }) {
       element.removeEventListener("pointermove", move);
       element.removeEventListener("pointerout", reset);
       if (active) {
-        element.querySelectorAll("[data-reveal]").forEach(item => item.classList.remove("nl-revealed"));
+        // Keep completed reveals visible and prevent the full/static selector
+        // from restarting their CSS animation when the tab or preference changes.
+        element.querySelectorAll<HTMLElement>("[data-reveal]").forEach(item => {
+          if (item.classList.contains("nl-revealed")) item.style.animation = "none";
+        });
         element.querySelectorAll<HTMLElement>("[data-magnetic], [data-tilt]").forEach(item => item.style.removeProperty("transform"));
       }
     };
@@ -62,12 +66,16 @@ export default function HomeMotion({ children }: { children: ReactNode }) {
       active = enabled;
       if (!enabled) return;
       if ("IntersectionObserver" in window) {
-        observer = new IntersectionObserver(entries => {
+        const nextObserver = new IntersectionObserver(entries => {
+          if (!active || observer !== nextObserver) return;
           entries.forEach(entry => {
-            if (entry.isIntersecting) { entry.target.classList.add("nl-revealed"); observer?.unobserve(entry.target); }
+            if (entry.isIntersecting) { entry.target.classList.add("nl-revealed"); nextObserver.unobserve(entry.target); }
           });
         }, { threshold: 0.12 });
-        element.querySelectorAll("[data-reveal]").forEach(item => observer?.observe(item));
+        observer = nextObserver;
+        element.querySelectorAll("[data-reveal]").forEach(item => {
+          if (!item.classList.contains("nl-revealed")) nextObserver.observe(item);
+        });
       }
       element.addEventListener("pointermove", move, { passive: true });
       element.addEventListener("pointerout", reset, { passive: true });

@@ -1,3 +1,4 @@
+import PublicPageTransition from "@/components/PublicPageTransition";
 import { pageMetadata } from "@/lib/seo";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -24,7 +25,7 @@ export default function DespreNoiPage() {
   return (
     <>
       <Header />
-      <main>
+      <PublicPageTransition><main>
         {/* HERO — dark */}
         <section className="grain bg-navy py-20">
           <div className="mx-auto max-w-4xl px-6 text-center">
@@ -125,7 +126,7 @@ export default function DespreNoiPage() {
             </div>
           </div>
         </section>
-      </main>
+      </main></PublicPageTransition>
       <Footer />
     </>
   );
