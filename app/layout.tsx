@@ -45,7 +45,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="ro" className={`${inter.variable} ${displayFont.variable} ${monoFont.variable}`}>
+    <html lang="ro" data-scroll-behavior="smooth" className={`${inter.variable} ${displayFont.variable} ${monoFont.variable}`}>
       <body className="antialiased">
         {children}
         <WhatsAppButton />

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "lenis/dist/lenis.css";
 @import "./public-font.css";
 @import "./public-transitions.css";
 @source not "../artifacts";
